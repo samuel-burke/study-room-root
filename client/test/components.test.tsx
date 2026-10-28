@@ -80,6 +80,9 @@ describe("GoalsSheet", () => {
 describe("ErrorBoundary", () => {
   it("replaces a crashed tree with a retry that remounts it", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // React reports the caught error to window too; keep jsdom from printing it.
+    const quiet = (event: ErrorEvent) => event.preventDefault();
+    window.addEventListener("error", quiet);
     let crash = true;
     function Fragile() {
       if (crash) throw new Error("render bug");
@@ -94,5 +97,6 @@ describe("ErrorBoundary", () => {
     crash = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(screen.getByText("Room is back")).toBeInTheDocument();
+    window.removeEventListener("error", quiet);
   });
 });
