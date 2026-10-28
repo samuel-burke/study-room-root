@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "allowImportingTsExtensions": false,
+    "types": ["vite/client"],
+    "paths": {
+      "@studyroom/core": ["../core/src/index.ts"],
+      "@studyroom/contract": ["../contract/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*", "e2e/**/*", "vite.config.ts", "playwright.config.ts"]
+}

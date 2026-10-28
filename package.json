@@ -1,0 +1,53 @@
+{
+  "name": "@studyroom/app",
+  "description": "Study Room: focus together inside your Root community",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "./core",
+    "./networking",
+    "./contract",
+    "./server",
+    "./client"
+  ],
+  "dependencies": {
+    "@rootsdk/client-app": "0.21.3",
+    "@rootsdk/server-app": "0.21.3",
+    "@studyroom/gen-client": "file:./networking/gen/client",
+    "@studyroom/gen-server": "file:./networking/gen/server",
+    "@studyroom/gen-shared": "file:./networking/gen/shared"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@rootsdk/dev-tools": "0.21.3",
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.0.5"
+  },
+  "scripts": {
+    "generate": "npm run build -w @studyroom/networking",
+    "build": "npm run build -w @studyroom/core && npm run build -w @studyroom/contract && npm run build -w @studyroom/server && npm run build -w @studyroom/client",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "npm run e2e -w @studyroom/client",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "server": "npm run server -w @studyroom/server",
+    "client": "npm run client -w @studyroom/client",
+    "demo": "npm run demo -w @studyroom/client",
+    "clean": "node scripts/clean.mjs"
+  }
+}

@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-demo/
+*.tsbuildinfo
+networking/gen/
+
+# local data and secrets
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+
+# test output
+coverage/
+client/test-results/
+client/playwright-report/
+client/blob-report/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
