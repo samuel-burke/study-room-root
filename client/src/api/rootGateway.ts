@@ -92,6 +92,10 @@ export class RootGateway implements StudyRoomGateway {
     return myStatusFromProto(await call(() => client.deleteMyData({})));
   }
 
+  async keepGoing() {
+    return myStatusFromProto(await call(() => client.keepGoing({})));
+  }
+
   async getProgress() {
     return progressFromProto(await call(() => client.getProgress({})));
   }
@@ -106,7 +110,7 @@ export class RootGateway implements StudyRoomGateway {
 
   async getProfiles(userIds: string[]): Promise<Profile[]> {
     if (userIds.length === 0) return [];
-    const profiles = await rootClient.users.getUserProfiles(userIds);
+    const profiles = await call(() => rootClient.users.getUserProfiles(userIds));
     return profiles.map((p) => ({
       userId: p.id,
       name: p.nickname,

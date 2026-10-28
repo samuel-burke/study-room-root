@@ -7,6 +7,7 @@ import type {
   EndSoloRequest,
   GetProgressRequest,
   GetRoomRequest,
+  KeepGoingRequest,
   JoinRoomTimerRequest,
   LeaveRoomTimerRequest,
   MyStatus,
@@ -82,6 +83,10 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
     return this.call((h) => h.deleteMyData(client.userId));
+  }
+
+  keepGoing(_request: KeepGoingRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.keepGoing(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

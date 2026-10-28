@@ -91,6 +91,8 @@ export interface MyStatusDto {
   freezeAvailable: boolean;
   goals: GoalDto[];
   goalsPrivate: boolean;
+  /** When the "Keep going?" prompt closes (server time). 0 when it isn't showing. */
+  keepGoingEndsAt: number;
 }
 
 export interface SnapshotDto {

@@ -12,18 +12,18 @@ Your Root account (your login, profile and messages) is looked after by Root und
 
 Everything Study Squad keeps is about your studying, and each piece has a job:
 
-| What                                                              | Why                                                                       |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Your Root user ID                                                 | So the app knows which goals and progress are yours                       |
-| Goals you type in, and whether they're done                       | To show your goal list and your current goal on the board                 |
-| Your privacy choices (private goals, hidden from leaderboard)     | So the app always respects them                                           |
-| When your focus sessions start and end, and if you finish them    | To run the timers and count your streak                                   |
-| "Still there?" checks during long focus blocks, and if you tapped | So a finished block counts toward your streak and combo                   |
-| Your daily focus minutes, XP, goals and sessions finished         | For your level, progress chart, weekly quests, the leaderboard and recaps |
-| Which weekly quest rewards you've already received                | So each reward is given once                                              |
-| Your streak and the streak freezes you've used this week          | To show and protect your streak                                           |
-| That you helped fight the weekly boss                             | To reward everyone who helped when the boss is defeated                   |
-| Badges you've earned and when, your card style and pinned badge   | To show your badges and the look of your card                             |
+| What                                                            | Why                                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Your Root user ID                                               | So the app knows which goals and progress are yours                       |
+| Goals you type in, and whether they're done                     | To show your goal list and your current goal on the board                 |
+| Your privacy choices (private goals, hidden from leaderboard)   | So the app always respects them                                           |
+| When your focus sessions start and end, and if you finish them  | To run the timers and count your streak                                   |
+| Whether you tapped "Keep going?" at the end of a cycle          | So you stay on the room timer for the next cycle                          |
+| Your daily focus minutes, XP, goals and sessions finished       | For your level, progress chart, weekly quests, the leaderboard and recaps |
+| Which weekly quest rewards you've already received              | So each reward is given once                                              |
+| Your streak and the streak freezes you've used this week        | To show and protect your streak                                           |
+| That you helped fight the weekly boss                           | To reward everyone who helped when the boss is defeated                   |
+| Badges you've earned and when, your card style and pinned badge | To show your badges and the look of your card                             |
 
 A few things Study Squad **uses but doesn't save**:
 
