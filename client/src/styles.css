@@ -14,7 +14,7 @@
   src: url("./assets/fonts/space-grotesk-latin.woff2") format("woff2");
 }
 
-/* Design tokens, taken from the Study Room design canvas. */
+/* Design tokens, taken from the Study Squad design canvas. */
 :root {
   --bg: #0e1320;
   --bg-deep: #080b12;

@@ -3,12 +3,12 @@ import { formatHours, pluralize } from "./format";
 import type { RecapDto } from "./dto";
 
 /**
- * Text for the posts Study Room drops into a Root channel. Names passed in
+ * Text for the posts Study Squad drops into a Root channel. Names passed in
  * must already be cleaned with safeDisplayName.
  */
 
 export function busyRoomPost(focusingCount: number, combo: number): string {
-  return `📚 ${focusingCount} people are focusing right now. Combo is at ${formatCombo(combo)}. Open Study Room to join the room timer.`;
+  return `📚 ${focusingCount} people are focusing right now. Combo is at ${formatCombo(combo)}. Open Study Squad to join the room timer.`;
 }
 
 export function streakMilestonePost(name: string, streak: number): string {

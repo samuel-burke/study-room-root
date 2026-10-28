@@ -54,7 +54,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
   if (state.status === "error" || !state.room || !state.me) {
     return (
       <div className="status-screen" role="alert">
-        <div>{state.error ?? "Couldn't open Study Room."}</div>
+        <div>{state.error ?? "Couldn't open Study Squad."}</div>
         <button type="button" className="btn btn-primary" onClick={() => void actions.reload()}>
           Try again
         </button>

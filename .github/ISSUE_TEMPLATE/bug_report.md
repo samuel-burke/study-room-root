@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in Study Room isn't working
+about: Something in Study Squad isn't working
 labels: bug
 ---
 

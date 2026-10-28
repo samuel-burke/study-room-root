@@ -42,7 +42,7 @@ function Header({
           </div>
         )}
         <div style={{ minWidth: 0 }}>
-          <div className="brand-name">Study Room</div>
+          <div className="brand-name">Study Squad</div>
           {channel && <div className="brand-sub">Posts in #{channel}</div>}
         </div>
       </div>

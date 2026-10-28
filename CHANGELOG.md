@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the app to **Study Squad** (store title: "Study Squad: Group Study Timer"). Code identifiers and the repository name are unchanged.
+
 ## [0.1.0] - 2026-10-28
 
 First version, covering the v1 scope.

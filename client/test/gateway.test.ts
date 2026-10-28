@@ -11,7 +11,7 @@ describe("toGatewayError", () => {
 
   it("replaces SDK and network errors with a friendly message", () => {
     expect(toGatewayError(new TypeError("Failed to fetch")).message).toMatch(
-      /Couldn't reach Study Room/,
+      /Couldn't reach Study Squad/,
     );
     expect(toGatewayError({ code: -2, message: "RequestTimeout" }).code).toBe(0);
     expect(toGatewayError(undefined).code).toBe(0);

@@ -25,7 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Study Room app", () => {
+describe("Study Squad app", () => {
   it("opens on an idle room with an empty board", async () => {
     await renderApp();
     expect(screen.getByRole("timer")).toHaveTextContent("25:00");
@@ -134,7 +134,7 @@ describe("Study Room app", () => {
     const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
     const spy = vi.spyOn(gateway, "getSnapshot").mockRejectedValueOnce(new Error("offline"));
     render(<App gateway={gateway} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't reach Study Room/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't reach Study Squad/);
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("timer")).toBeInTheDocument();
     expect(spy).toHaveBeenCalledTimes(2);

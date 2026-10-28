@@ -71,7 +71,7 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {
     if (!this.handlers)
-      throw new RootServerException(503, "Study Room is still starting. Try again in a moment.");
+      throw new RootServerException(503, "Study Squad is still starting. Try again in a moment.");
     try {
       return await work(this.handlers);
     } catch (error) {

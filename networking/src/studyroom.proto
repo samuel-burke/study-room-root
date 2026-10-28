@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "rootsdk/types.proto";
 
-// Study Room client/server contract.
+// Study Squad client/server contract.
 //
 // Conventions:
 // - Timestamps are Unix epoch milliseconds in a `double` (exact up to 2^53),

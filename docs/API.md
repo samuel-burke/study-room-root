@@ -48,4 +48,4 @@ Failures reach the client as `RootServerException` with a `code` and a message s
 | 1500 | Unexpected server error. Details are logged on the server, never sent to the client               |
 | 503  | The server is still starting                                                                      |
 
-Root's own negative codes (timeouts, rate limits) are shown to members as a generic "couldn't reach Study Room" message.
+Root's own negative codes (timeouts, rate limits) are shown to members as a generic "couldn't reach Study Squad" message.

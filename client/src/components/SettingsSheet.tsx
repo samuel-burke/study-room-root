@@ -38,7 +38,7 @@ export function SettingsSheet({ room, onClose }: { room: RoomStateDto; onClose()
         ))}
       </dl>
       <div className="tiny dim">
-        Community admins can change these in App settings for Study Room.
+        Community admins can change these in App settings for Study Squad.
       </div>
       <button type="button" className="btn" onClick={onClose} data-autofocus>
         Close

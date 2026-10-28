@@ -8,7 +8,7 @@ Please report security issues privately through [GitHub security advisories](htt
 
 Only the latest release on `main` gets fixes.
 
-## How Study Room protects members
+## How Study Squad protects members
 
 | Risk                                  | Control                                                                                                                                                                                                                   |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -30,6 +30,6 @@ Only the latest release on `main` gets fixes.
 `npm audit` reports advisories in packages installed by Root's SDK, which we can't change without leaving the SDK's tested configuration:
 
 - `sqlite3@5.1.7` (required by `@rootsdk/server-app`) depends on `node-gyp` and old `tar` releases. These run only when sqlite3 is compiled from source at install time; they aren't used at runtime.
-- `uuid@10` (required by `@rootsdk/server-app` and `@rootsdk/client-app`): the advisory affects the v3/v5/v6 functions with a caller-provided buffer, which Study Room doesn't use.
+- `uuid@10` (required by `@rootsdk/server-app` and `@rootsdk/client-app`): the advisory affects the v3/v5/v6 functions with a caller-provided buffer, which Study Squad doesn't use.
 
 We'll pick up fixed versions as Root updates the SDK.

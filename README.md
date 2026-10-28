@@ -1,10 +1,10 @@
-# Study Room: Group Study Timer
+# Study Squad: Group Study Timer
 
 **Focus together. See who's working, start a timer, keep your streak.**
 
-Study Room is a group study timer for [Root](https://www.rootapp.com) communities: a pomodoro-style focus timer you study together with, like a quiet library where you can see everyone else working. Join the room's shared timer, put a goal on the board, and when the round ends every screen celebrates and flips to break at the same moment.
+Study Squad is a group study timer for [Root](https://www.rootapp.com) communities: a pomodoro-style focus timer you study together with, like a quiet library where you can see everyone else working. Join the room's shared timer, put a goal on the board, and when the round ends every screen celebrates and flips to break at the same moment.
 
-![Study Room focus room on desktop](docs/screenshots/room-desktop.png)
+![Study Squad focus room on desktop](docs/screenshots/room-desktop.png)
 
 <p>
   <img src="docs/screenshots/room-mobile.png" alt="Focus room on a phone" width="240">

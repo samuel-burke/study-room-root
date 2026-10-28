@@ -67,5 +67,5 @@ export function toGatewayError(error: unknown): GatewayError {
       return new GatewayError(code, message);
     }
   }
-  return new GatewayError(0, "Couldn't reach Study Room. Check your connection and try again.");
+  return new GatewayError(0, "Couldn't reach Study Squad. Check your connection and try again.");
 }

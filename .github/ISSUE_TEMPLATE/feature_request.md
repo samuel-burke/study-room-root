@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Study Room
+about: Suggest an idea for Study Squad
 labels: enhancement
 ---
 

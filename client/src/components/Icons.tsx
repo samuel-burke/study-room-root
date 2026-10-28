@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-/** Icons from the Study Room design. Decorative by default. */
+/** Icons from the Study Squad design. Decorative by default. */
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
 function Svg({ size = 16, children, ...props }: IconProps) {

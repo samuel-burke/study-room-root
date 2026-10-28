@@ -88,7 +88,7 @@ class Effects {
 }
 
 /**
- * All Study Room behaviour lives here, behind ports for storage, time,
+ * All Study Squad behaviour lives here, behind ports for storage, time,
  * scheduling, real-time pushes and channel posts. The Root server and the
  * browser demo both run this same class with different adapters.
  */

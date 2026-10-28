@@ -72,7 +72,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
   rootServer.lifecycle.addService(studyRoomService);
   await engine.start();
 
-  // Presence: who has Study Room open right now.
+  // Presence: who has Study Squad open right now.
   await engine.setPresence(rootServer.clients.getClients().map((c) => c.userId));
   rootServer.clients.on(
     ClientEvent.UserAttached,
@@ -122,12 +122,12 @@ async function onStarting(state: RootAppStartState): Promise<void> {
     await engine.idle();
     await db.destroy();
   };
-  logger.info("study room started");
+  logger.info("study squad started");
 }
 
 async function onStopping(): Promise<void> {
   await shutdown?.();
-  logger.info("study room stopped");
+  logger.info("study squad stopped");
 }
 
 (async () => {

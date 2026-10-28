@@ -1,6 +1,6 @@
 # Design decisions
 
-This file records the "why" behind Study Room's rules and structure. Numbers live in code in `core/src/constants.ts`; if they change, update this file in the same pull request.
+This file records the "why" behind Study Squad's rules and structure. Numbers live in code in `core/src/constants.ts`; if they change, update this file in the same pull request.
 
 ## The server owns the timer
 
@@ -72,12 +72,13 @@ Display names come from Root nicknames and are stripped of markup and mention ch
 
 ## Admin settings use Root's Global Settings
 
-Root already provides a settings UI restricted to people who can manage apps, so Study Room doesn't build or secure its own. The mockup's admin setup screen maps to two groups in `root-manifest.json`: **Timer and room** and **Game layer**. The server validates and clamps every value (`parseSettings`), and a test checks that the manifest declares exactly the keys the server reads and that its defaults match the server's.
+Root already provides a settings UI restricted to people who can manage apps, so Study Squad doesn't build or secure its own. The mockup's admin setup screen maps to two groups in `root-manifest.json`: **Timer and room** and **Game layer**. The server validates and clamps every value (`parseSettings`), and a test checks that the manifest declares exactly the keys the server reads and that its defaults match the server's.
 
 Numeric settings are `select` items, not `number` items: in `@rootsdk/dev-tools` 0.21.3 the dev host maps `number` items to the wrong oneof case. Revisit when the SDK fixes it.
 
 ## Where the app differs from the mockups
 
+- **Name**: the mockups say "Study Room"; the app is now called Study Squad. Internal code names (`StudyRoomEngine`, the `StudyRoomService` Protobuf service, `@studyroom/*` packages) keep the old name, because renaming the service would change the wire paths for no user benefit.
 - **Admin setup** is Root's App settings screen (see above). The room shows a read-only summary behind the settings button.
 - **Weekly quests and badges** on the progress screen are not in v1. They were in the gamification ideas but outside the v1 scope (XP, combo, boss).
 - **"Chat in #study-hall"** on the break screen is a hint, not a link, because the SDK has no supported way to deep-link to a channel.

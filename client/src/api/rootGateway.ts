@@ -27,7 +27,7 @@ async function call<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Talks to the Study Room server through Root's generated client. */
+/** Talks to the Study Squad server through Root's generated client. */
 export class RootGateway implements StudyRoomGateway {
   readonly kind = "root" as const;
   private readonly clock = new ClockSync();
