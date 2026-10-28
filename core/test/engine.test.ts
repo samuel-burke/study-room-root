@@ -564,6 +564,16 @@ describe("weekly quests", () => {
     expect(progress.quests.every((q) => q.progress === 0 && !q.done)).toBe(true);
   });
 
+  it("earns the quest badges", async () => {
+    const { engine } = createHarness();
+    for (let i = 0; i < 5; i++) await engine.addGoal("ana", `Goal ${i}`);
+    for (const goal of (await engine.getSnapshot("ana")).me.goals)
+      await engine.setGoalDone("ana", goal.id, true);
+    const badges = (await engine.getProgress("ana")).badges.map((b) => b.id);
+    expect(badges).toContain("quest-first");
+    expect(badges).not.toContain("quest-sweep");
+  });
+
   it("shows no reward and pays none when XP is off", async () => {
     const { engine } = createHarness(configWith({ xp: { enabled: false, dailyCap: 300 } }));
     for (let i = 0; i < 5; i++) await engine.addGoal("ana", `Goal ${i}`);

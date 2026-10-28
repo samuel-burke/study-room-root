@@ -128,6 +128,22 @@ function resume(ctx: AudioContext): void {
 }
 
 /**
+ * Runs `schedule` against the shared audio context, if there is one. Used by
+ * other sound sets (badge fanfares) so they share the context and its unlock.
+ * Any audio failure is swallowed.
+ */
+export function withAudio(schedule: (ctx: AudioContext) => void): void {
+  const ctx = getContext();
+  if (!ctx) return;
+  resume(ctx);
+  try {
+    schedule(ctx);
+  } catch {
+    // Nothing to recover: this sound is skipped.
+  }
+}
+
+/**
  * Plays a chime. Sound is a nice-to-have, so any audio failure (no Web Audio,
  * a closed context, a blocked device) is swallowed and the app carries on.
  */

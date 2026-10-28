@@ -33,6 +33,10 @@ export interface MemberCardDto {
   goalPrivate: boolean;
   level: number;
   streak: number;
+  /** Up to three badge ids to show on the card. */
+  badges: string[];
+  /** Card style id (see CARD_STYLES). */
+  cardStyle: string;
 }
 
 export interface BossDto {
@@ -142,11 +146,29 @@ export interface QuestDto {
   done: boolean;
 }
 
+export interface EarnedBadgeDto {
+  id: string;
+  earnedAt: number;
+}
+
+export interface CardLookDto {
+  /** The style the member picked, or "" for automatic. */
+  chosenStyle: string;
+  /** The badges the member picked, or empty for "most recent". */
+  chosenShowcase: string[];
+  /** What the card shows right now. */
+  style: string;
+  showcase: string[];
+}
+
 export interface ProgressDto {
   me: MyStatusDto;
   days: DayStatDto[];
   totalFocusMinutes: number;
   quests: QuestDto[];
+  /** Earned badges, oldest first. The catalog itself lives in core (BADGES). */
+  badges: EarnedBadgeDto[];
+  card: CardLookDto;
 }
 
 export interface RecapDto {

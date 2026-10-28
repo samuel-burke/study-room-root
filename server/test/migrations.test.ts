@@ -21,6 +21,8 @@ describe("migrations", () => {
         "daily_stats",
         "goals",
         "kv",
+        "member_badges",
+        "member_cards",
         "members",
         "quest_rewards",
         "room_cycle",

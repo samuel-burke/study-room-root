@@ -84,6 +84,26 @@ export interface QuestRewardRecord {
   rewardedAt: number;
 }
 
+/** Sums over every daily_stats row a member has. */
+export interface LifetimeStats {
+  focusMinutes: number;
+  goalsDone: number;
+  sessionsFinished: number;
+}
+
+export interface EarnedBadgeRecord {
+  userId: string;
+  badgeId: string;
+  earnedAt: number;
+}
+
+/** How a member's card looks. null means "automatic". */
+export interface CardRecord {
+  userId: string;
+  style: string | null;
+  showcase: string[] | null;
+}
+
 export interface CommunityDayStats {
   focusMinutes: number;
   goalsDone: number;
@@ -127,21 +147,37 @@ export interface Store {
     insert(log: SessionLogRecord): Promise<void>;
     /** Sessions that ended in [fromMs, toMs), oldest first. */
     listForUser(userId: string, fromMs: number, toMs: number): Promise<SessionLogRecord[]>;
+    countFinished(userId: string, kind: SessionLogRecord["kind"]): Promise<number>;
   };
   stats: {
     get(userId: string, day: DayKey): Promise<DailyStatRecord | undefined>;
     add(userId: string, day: DayKey, delta: DailyStatDelta): Promise<void>;
     listForUser(userId: string, fromDay: DayKey, toDay: DayKey): Promise<DailyStatRecord[]>;
     communityDay(day: DayKey): Promise<CommunityDayStats>;
+    lifetime(userId: string): Promise<LifetimeStats>;
   };
   quests: {
     /** Ids of the weekly quests whose reward the member has already received. */
     listRewarded(userId: string, weekKey: DayKey): Promise<string[]>;
     markRewarded(record: QuestRewardRecord): Promise<void>;
+    /** Every weekly quest the member has finished, across all weeks. */
+    countRewarded(userId: string): Promise<number>;
   };
   bosses: {
     get(weekKey: DayKey): Promise<BossState | undefined>;
     save(boss: BossState): Promise<void>;
+    /** Defeated bosses the member contributed to. */
+    countDefeatedWith(userId: string): Promise<number>;
+  };
+  badges: {
+    /** Earned badges for these members, oldest first (ties by badge id). */
+    list(userIds: readonly string[]): Promise<EarnedBadgeRecord[]>;
+    /** Records a badge. Awarding one the member already has changes nothing. */
+    award(record: EarnedBadgeRecord): Promise<void>;
+  };
+  cards: {
+    list(userIds: readonly string[]): Promise<CardRecord[]>;
+    save(card: CardRecord): Promise<void>;
   };
   kv: {
     get<T>(key: string): Promise<T | undefined>;
@@ -149,7 +185,7 @@ export interface Store {
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, quest rewards, room and solo timers, and their id in boss
+   * stats, quest rewards, room and solo timers, badges, card style, and their id in boss
    * contributor lists.
    * Community totals for past recaps are not recomputed.
    */
@@ -176,6 +212,8 @@ export interface Notifier {
   phaseCompleted(event: PhaseCompletedDto): void;
   personalResult(userId: string, event: PersonalResultDto): void;
   myStatusUpdated(userId: string, me: MyStatusDto): void;
+  /** Sent only to the member, once per operation, with every badge it earned them. */
+  badgesEarned(userId: string, badgeIds: string[]): void;
 }
 
 /** Posts to a Root text channel. Failures are logged, never surfaced to users. */
