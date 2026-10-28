@@ -82,6 +82,18 @@ export function dayKey(ms: number, timeZone: string): DayKey {
   return toDayKey(p.year, p.month, p.day);
 }
 
+/** Wall-clock time in the zone: the day plus hour (0-23) and minute. */
+export interface LocalTime {
+  day: DayKey;
+  hour: number;
+  minute: number;
+}
+
+export function localTime(ms: number, timeZone: string): LocalTime {
+  const p = zonedParts(ms, timeZone);
+  return { day: toDayKey(p.year, p.month, p.day), hour: p.hour, minute: p.minute };
+}
+
 export function addDays(key: DayKey, days: number): DayKey {
   const [y, m, d] = parseDayKey(key);
   const date = new Date(Date.UTC(y, m - 1, d) + days * DAY_MS);

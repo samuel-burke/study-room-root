@@ -1,7 +1,8 @@
-import type { MemberCardDto } from "@studyroom/core";
+import { badgeById, type MemberCardDto } from "@studyroom/core";
 import type { Profile } from "../api/gateway";
 import { isFocusing, rowTime, statusChip } from "../lib/view";
 import { Avatar } from "./Avatar";
+import { BadgeMedal } from "./BadgeMedal";
 import { FlameIcon, LockIcon } from "./Icons";
 
 interface BoardProps {
@@ -25,6 +26,25 @@ function goalText(member: MemberCardDto) {
   return member.goalText || null;
 }
 
+/**
+ * The one badge a member features on the board: their first pin, or their
+ * newest. The rest live on their progress screen.
+ */
+function FeaturedBadge({ ids }: { ids: string[] }) {
+  const badge = ids.map(badgeById).find((b) => b !== undefined);
+  if (!badge) return null;
+  return (
+    <span
+      className="featured-badge"
+      title={badge.name}
+      role="img"
+      aria-label={`Badge: ${badge.name}`}
+    >
+      <BadgeMedal badge={badge} size={22} />
+    </span>
+  );
+}
+
 function MemberCard({
   member,
   profile,
@@ -40,13 +60,19 @@ function MemberCard({
   const name = you ? "You" : (profile?.name ?? "Member");
   const goal = goalText(member);
   return (
-    <li className="member-card" data-you={you} aria-label={`${name}, ${chip.label}`}>
+    <li
+      className="member-card"
+      data-you={you}
+      data-style={member.cardStyle}
+      aria-label={`${name}, ${chip.label}`}
+    >
       <div className="member-top">
         <Avatar userId={member.userId} profile={profile} you={you} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="member-name">
             <span className="name">{name}</span>
             <span className="level-chip">Lv {member.level}</span>
+            <FeaturedBadge ids={member.badges} />
           </div>
           <div className="streak-line">
             <FlameIcon size={13} stroke="var(--flame)" />
@@ -64,9 +90,11 @@ function MemberCard({
           Focusing
         </div>
       )}
-      <div className="chip" data-tone={chip.tone}>
-        <span className="dot" />
-        {chip.label}
+      <div className="member-foot">
+        <div className="chip" data-tone={chip.tone}>
+          <span className="dot" />
+          {chip.label}
+        </div>
       </div>
     </li>
   );
@@ -88,10 +116,15 @@ function MemberRow({
   const goal = goalText(member) ?? (member.goalPrivate ? "Focusing (private)" : "Focusing");
   const time = rowTime(member, now);
   return (
-    <li className="member-row" aria-label={`${name}, ${chip.label}`}>
+    <li className="member-row" data-style={member.cardStyle} aria-label={`${name}, ${chip.label}`}>
       <Avatar userId={member.userId} profile={profile} you={you} />
       <div className="body">
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{name}</div>
+        <div
+          style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
+        >
+          {name}
+          <FeaturedBadge ids={member.badges} />
+        </div>
         <div className="goal-line">{goal}</div>
       </div>
       <div className="time" data-tone={chip.tone}>
