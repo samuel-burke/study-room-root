@@ -5,10 +5,12 @@ import type {
   DeleteGoalRequest,
   DeleteMyDataRequest,
   EndSoloRequest,
+  GetLeaderboardRequest,
   GetProgressRequest,
   GetRoomRequest,
   KeepGoingRequest,
   JoinRoomTimerRequest,
+  Leaderboard,
   LeaveRoomTimerRequest,
   MyStatus,
   Progress,
@@ -17,6 +19,7 @@ import type {
   SetCardStyleRequest,
   SetGoalDoneRequest,
   SetGoalsPrivateRequest,
+  SetLeaderboardHiddenRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
 import { RequestFailure, type StudyRoomHandlers } from "./handlers";
@@ -71,6 +74,14 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   getProgress(_request: GetProgressRequest, client: Client): Promise<Progress> {
     return this.call((h) => h.getProgress(client.userId));
+  }
+
+  getLeaderboard(_request: GetLeaderboardRequest, client: Client): Promise<Leaderboard> {
+    return this.call((h) => h.getLeaderboard(client.userId));
+  }
+
+  setLeaderboardHidden(request: SetLeaderboardHiddenRequest, client: Client): Promise<Leaderboard> {
+    return this.call((h) => h.setLeaderboardHidden(client.userId, request));
   }
 
   setCardStyle(request: SetCardStyleRequest, client: Client): Promise<Progress> {

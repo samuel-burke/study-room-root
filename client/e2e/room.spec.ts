@@ -107,8 +107,24 @@ test.describe("progress", () => {
     await expect(
       page.getByRole("list", { name: "Focus time, last 5 weeks" }).getByRole("listitem"),
     ).toHaveCount(35);
+    await expect(
+      page.getByRole("region", { name: "Weekly quests" }).getByRole("progressbar"),
+    ).toHaveCount(3);
     await page.getByRole("button", { name: "Back to the room" }).click();
     await expect(page.getByRole("timer")).toBeVisible();
+  });
+
+  test("shows the weekly leaderboard and lets you hide yourself", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    const board = page.getByRole("region", { name: "Weekly leaderboard" });
+    await expect(board.getByText("By focus minutes · resets Monday")).toBeVisible();
+    const show = board.getByRole("switch", { name: "Show me on the leaderboard" });
+    await expect(show).toHaveAttribute("aria-checked", "true");
+    await show.click();
+    await expect(show).toHaveAttribute("aria-checked", "false");
+    await expect(board.getByText("You're hidden.")).toBeVisible();
+    await expect(board.getByRole("listitem", { name: /, You,/ })).toHaveCount(0);
   });
 
   test("shows the badge shelf and card styles", async ({ page }) => {

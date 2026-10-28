@@ -122,6 +122,36 @@ const migrations: Migration[] = [
     },
   },
   {
+    // Progress itself is read from session_log and daily_stats; this only
+    // records which weekly quest rewards were paid, so each is paid once.
+    name: "003_quest_rewards",
+    async up(db) {
+      await db.schema.createTable("quest_rewards", (t) => {
+        t.string("user_id").notNullable();
+        t.string("week_key").notNullable();
+        t.string("quest_id").notNullable();
+        t.integer("xp").notNullable();
+        t.bigInteger("rewarded_at").notNullable();
+        t.primary(["user_id", "week_key", "quest_id"]);
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("quest_rewards");
+    },
+  },
+  {
+    name: "004_leaderboard_opt_outs",
+    async up(db) {
+      // A row means the member hid themselves from the weekly leaderboard.
+      await db.schema.createTable("leaderboard_opt_outs", (t) => {
+        t.string("user_id").primary();
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("leaderboard_opt_outs");
+    },
+  },
+  {
     name: "005_keep_going",
     async up(db) {
       await db.schema.alterTable("room_participants", (t) => {

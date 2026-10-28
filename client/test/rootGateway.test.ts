@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { myStatusToProto, progressToProto, snapshotToProto } from "@studyroom/contract";
+import {
+  leaderboardToProto,
+  myStatusToProto,
+  progressToProto,
+  snapshotToProto,
+} from "@studyroom/contract";
 import { createHarness } from "../../core/test/helpers";
 import { GatewayError } from "../src/api/gateway";
 import { RootGateway } from "../src/api/rootGateway";
@@ -36,6 +41,8 @@ const service = vi.hoisted(() => {
       deleteMyData: vi.fn(),
       keepGoing: vi.fn(),
       getProgress: vi.fn(),
+      getLeaderboard: vi.fn(),
+      setLeaderboardHidden: vi.fn(),
     },
   };
 });
@@ -128,6 +135,33 @@ describe("RootGateway", () => {
     const progress = await engine.getProgress("ana");
     vi.mocked(service.client.getProgress).mockResolvedValue(progressToProto(progress));
     await expect(new RootGateway().getProgress()).resolves.toEqual(progress);
+  });
+
+  it("loads the leaderboard and saves the opt-out", async () => {
+    const { engine, store } = createHarness();
+    await store.stats.add("kai", "2026-10-27", { focusMinutes: 42 });
+    const board = await engine.getLeaderboard("ana");
+    const hidden = await engine.setLeaderboardHidden("ana", true);
+    vi.mocked(service.client.getLeaderboard).mockResolvedValue(leaderboardToProto(board));
+    vi.mocked(service.client.setLeaderboardHidden).mockResolvedValue(leaderboardToProto(hidden));
+    const gateway = new RootGateway();
+    await expect(gateway.getLeaderboard()).resolves.toEqual(board);
+    await expect(gateway.setLeaderboardHidden(true)).resolves.toEqual(hidden);
+    expect(service.client.getLeaderboard).toHaveBeenCalledWith({});
+    expect(service.client.setLeaderboardHidden).toHaveBeenCalledWith({ hidden: true });
+  });
+
+  it("turns leaderboard failures into GatewayErrors", async () => {
+    const gateway = new RootGateway();
+    vi.mocked(service.client.getLeaderboard).mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(gateway.getLeaderboard()).rejects.toMatchObject({ code: 0 });
+    vi.mocked(service.client.setLeaderboardHidden).mockRejectedValue({
+      code: 8,
+      message: "Slow down a little and try again.",
+    });
+    const error = await gateway.setLeaderboardHidden(true).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(GatewayError);
+    expect(error).toMatchObject({ code: 8, message: "Slow down a little and try again." });
   });
 
   it("keeps server error messages and hides network failures", async () => {

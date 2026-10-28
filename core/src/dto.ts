@@ -1,6 +1,7 @@
 import type { PhaseKind } from "./timer/roomCycle";
 import type { PresetKey, TimerPreset } from "./timer/presets";
 import type { DayKey } from "./time/calendar";
+import type { QuestUnit } from "./game/quests";
 
 /**
  * Transport-neutral shapes the engine produces. The server maps them to
@@ -135,6 +136,18 @@ export interface DayStatDto {
   focusMinutes: number;
 }
 
+export interface QuestDto {
+  id: string;
+  title: string;
+  /** Capped at the target. Whole minutes when `unit` is "minutes". */
+  progress: number;
+  target: number;
+  unit: QuestUnit;
+  /** Reward for finishing; 0 when XP is off. */
+  xp: number;
+  done: boolean;
+}
+
 export interface EarnedBadgeDto {
   id: string;
   earnedAt: number;
@@ -154,9 +167,29 @@ export interface ProgressDto {
   me: MyStatusDto;
   days: DayStatDto[];
   totalFocusMinutes: number;
+  quests: QuestDto[];
   /** Earned badges, oldest first. The catalog itself lives in core (BADGES). */
   badges: EarnedBadgeDto[];
   card: CardLookDto;
+}
+
+export interface LeaderboardEntryDto {
+  userId: string;
+  /** Whole focus minutes this week. */
+  focusMinutes: number;
+  /** 1-based. Members with the same minutes share a rank. */
+  rank: number;
+}
+
+/** This week's focus-minute standings. Members who opted out are never listed. */
+export interface LeaderboardDto {
+  /** Monday of this week, in the community time zone. */
+  weekStart: DayKey;
+  /** When the board resets (next Monday 00:00 in the community time zone). */
+  endsAt: number;
+  entries: LeaderboardEntryDto[];
+  /** The caller's own week. rank is 0 when they're hidden or haven't focused yet. */
+  me: { rank: number; focusMinutes: number; hidden: boolean };
 }
 
 export interface RecapDto {
@@ -167,4 +200,6 @@ export interface RecapDto {
   activeMembers: number;
   boss: { name: string; hpLeftMinutes: number; daysLeft: number; defeated: boolean } | null;
   topStreaks: { userId: string; streak: number }[];
+  /** Most focus minutes so far this week. Empty when the admin turned it off. */
+  topFocus: { userId: string; focusMinutes: number }[];
 }

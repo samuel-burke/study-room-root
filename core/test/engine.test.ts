@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { bossNameFor, DomainError, ErrorCode, LIMITS, PRESETS } from "../src";
+import { bossNameFor, DomainError, ErrorCode, LIMITS, PRESETS, type RecapDto } from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
@@ -170,7 +170,8 @@ describe("room timer", () => {
     const snap = await engine.getSnapshot("ana");
     expect(notifier.phases).toHaveLength(4);
     expect(snap.me.onRoomTimer).toBe(false);
-    expect(snap.me.xpTotal).toBe(200);
+    // 4 rounds × 25 min × 2 XP, plus this week's "Finish 3 room rounds" quest.
+    expect(snap.me.xpTotal).toBe(200 + 40);
   });
 
   it("uses the preset captured when the cycle began", async () => {
@@ -550,6 +551,76 @@ describe("progress", () => {
   });
 });
 
+describe("weekly quests", () => {
+  // T0's week (Monday 2026-10-26) rotates in: goals, room rounds, weekend focus.
+  const questIds = (quests: { id: string }[]) => quests.map((q) => q.id);
+
+  it("shows this week's three quests with progress", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana", { goals: ["One", "Two"] });
+    const goals = (await engine.getSnapshot("ana")).me.goals;
+    await engine.setGoalDone("ana", goals[0]!.id, true);
+    await advance(FOCUS);
+    const { quests } = await engine.getProgress("ana");
+    expect(questIds(quests)).toEqual(["goals", "roomRounds", "weekendFocus"]);
+    expect(quests).toEqual([
+      expect.objectContaining({ progress: 1, target: 5, xp: 40, done: false }),
+      expect.objectContaining({ progress: 1, target: 3, unit: "count", done: false }),
+      expect.objectContaining({ progress: 0, target: 1, done: false }),
+    ]);
+  });
+
+  it("pays a finished quest once, outside the daily cap", async () => {
+    const { engine } = createHarness(configWith({ xp: { enabled: true, dailyCap: 50 } }));
+    for (let i = 0; i < 6; i++) await engine.addGoal("ana", `Goal ${i}`);
+    const goals = (await engine.getSnapshot("ana")).me.goals;
+    for (const goal of goals.slice(0, 5)) await engine.setGoalDone("ana", goal.id, true);
+    // Two goals fill the 50 XP cap; the quest adds 40 on top.
+    expect((await engine.getSnapshot("ana")).me.xpTotal).toBe(50 + 40);
+    await engine.setGoalDone("ana", goals[5]!.id, true);
+    await engine.setGoalDone("ana", goals[0]!.id, false);
+    await engine.setGoalDone("ana", goals[0]!.id, true);
+    expect((await engine.getSnapshot("ana")).me.xpTotal).toBe(90);
+    const goalsQuest = (await engine.getProgress("ana")).quests[0]!;
+    expect(goalsQuest).toMatchObject({ id: "goals", progress: 5, done: true });
+  });
+
+  it("counts a weekend day and resets on Monday", async () => {
+    const saturday = Date.UTC(2026, 9, 31, 14, 0, 0);
+    const { engine, advance } = createHarness(configWith(), saturday);
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    let progress = await engine.getProgress("ana");
+    expect(progress.quests[2]).toMatchObject({ id: "weekendFocus", done: true });
+    expect(progress.me.xpTotal).toBe(50 + 30);
+
+    await advance(2 * 24 * 60 * MINUTE);
+    progress = await engine.getProgress("ana");
+    expect(questIds(progress.quests)).toEqual(["focusTime", "soloTimers", "activeDays"]);
+    expect(progress.quests.every((q) => q.progress === 0 && !q.done)).toBe(true);
+  });
+
+  it("earns the quest badges", async () => {
+    const { engine } = createHarness();
+    for (let i = 0; i < 5; i++) await engine.addGoal("ana", `Goal ${i}`);
+    for (const goal of (await engine.getSnapshot("ana")).me.goals)
+      await engine.setGoalDone("ana", goal.id, true);
+    const badges = (await engine.getProgress("ana")).badges.map((b) => b.id);
+    expect(badges).toContain("quest-first");
+    expect(badges).not.toContain("quest-sweep");
+  });
+
+  it("shows no reward and pays none when XP is off", async () => {
+    const { engine } = createHarness(configWith({ xp: { enabled: false, dailyCap: 300 } }));
+    for (let i = 0; i < 5; i++) await engine.addGoal("ana", `Goal ${i}`);
+    for (const goal of (await engine.getSnapshot("ana")).me.goals)
+      await engine.setGoalDone("ana", goal.id, true);
+    const progress = await engine.getProgress("ana");
+    expect(progress.quests[0]).toMatchObject({ done: true, xp: 0 });
+    expect(progress.me.xpTotal).toBe(0);
+  });
+});
+
 describe("deleting my data", () => {
   it("erases the member everywhere and leaves everyone else alone", async () => {
     const { engine, store, notifier, advance } = createHarness();
@@ -600,5 +671,117 @@ describe("deleting my data", () => {
     await engine.deleteMyData("ana");
     expect(store.sessionLog).toEqual([]);
     expect((await engine.getSnapshot("ana")).room.members).toEqual([]);
+  });
+});
+
+describe("weekly leaderboard", () => {
+  it("ranks this week's focus minutes, sharing ranks on ties", async () => {
+    const { engine, store, advance } = createHarness();
+    await store.stats.add("ana", "2026-10-26", { focusMinutes: 40.9 });
+    await store.stats.add("kai", "2026-10-27", { focusMinutes: 70 });
+    await store.stats.add("lena", "2026-10-27", { focusMinutes: 70.4 });
+    // Last week and goal-only days don't count.
+    await store.stats.add("priya", "2026-10-25", { focusMinutes: 900 });
+    await store.stats.add("devon", "2026-10-28", { goalsDone: 5 });
+    await engine.startSolo("ana", 30);
+    await advance(30 * MINUTE);
+
+    const board = await engine.getLeaderboard("ana");
+    expect(board.weekStart).toBe("2026-10-26");
+    // Monday 2026-11-02 00:00 in New York (UTC-5 after DST ends).
+    expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 5, 0, 0));
+    expect(board.entries).toEqual([
+      { userId: "ana", focusMinutes: 70, rank: 1 },
+      { userId: "kai", focusMinutes: 70, rank: 1 },
+      { userId: "lena", focusMinutes: 70, rank: 1 },
+    ]);
+    expect(board.me).toEqual({ rank: 1, focusMinutes: 70, hidden: false });
+
+    await store.stats.add("kai", "2026-10-28", { focusMinutes: 1 });
+    expect((await engine.getLeaderboard("ana")).entries.map((e) => [e.userId, e.rank])).toEqual([
+      ["kai", 1],
+      ["ana", 2],
+      ["lena", 2],
+    ]);
+  });
+
+  it("shows only the top entries, but always tells you your own rank", async () => {
+    const { engine, store } = createHarness();
+    for (let i = 0; i < LIMITS.leaderboardSize + 2; i++) {
+      await store.stats.add(`m${String(i).padStart(2, "0")}`, "2026-10-27", {
+        focusMinutes: 100 - i,
+      });
+    }
+    const board = await engine.getLeaderboard("m11");
+    expect(board.entries).toHaveLength(LIMITS.leaderboardSize);
+    expect(board.me).toEqual({ rank: 12, focusMinutes: 89, hidden: false });
+    expect((await engine.getLeaderboard("newcomer")).me).toEqual({
+      rank: 0,
+      focusMinutes: 0,
+      hidden: false,
+    });
+  });
+
+  it("lets members hide themselves, and back", async () => {
+    const { engine, store } = createHarness();
+    await store.stats.add("ana", "2026-10-27", { focusMinutes: 50 });
+    await store.stats.add("kai", "2026-10-27", { focusMinutes: 20 });
+
+    const hidden = await engine.setLeaderboardHidden("ana", true);
+    expect(hidden.entries).toEqual([{ userId: "kai", focusMinutes: 20, rank: 1 }]);
+    expect(hidden.me).toEqual({ rank: 0, focusMinutes: 50, hidden: true });
+    expect((await engine.getLeaderboard("kai")).entries.map((e) => e.userId)).toEqual(["kai"]);
+
+    const shown = await engine.setLeaderboardHidden("ana", false);
+    expect(shown.entries.map((e) => e.userId)).toEqual(["ana", "kai"]);
+    await expectError(engine.setLeaderboardHidden("ana", "yes"), ErrorCode.Validation);
+  });
+
+  it("starts over on Monday in the community time zone", async () => {
+    // Sunday 2026-11-01 23:30 in New York.
+    const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 4, 30));
+    await store.stats.add("ana", "2026-11-01", { focusMinutes: 60 });
+    expect((await engine.getLeaderboard("ana")).entries).toHaveLength(1);
+    clock.advance(31 * MINUTE);
+    const board = await engine.getLeaderboard("ana");
+    expect(board.weekStart).toBe("2026-11-02");
+    expect(board.entries).toEqual([]);
+  });
+
+  it("puts the top 3 in the daily recap, without anyone who opted out", async () => {
+    const { engine, store, announcer, advance } = createHarness();
+    for (const [userId, minutes] of [
+      ["ana", 90],
+      ["kai", 80],
+      ["lena", 70],
+      ["jordan", 60],
+    ] as const) {
+      await store.stats.add(userId, "2026-10-27", { focusMinutes: minutes });
+    }
+    await engine.setLeaderboardHidden("kai", true);
+    await engine.startSolo("kai", 30);
+    await advance(30 * MINUTE);
+    await engine.postDailyRecap();
+    await engine.idle();
+    const recap = announcer.posts.find((p) => p.kind === "recap")!.detail as RecapDto;
+    expect(recap.topFocus).toEqual([
+      { userId: "ana", focusMinutes: 90 },
+      { userId: "lena", focusMinutes: 70 },
+      { userId: "jordan", focusMinutes: 60 },
+    ]);
+    expect(recap.topStreaks).toEqual([]);
+  });
+
+  it("leaves the leaderboard out of the recap when the admin turns it off", async () => {
+    const { engine } = createHarness(configWith({ recapLeaderboardEnabled: false }));
+    await engine.startSolo("ana", 30);
+    expect((await engine.buildRecap(T0 + 30 * MINUTE)).topFocus).toEqual([]);
+  });
+
+  it("forgets the opt-out when a member deletes their data", async () => {
+    const { engine } = createHarness();
+    await engine.setLeaderboardHidden("ana", true);
+    await engine.deleteMyData("ana");
+    expect((await engine.getLeaderboard("ana")).me.hidden).toBe(false);
   });
 });

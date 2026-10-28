@@ -99,6 +99,8 @@ describe("StudyRoomHandlers", () => {
     expect((await handlers.setGoalDone("priya", { goalId, done: true })).goals[0]!.done).toBe(true);
     expect((await handlers.deleteGoal("priya", { goalId })).goals).toEqual([]);
     expect((await handlers.getProgress("priya")).days).toHaveLength(35);
+    expect((await handlers.getLeaderboard("priya")).weekStart).toBe("2026-10-26");
+    expect((await handlers.setLeaderboardHidden("priya", { hidden: true })).hidden).toBe(true);
   });
 
   it("deletes only the caller's data", async () => {

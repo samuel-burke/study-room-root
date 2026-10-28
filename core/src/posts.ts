@@ -40,5 +40,11 @@ export function dailyRecapPost(recap: RecapDto, names: ReadonlyMap<string, strin
     const streaks = recap.topStreaks.map((s) => `${names.get(s.userId) ?? "Someone"} ${s.streak}`);
     lines.push(`Top streaks: ${streaks.join(" · ")}`);
   }
+  if (recap.topFocus.length > 0) {
+    const leaders = recap.topFocus.map(
+      (f, i) => `${i + 1}. ${names.get(f.userId) ?? "Someone"} ${formatHours(f.focusMinutes)}`,
+    );
+    lines.push(`This week: ${leaders.join(" · ")}`);
+  }
   return lines.join("\n");
 }
