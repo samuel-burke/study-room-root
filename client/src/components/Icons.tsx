@@ -100,3 +100,18 @@ export const ChartIcon = (p: IconProps) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </Svg>
 );
+
+export const SoundOnIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <path d="M19 5a10 10 0 0 1 0 14" />
+  </Svg>
+);
+
+export const SoundOffIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <path d="M22 9l-6 6M16 9l6 6" />
+  </Svg>
+);

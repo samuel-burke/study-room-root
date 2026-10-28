@@ -115,6 +115,18 @@ describe("Study Squad app", () => {
     expect(opener).toHaveFocus();
   });
 
+  it("mutes and unmutes sound effects from the header", async () => {
+    const { user } = await renderApp();
+    const button = screen.getByRole("button", { name: "Sound effects" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(window.localStorage.getItem("studysquad.soundsMuted")).toBe("1");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    window.localStorage.clear();
+  });
+
   it("shows server errors without losing the room", async () => {
     const { gateway, user } = await renderApp();
     vi.spyOn(gateway, "addGoal").mockRejectedValueOnce({
