@@ -19,11 +19,15 @@ export type BadgeCategory =
 export type BadgeFeature = "quests" | "leaderboard" | "bossRoster";
 
 /**
- * Features this build has. Weekly quests (#23) and the weekly leaderboard (#24)
- * add theirs here when they land, along with the facts they feed to
- * `StudyRoomEngine.awardBadges`.
+ * Features this build has: weekly quests, the weekly leaderboard and the
+ * built-in boss roster with strengths. A new feature adds itself here, along
+ * with the facts it feeds to `StudyRoomEngine.awardBadges`.
  */
-export const LIVE_BADGE_FEATURES: ReadonlySet<BadgeFeature> = new Set<BadgeFeature>(["bossRoster"]);
+export const LIVE_BADGE_FEATURES: ReadonlySet<BadgeFeature> = new Set<BadgeFeature>([
+  "quests",
+  "leaderboard",
+  "bossRoster",
+]);
 
 /** One focus block, finished or cut short. Times are in the community time zone. */
 export interface SessionFacts {

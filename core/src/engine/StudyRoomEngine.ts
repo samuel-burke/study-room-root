@@ -3,10 +3,12 @@ import type {
   BossDto,
   CardLookDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MyStatusDto,
   PersonalResultDto,
   ProgressDto,
+  QuestDto,
   RecapDto,
   RoomStateDto,
   RoomTimerDto,
@@ -23,8 +25,14 @@ import {
   reconfigureBoss,
   type BossState,
 } from "../game/boss";
-import { newlyEarnedBadges, type BadgeFacts, type SessionFacts } from "../game/badges";
+import {
+  newlyEarnedBadges,
+  type BadgeFacts,
+  type QuestFacts,
+  type SessionFacts,
+} from "../game/badges";
 import { comboFor } from "../game/combo";
+import { questProgress, questsForWeek, QUESTS_PER_WEEK, type QuestProgress } from "../game/quests";
 import {
   cardStyleById,
   isCardStyleUnlocked,
@@ -254,6 +262,20 @@ export class StudyRoomEngine {
     });
   }
 
+  /** This week's focus-minute standings, plus where the caller stands. */
+  getLeaderboard(userId: string): Promise<LeaderboardDto> {
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now));
+  }
+
+  /** Opting out hides the member from the leaderboard and from rankings in recaps. */
+  async setLeaderboardHidden(userId: string, hidden: unknown): Promise<LeaderboardDto> {
+    if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
+    return this.run(async (tx, now) => {
+      await tx.leaderboard.setHidden(userId, hidden);
+      return this.buildLeaderboard(tx, userId, now);
+    });
+  }
+
   // ---------------------------------------------------------------- room timer
 
   async joinRoomTimer(userId: string, options: StartOptions = {}): Promise<SnapshotDto> {
@@ -422,8 +444,10 @@ export class StudyRoomEngine {
           const member = await this.loadMember(tx, userId);
           await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
           await tx.stats.add(userId, day, { xp, goalsDone: 1 });
+          const quests = await this.rewardQuests(tx, userId, now);
           await this.awardBadges(tx, effects, userId, now, {
             goal: { secondsOpen: Math.floor((now - goal.createdAt) / 1000) },
+            quests,
             ...(await this.activityFacts(tx, userId, day)),
           });
         }
@@ -846,6 +870,7 @@ export class StudyRoomEngine {
       xp: xpEarned,
       combo,
     });
+    const quests = await this.rewardQuests(tx, userId, now);
 
     const tz = this.config.timeZone;
     const session: SessionFacts = {
@@ -861,6 +886,8 @@ export class StudyRoomEngine {
     await this.awardBadges(tx, effects, userId, now, {
       session,
       streak: { length: streak.streak, comebackFrom, freezeSaved: freezesSpent > 0 },
+      leaderboard: { rank: await this.weeklyRank(tx, userId, day) },
+      quests,
       ...(await this.activityFacts(tx, userId, day)),
     });
 
@@ -937,13 +964,71 @@ export class StudyRoomEngine {
     }
   }
 
+  /**
+   * Pays the reward for every quest the member has just finished this week.
+   * Like boss loot it is outside the daily cap: it comes at most three times
+   * a week, and a capped reward would often be zero. Returns the quest facts
+   * badges look at.
+   */
+  private async rewardQuests(tx: Store, userId: string, now: number): Promise<QuestFacts> {
+    const week = weekKey(dayKey(now, this.config.timeZone));
+    const rewarded = new Set(await tx.quests.listRewarded(userId, week));
+    let xp = 0;
+    for (const { quest, done } of await this.weeklyQuests(tx, userId, now)) {
+      if (!done || rewarded.has(quest.id)) continue;
+      const questXp = this.config.xp.enabled ? quest.xp : 0;
+      await tx.quests.markRewarded({
+        userId,
+        weekKey: week,
+        questId: quest.id,
+        xp: questXp,
+        rewardedAt: now,
+      });
+      rewarded.add(quest.id);
+      xp += questXp;
+    }
+    if (xp > 0) {
+      const member = await this.loadMember(tx, userId);
+      await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+    }
+    return {
+      doneThisWeek: rewarded.size,
+      perWeek: QUESTS_PER_WEEK,
+      totalDone: await tx.quests.countRewarded(userId),
+    };
+  }
+
+  /** This week's quests and the member's progress, from daily_stats and session_log. */
+  private async weeklyQuests(tx: Store, userId: string, now: number): Promise<QuestProgress[]> {
+    const tz = this.config.timeZone;
+    const week = weekKey(dayKey(now, tz));
+    const days = await tx.stats.listForUser(userId, week, addDays(week, 6));
+    const sessions = await tx.sessions.listForUser(
+      userId,
+      startOfDay(week, tz),
+      startOfDay(addDays(week, 7), tz),
+    );
+    return questsForWeek(week).map((quest) => questProgress(quest, { days, sessions }));
+  }
+
+  private questDto({ quest, progress, done }: QuestProgress): QuestDto {
+    return {
+      id: quest.id,
+      title: quest.title,
+      progress,
+      target: quest.target,
+      unit: quest.unit,
+      xp: this.config.xp.enabled ? quest.xp : 0,
+      done,
+    };
+  }
+
   // ---------------------------------------------------------------- badges
 
   /**
    * Awards every badge these facts newly earn. XP and level are read here,
    * after the operation's own XP has been saved, so level badges always see
-   * the latest total. Weekly quests and the leaderboard pass their facts here
-   * too once they land.
+   * the latest total. Focus blocks also pass the weekly leaderboard rank.
    */
   private async awardBadges(
     tx: Store,
@@ -963,6 +1048,16 @@ export class StudyRoomEngine {
     effects.badges.set(userId, [...(effects.badges.get(userId) ?? []), ...earned]);
     // The card may show the new badge.
     this.touch(effects, userId);
+  }
+
+  /**
+   * The member's place on this week's leaderboard, for badges. 0 when they're
+   * hidden, unranked, or too few members are ranked for a place to mean much.
+   */
+  private async weeklyRank(tx: Store, userId: string, day: string): Promise<number> {
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekKey(day), day));
+    if (ranked.length < LIMITS.leaderboardBadgeMinRanked) return 0;
+    return ranked.find((e) => e.userId === userId)?.rank ?? 0;
   }
 
   /** Today's and all-time totals, for badges. */
@@ -1235,6 +1330,7 @@ export class StudyRoomEngine {
       me: await this.buildMyStatus(tx, userId, now),
       days,
       totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
+      quests: (await this.weeklyQuests(tx, userId, now)).map((q) => this.questDto(q)),
       badges: (await tx.badges.list([userId])).map((b) => ({
         id: b.badgeId,
         earnedAt: b.earnedAt,
@@ -1288,6 +1384,26 @@ export class StudyRoomEngine {
     };
   }
 
+  private async buildLeaderboard(tx: Store, userId: string, now: number): Promise<LeaderboardDto> {
+    const tz = this.config.timeZone;
+    const today = dayKey(now, tz);
+    const weekStart = weekKey(today);
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekStart, today));
+    const hidden = await tx.leaderboard.isHidden(userId);
+    const mine = ranked.find((e) => e.userId === userId);
+    const myRows = await tx.stats.listForUser(userId, weekStart, today);
+    return {
+      weekStart,
+      endsAt: nextWeekStart(now, tz),
+      entries: ranked.slice(0, LIMITS.leaderboardSize),
+      me: {
+        rank: mine?.rank ?? 0,
+        focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
+        hidden,
+      },
+    };
+  }
+
   /** When the member's "Keep going?" prompt closes, or 0 when it isn't showing for them. */
   private keepGoingEndsAt(
     participant: ParticipantRecord,
@@ -1303,8 +1419,10 @@ export class StudyRoomEngine {
     const tz = this.config.timeZone;
     const day = dayKey(at, tz);
     const stats = await tx.stats.communityDay(day);
+    const hidden = new Set(await tx.leaderboard.listHidden());
     const candidates = await tx.members.listActiveSince(addDays(day, -14));
     const topStreaks = candidates
+      .filter((m) => !hidden.has(m.userId))
       .map((m) => ({
         userId: m.userId,
         streak: currentStreak(m.streak, day, this.config.streakFreezesEnabled),
@@ -1312,6 +1430,11 @@ export class StudyRoomEngine {
       .filter((s) => s.streak > 0)
       .sort((a, b) => b.streak - a.streak || a.userId.localeCompare(b.userId))
       .slice(0, LIMITS.topStreaksInRecap);
+    const topFocus = this.config.recapLeaderboardEnabled
+      ? rankByMinutes(await tx.leaderboard.standings(weekKey(day), day))
+          .slice(0, LIMITS.topFocusInRecap)
+          .map(({ userId, focusMinutes }) => ({ userId, focusMinutes }))
+      : [];
     let boss: RecapDto["boss"] = null;
     if (this.config.boss.enabled) {
       const state = await this.loadBoss(tx, at);
@@ -1331,6 +1454,26 @@ export class StudyRoomEngine {
       activeMembers: stats.activeMembers,
       boss,
       topStreaks,
+      topFocus,
     };
   }
+}
+
+/**
+ * Whole minutes, ranked so ties share a place (1, 2, 2, 4). Rounding down
+ * first means two people shown with the same minutes never get different ranks.
+ */
+function rankByMinutes(rows: readonly { userId: string; focusMinutes: number }[]) {
+  const whole = rows
+    .map((r) => ({ userId: r.userId, focusMinutes: Math.floor(r.focusMinutes) }))
+    .filter((r) => r.focusMinutes > 0)
+    .sort(
+      (a, b) =>
+        b.focusMinutes - a.focusMinutes || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
+    );
+  let rank = 0;
+  return whole.map((r, i) => {
+    if (i === 0 || r.focusMinutes !== whole[i - 1]!.focusMinutes) rank = i + 1;
+    return { ...r, rank };
+  });
 }

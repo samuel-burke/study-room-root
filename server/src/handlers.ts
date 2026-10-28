@@ -1,4 +1,9 @@
-import { myStatusToProto, progressToProto, snapshotToProto } from "@studyroom/contract";
+import {
+  leaderboardToProto,
+  myStatusToProto,
+  progressToProto,
+  snapshotToProto,
+} from "@studyroom/contract";
 import {
   DomainError,
   ErrorCode,
@@ -10,6 +15,7 @@ import type {
   AddGoalRequest,
   DeleteGoalRequest,
   JoinRoomTimerRequest,
+  Leaderboard,
   MyStatus,
   Progress,
   RoomSnapshot,
@@ -17,6 +23,7 @@ import type {
   SetBadgeShowcaseRequest,
   SetCardStyleRequest,
   SetGoalsPrivateRequest,
+  SetLeaderboardHiddenRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
 
@@ -69,6 +76,18 @@ export class StudyRoomHandlers {
   getProgress(userId: string): Promise<Progress> {
     return this.handle("getProgress", userId, "read", async () =>
       progressToProto(await this.engine.getProgress(userId)),
+    );
+  }
+
+  getLeaderboard(userId: string): Promise<Leaderboard> {
+    return this.handle("getLeaderboard", userId, "read", async () =>
+      leaderboardToProto(await this.engine.getLeaderboard(userId)),
+    );
+  }
+
+  setLeaderboardHidden(userId: string, request: SetLeaderboardHiddenRequest): Promise<Leaderboard> {
+    return this.handle("setLeaderboardHidden", userId, "write", async () =>
+      leaderboardToProto(await this.engine.setLeaderboardHidden(userId, request.hidden)),
     );
   }
 

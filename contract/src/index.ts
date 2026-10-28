@@ -2,6 +2,7 @@ import type {
   BossDto,
   CardLookDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MemberStatus as MemberStatusDto,
   MyStatusDto,
@@ -11,6 +12,8 @@ import type {
   PhaseKind,
   PresetKey as PresetKeyDto,
   ProgressDto,
+  QuestDto,
+  QuestUnit as QuestUnitDto,
   RoomPhase,
   RoomStateDto,
   SnapshotDto,
@@ -20,15 +23,18 @@ import {
   MemberStatus,
   Phase,
   PresetKey,
+  QuestUnit,
   ResultSource,
   type Boss,
   type CardLook,
   type Goal,
+  type Leaderboard,
   type MemberCard,
   type MyStatus,
   type PersonalResultEvent,
   type PhaseCompletedEvent,
   type Progress,
+  type Quest,
   type RoomSnapshot,
   type RoomState,
   type TimerPreset,
@@ -63,6 +69,11 @@ const PRESET_TO_PROTO: Record<PresetKeyDto, PresetKey> = {
   custom: PresetKey.CUSTOM,
 };
 
+const QUEST_UNIT_TO_PROTO: Record<QuestUnitDto, QuestUnit> = {
+  count: QuestUnit.COUNT,
+  minutes: QuestUnit.MINUTES,
+};
+
 function invert<K extends string, V extends number>(map: Record<K, V>): Map<V, K> {
   return new Map(Object.entries(map).map(([k, v]) => [v as V, k as K]));
 }
@@ -70,6 +81,7 @@ function invert<K extends string, V extends number>(map: Record<K, V>): Map<V, K
 const PHASE_FROM_PROTO = invert(PHASE_TO_PROTO);
 const STATUS_FROM_PROTO = invert(STATUS_TO_PROTO);
 const PRESET_FROM_PROTO = invert(PRESET_TO_PROTO);
+const QUEST_UNIT_FROM_PROTO = invert(QUEST_UNIT_TO_PROTO);
 
 function phaseFromProto(phase: Phase): RoomPhase {
   return PHASE_FROM_PROTO.get(phase) ?? "idle";
@@ -175,6 +187,16 @@ export function snapshotToProto(snapshot: SnapshotDto): RoomSnapshot {
   return { room: roomToProto(snapshot.room), me: myStatusToProto(snapshot.me) };
 }
 
+const questToProto = (q: QuestDto): Quest => ({
+  id: q.id,
+  title: q.title,
+  progress: q.progress,
+  target: q.target,
+  unit: QUEST_UNIT_TO_PROTO[q.unit],
+  xp: q.xp,
+  done: q.done,
+});
+
 const cardLookToProto = (c: CardLookDto): CardLook => ({
   chosenStyle: c.chosenStyle,
   chosenShowcase: c.chosenShowcase,
@@ -187,8 +209,24 @@ export function progressToProto(progress: ProgressDto): Progress {
     me: myStatusToProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    quests: progress.quests.map(questToProto),
     badges: progress.badges.map((b) => ({ id: b.id, earnedAtMs: b.earnedAt })),
     card: cardLookToProto(progress.card),
+  };
+}
+
+export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
+  return {
+    weekStart: board.weekStart,
+    endsAtMs: board.endsAt,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    myRank: board.me.rank,
+    myFocusMinutes: board.me.focusMinutes,
+    hidden: board.me.hidden,
   };
 }
 
@@ -321,6 +359,16 @@ export function snapshotFromProto(snapshot: RoomSnapshot): SnapshotDto {
   return { room: roomFromProto(snapshot.room), me: myStatusFromProto(snapshot.me) };
 }
 
+const questFromProto = (q: Quest): QuestDto => ({
+  id: q.id,
+  title: q.title,
+  progress: q.progress,
+  target: q.target,
+  unit: QUEST_UNIT_FROM_PROTO.get(q.unit) ?? "count",
+  xp: q.xp,
+  done: q.done,
+});
+
 const cardLookFromProto = (c: CardLook | undefined): CardLookDto => ({
   chosenStyle: c?.chosenStyle ?? "",
   chosenShowcase: c?.chosenShowcase ?? [],
@@ -333,8 +381,22 @@ export function progressFromProto(progress: Progress): ProgressDto {
     me: myStatusFromProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    quests: progress.quests.map(questFromProto),
     badges: (progress.badges ?? []).map((b) => ({ id: b.id, earnedAt: b.earnedAtMs })),
     card: cardLookFromProto(progress.card),
+  };
+}
+
+export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
+  return {
+    weekStart: board.weekStart,
+    endsAt: board.endsAtMs,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    me: { rank: board.myRank, focusMinutes: board.myFocusMinutes, hidden: board.hidden },
   };
 }
 

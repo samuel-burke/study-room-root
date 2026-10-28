@@ -9,10 +9,12 @@ import type {
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
+  QuestRewardRecord,
   RoomCycleRecord,
   SessionLogRecord,
   SoloRecord,
   Store,
+  WeekFocusRecord,
 } from "./ports";
 
 declare global {
@@ -29,6 +31,8 @@ interface Data {
   participants: Map<string, ParticipantRecord>;
   sessions: SessionLogRecord[];
   stats: Map<string, DailyStatRecord>;
+  leaderboardHidden: Set<string>;
+  questRewards: QuestRewardRecord[];
   bosses: Map<string, BossState>;
   kv: Map<string, unknown>;
   badges: EarnedBadgeRecord[];
@@ -43,6 +47,8 @@ const emptyData = (): Data => ({
   participants: new Map(),
   sessions: [],
   stats: new Map(),
+  leaderboardHidden: new Set(),
+  questRewards: [],
   bosses: new Map(),
   kv: new Map(),
   badges: [],
@@ -69,9 +75,11 @@ export class MemoryStore implements Store {
     d.members.delete(userId);
     d.solos.delete(userId);
     d.participants.delete(userId);
+    d.leaderboardHidden.delete(userId);
     for (const [id, goal] of d.goals) if (goal.userId === userId) d.goals.delete(id);
     for (const [key, stat] of d.stats) if (stat.userId === userId) d.stats.delete(key);
     d.sessions = d.sessions.filter((s) => s.userId !== userId);
+    d.questRewards = d.questRewards.filter((r) => r.userId !== userId);
     d.badges = d.badges.filter((b) => b.userId !== userId);
     d.cards.delete(userId);
     for (const boss of d.bosses.values()) {
@@ -165,8 +173,31 @@ export class MemoryStore implements Store {
     insert: async (log: SessionLogRecord) => {
       this.data.sessions.push(copy(log));
     },
+    listForUser: async (userId: string, fromMs: number, toMs: number) =>
+      this.data.sessions
+        .filter((s) => s.userId === userId && s.endedAt >= fromMs && s.endedAt < toMs)
+        .sort((a, b) => a.endedAt - b.endedAt)
+        .map(copy),
     countFinished: async (userId: string, kind: SessionLogRecord["kind"]) =>
       this.data.sessions.filter((s) => s.userId === userId && s.kind === kind && s.finished).length,
+  };
+
+  quests = {
+    listRewarded: async (userId: string, weekKey: DayKey) =>
+      this.data.questRewards
+        .filter((r) => r.userId === userId && r.weekKey === weekKey)
+        .map((r) => r.questId),
+    markRewarded: async (record: QuestRewardRecord) => {
+      const exists = this.data.questRewards.some(
+        (r) =>
+          r.userId === record.userId &&
+          r.weekKey === record.weekKey &&
+          r.questId === record.questId,
+      );
+      if (!exists) this.data.questRewards.push(copy(record));
+    },
+    countRewarded: async (userId: string) =>
+      this.data.questRewards.filter((r) => r.userId === userId).length,
   };
 
   stats = {
@@ -210,6 +241,26 @@ export class MemoryStore implements Store {
         goalsDone: rows.reduce((sum, r) => sum + r.goalsDone, 0),
         sessionsFinished: rows.reduce((sum, r) => sum + r.sessionsFinished, 0),
       };
+    },
+  };
+
+  leaderboard = {
+    isHidden: async (userId: string) => this.data.leaderboardHidden.has(userId),
+    setHidden: async (userId: string, hidden: boolean) => {
+      if (hidden) this.data.leaderboardHidden.add(userId);
+      else this.data.leaderboardHidden.delete(userId);
+    },
+    listHidden: async () => [...this.data.leaderboardHidden].sort(),
+    standings: async (fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]> => {
+      const totals = new Map<string, number>();
+      for (const s of this.data.stats.values()) {
+        if (s.day < fromDay || s.day > toDay || this.data.leaderboardHidden.has(s.userId)) continue;
+        totals.set(s.userId, (totals.get(s.userId) ?? 0) + s.focusMinutes);
+      }
+      return [...totals]
+        .filter(([, focusMinutes]) => focusMinutes > 0)
+        .map(([userId, focusMinutes]) => ({ userId, focusMinutes }))
+        .sort((a, b) => b.focusMinutes - a.focusMinutes || compareIds(a.userId, b.userId));
     },
   };
 
@@ -260,6 +311,11 @@ export class MemoryStore implements Store {
       this.data.kv.set(key, copy(value));
     },
   };
+}
+
+/** Byte order, like SQLite's default collation, so both stores break ties the same way. */
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function copyOrUndefined<T>(value: T | undefined): T | undefined {

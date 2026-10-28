@@ -1,12 +1,13 @@
-import { formatHours, type ProgressDto } from "@studyroom/core";
+import { formatHours, type ProgressDto, type QuestDto } from "@studyroom/core";
 import { useEffect, useState } from "react";
 import { toGatewayError, type StudyRoomGateway } from "../api/gateway";
-import { heatLevel } from "../lib/view";
+import { heatLevel, percent } from "../lib/view";
 import { BadgeShelf, CardStylePicker } from "./BadgeShelf";
 import { BackIcon, FlameIcon } from "./Icons";
 import { XpBar } from "./SessionPanel";
+import { WeeklyLeaderboard } from "./WeeklyLeaderboard";
 
-/** Level, streak with freeze status, a five-week heatmap, badges and card style. */
+/** Level, streak with freeze status, a five-week heatmap, weekly quests, the weekly leaderboard, badges and card style. */
 export function ProgressScreen({
   gateway,
   xpEnabled,
@@ -118,6 +119,7 @@ export function ProgressScreen({
             </div>
           </section>
 
+          {progress.quests.length > 0 && <WeeklyQuests quests={progress.quests} />}
           <BadgeShelf
             earned={progress.badges}
             card={progress.card}
@@ -134,8 +136,51 @@ export function ProgressScreen({
         </>
       )}
 
+      <WeeklyLeaderboard gateway={gateway} />
+
       <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>
+  );
+}
+
+const questAmount = (quest: QuestDto, value: number) =>
+  quest.unit === "minutes" ? formatHours(value) : String(value);
+
+function WeeklyQuests({ quests }: { quests: QuestDto[] }) {
+  return (
+    <section className="card" aria-label="Weekly quests">
+      <div className="row-between">
+        <h2 style={{ fontSize: 16 }}>Weekly quests</h2>
+        <span className="tiny dim">Resets Monday</span>
+      </div>
+      <ul className="quests">
+        {quests.map((quest) => (
+          <li key={quest.id} className="quest" data-done={quest.done}>
+            <div className="row-between small">
+              <span>{quest.title}</span>
+              <span className="muted tabular">
+                {questAmount(quest, quest.progress)} / {questAmount(quest, quest.target)}
+                {quest.done ? (
+                  <strong className="quest-reward"> · Done</strong>
+                ) : (
+                  quest.xp > 0 && <strong className="quest-reward"> · +{quest.xp} XP</strong>
+                )}
+              </span>
+            </div>
+            <div
+              className="bar"
+              role="progressbar"
+              aria-label={quest.title}
+              aria-valuemin={0}
+              aria-valuemax={quest.target}
+              aria-valuenow={quest.progress}
+            >
+              <span style={{ width: `${percent(quest.progress, quest.target)}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
