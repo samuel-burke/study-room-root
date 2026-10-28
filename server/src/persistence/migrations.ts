@@ -121,6 +121,19 @@ const migrations: Migration[] = [
       await db.schema.dropTableIfExists("member_badges");
     },
   },
+  {
+    name: "005_keep_going",
+    async up(db) {
+      await db.schema.alterTable("room_participants", (t) => {
+        t.boolean("keep_going").notNullable().defaultTo(false);
+      });
+    },
+    async down(db) {
+      await db.schema.alterTable("room_participants", (t) => {
+        t.dropColumn("keep_going");
+      });
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {

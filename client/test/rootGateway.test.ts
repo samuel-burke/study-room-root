@@ -34,6 +34,7 @@ const service = vi.hoisted(() => {
       deleteGoal: vi.fn(),
       setGoalsPrivate: vi.fn(),
       deleteMyData: vi.fn(),
+      keepGoing: vi.fn(),
       getProgress: vi.fn(),
     },
   };
@@ -101,7 +102,14 @@ describe("RootGateway", () => {
   it("converts goal and data calls", async () => {
     const me = (await realSnapshot()).me;
     const proto = myStatusToProto(me);
-    for (const rpc of ["addGoal", "setGoalDone", "deleteGoal", "setGoalsPrivate", "deleteMyData"])
+    for (const rpc of [
+      "addGoal",
+      "setGoalDone",
+      "deleteGoal",
+      "setGoalsPrivate",
+      "deleteMyData",
+      "keepGoing",
+    ])
       vi.mocked(service.client[rpc as "addGoal"]).mockResolvedValue(proto);
     const gateway = new RootGateway();
     await expect(gateway.addGoal("x")).resolves.toEqual(me);
@@ -109,6 +117,8 @@ describe("RootGateway", () => {
     await expect(gateway.deleteGoal("g")).resolves.toEqual(me);
     await expect(gateway.setGoalsPrivate(false)).resolves.toEqual(me);
     await expect(gateway.deleteMyData()).resolves.toEqual(me);
+    await expect(gateway.keepGoing()).resolves.toEqual(me);
+    expect(service.client.keepGoing).toHaveBeenCalledWith({});
     expect(service.client.setGoalDone).toHaveBeenCalledWith({ goalId: "g", done: true });
   });
 
@@ -156,6 +166,7 @@ describe("RootGateway", () => {
       phaseCompleted: vi.fn(),
       personalResult: vi.fn(),
       myStatus: vi.fn(),
+      badgesEarned: vi.fn(),
     };
     const unsubscribe = new RootGateway().subscribe(handlers);
     service.emit("roomUpdated", { room: proto.room });

@@ -122,6 +122,7 @@ const me: MyStatusDto = {
     { id: "g2", text: "Make 20 flashcards", done: false },
   ],
   goalsPrivate: false,
+  keepGoingEndsAt: 1_793_150_200_000,
 };
 
 describe("contract round trip", () => {

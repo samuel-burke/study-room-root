@@ -42,7 +42,13 @@ import {
   weekdayName,
   weekKey,
 } from "../time/calendar";
-import { buildCycle, cycleEndsAt, overlapMs, phaseAt, type CyclePhase } from "../timer/roomCycle";
+import {
+  buildCycle,
+  keepGoingWindow,
+  overlapMs,
+  phaseAt,
+  type CyclePhase,
+} from "../timer/roomCycle";
 import {
   validateGoalText,
   validateId,
@@ -59,6 +65,7 @@ import type {
   MemberRecord,
   Notifier,
   ParticipantRecord,
+  RoomCycleRecord,
   Store,
   WakeScheduler,
 } from "./ports";
@@ -264,7 +271,7 @@ export class StudyRoomEngine {
             settledCount: 0,
           });
         }
-        await tx.room.addParticipant({ userId, joinedAt: now });
+        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false });
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -360,6 +367,23 @@ export class StudyRoomEngine {
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
       return this.snapshot(tx, userId, now);
+    });
+  }
+
+  /**
+   * Answers "Keep going?" during the cycle's final long break, so the member
+   * rolls into the next cycle instead of being released. A tap at any other
+   * time changes nothing.
+   */
+  keepGoing(userId: string): Promise<MyStatusDto> {
+    return this.run(async (tx, now, effects) => {
+      const participant = (await tx.room.listParticipants()).find((p) => p.userId === userId);
+      const cycle = await tx.room.getCycle();
+      if (participant && cycle && this.keepGoingEndsAt(participant, cycle, now) > 0) {
+        await tx.room.addParticipant({ ...participant, keepGoing: true });
+        effects.statusChanged.add(userId);
+      }
+      return this.buildMyStatus(tx, userId, now);
     });
   }
 
@@ -566,6 +590,10 @@ export class StudyRoomEngine {
       if (phase.kind === "focus") {
         await this.settleFocusPhase(tx, phases, phase, cycle.preset.focusMinutes, effects);
       }
+      if (phase.endsAt === keepGoingWindow(phases).opensAt) {
+        // The long break starts: push "Keep going?" to everyone who focused this cycle.
+        for (const p of await tx.room.listParticipants()) effects.statusChanged.add(p.userId);
+      }
       settled++;
       effects.roomChanged = true;
     }
@@ -578,15 +606,15 @@ export class StudyRoomEngine {
   }
 
   /**
-   * At the end of a cycle everyone is released, so nobody can leave a timer
-   * running for hours. People who joined during the final long break haven't
-   * focused yet, so they roll straight into a fresh cycle.
+   * At the end of a cycle, only people who tapped "Keep going?" roll into a
+   * fresh cycle, so nobody can leave a timer running for hours. Everyone else
+   * is released and keeps everything they earned. People who joined during
+   * the final long break haven't focused yet, so they roll over too.
    */
   private async finishCycle(tx: Store, phases: CyclePhase[], effects: Effects): Promise<boolean> {
-    const end = cycleEndsAt(phases);
-    const lastFocusEnd = phases.filter((p) => p.kind === "focus").at(-1)?.endsAt ?? end;
+    const { opensAt: lastFocusEnd, closesAt: end } = keepGoingWindow(phases);
     const participants = await tx.room.listParticipants();
-    const carried = participants.filter((p) => p.joinedAt >= lastFocusEnd);
+    const carried = participants.filter((p) => p.keepGoing || p.joinedAt >= lastFocusEnd);
     for (const p of participants) {
       if (!carried.includes(p)) {
         await tx.room.removeParticipant(p.userId);
@@ -598,7 +626,10 @@ export class StudyRoomEngine {
         ? { cycleStartedAt: end, preset: this.config.preset, settledCount: 0 }
         : null,
     );
-    for (const p of carried) await tx.room.addParticipant({ ...p, joinedAt: end });
+    for (const p of carried) {
+      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false });
+      effects.statusChanged.add(p.userId);
+    }
     effects.roomChanged = true;
     // Returns true when a new cycle started, which may itself be overdue after downtime.
     return carried.length > 0;
@@ -1206,12 +1237,15 @@ export class StudyRoomEngine {
     const streakState = member?.streak ?? EMPTY_STREAK;
     const progress = levelFromXp(member?.xpTotal ?? 0);
     const solo = await tx.solos.get(userId);
-    const onRoomTimer = (await tx.room.listParticipants()).some((p) => p.userId === userId);
+    const participant = (await tx.room.listParticipants()).find((p) => p.userId === userId);
+    const onRoomTimer = participant !== undefined;
 
     let status: MyStatusDto["status"] = "idle";
     let endsAt = 0;
-    if (onRoomTimer) {
+    let keepGoingEndsAt = 0;
+    if (participant) {
       const cycle = await tx.room.getCycle();
+      if (cycle) keepGoingEndsAt = this.keepGoingEndsAt(participant, cycle, now);
       const phase = cycle
         ? phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now)
         : undefined;
@@ -1237,7 +1271,19 @@ export class StudyRoomEngine {
       freezeAvailable: freezeAvailable(streakState, today, this.config.streakFreezesEnabled),
       goals: goals.map((g) => ({ id: g.id, text: g.text, done: g.done })),
       goalsPrivate: this.goalsArePrivate(member),
+      keepGoingEndsAt,
     };
+  }
+
+  /** When the member's "Keep going?" prompt closes, or 0 when it isn't showing for them. */
+  private keepGoingEndsAt(
+    participant: ParticipantRecord,
+    cycle: RoomCycleRecord,
+    now: number,
+  ): number {
+    const { opensAt, closesAt } = keepGoingWindow(buildCycle(cycle.cycleStartedAt, cycle.preset));
+    const asked = !participant.keepGoing && participant.joinedAt < opensAt;
+    return asked && now >= opensAt && now < closesAt ? closesAt : 0;
   }
 
   private async recapFor(tx: Store, at: number, now: number): Promise<RecapDto> {

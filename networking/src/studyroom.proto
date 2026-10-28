@@ -125,6 +125,8 @@ message MyStatus {
   bool freeze_available = 11;
   repeated Goal goals = 12;
   bool goals_private = 13;
+  // When the "Keep going?" prompt closes. 0 when it isn't showing.
+  double keep_going_ends_at_ms = 14;
 }
 
 message RoomSnapshot {
@@ -211,6 +213,10 @@ message SetBadgeShowcaseRequest {
 // Erases everything the app stores about the caller. Cannot be undone.
 message DeleteMyDataRequest {}
 
+// Answers "Keep going?" in the cycle's final long break, so the caller rolls
+// into the next cycle. A tap at any other time changes nothing.
+message KeepGoingRequest {}
+
 // ---------------------------------------------------------------- broadcasts
 
 message RoomUpdatedEvent {
@@ -267,6 +273,7 @@ service StudyRoomService {
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
   rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+  rpc KeepGoing(KeepGoingRequest) returns (MyStatus);
   rpc SetCardStyle(SetCardStyleRequest) returns (Progress);
   rpc SetBadgeShowcase(SetBadgeShowcaseRequest) returns (Progress);
 
