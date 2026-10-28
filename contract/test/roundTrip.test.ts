@@ -196,6 +196,26 @@ describe("contract round trip", () => {
         { day: "2026-10-28", focusMinutes: 42.5 },
       ],
       totalFocusMinutes: 42.5,
+      quests: [
+        {
+          id: "goals",
+          title: "Finish 5 goals",
+          progress: 2,
+          target: 5,
+          unit: "count",
+          xp: 40,
+          done: false,
+        },
+        {
+          id: "focusTime",
+          title: "Focus for 2 hours",
+          progress: 120,
+          target: 120,
+          unit: "minutes",
+          xp: 0,
+          done: true,
+        },
+      ],
       badges: [
         { id: "first-session", earnedAt: 1_793_150_000_000 },
         { id: "leet", earnedAt: 1_793_150_000_500 },

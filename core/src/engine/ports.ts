@@ -77,6 +77,15 @@ export interface DailyStatRecord {
 
 export type DailyStatDelta = Partial<Omit<DailyStatRecord, "userId" | "day">>;
 
+/** A weekly quest reward that has been paid, so it is paid only once. */
+export interface QuestRewardRecord {
+  userId: string;
+  weekKey: DayKey;
+  questId: string;
+  xp: number;
+  rewardedAt: number;
+}
+
 /** Sums over every daily_stats row a member has. */
 export interface LifetimeStats {
   focusMinutes: number;
@@ -138,6 +147,8 @@ export interface Store {
   };
   sessions: {
     insert(log: SessionLogRecord): Promise<void>;
+    /** Sessions that ended in [fromMs, toMs), oldest first. */
+    listForUser(userId: string, fromMs: number, toMs: number): Promise<SessionLogRecord[]>;
     countFinished(userId: string, kind: SessionLogRecord["kind"]): Promise<number>;
   };
   stats: {
@@ -146,6 +157,13 @@ export interface Store {
     listForUser(userId: string, fromDay: DayKey, toDay: DayKey): Promise<DailyStatRecord[]>;
     communityDay(day: DayKey): Promise<CommunityDayStats>;
     lifetime(userId: string): Promise<LifetimeStats>;
+  };
+  quests: {
+    /** Ids of the weekly quests whose reward the member has already received. */
+    listRewarded(userId: string, weekKey: DayKey): Promise<string[]>;
+    markRewarded(record: QuestRewardRecord): Promise<void>;
+    /** Every weekly quest the member has finished, across all weeks. */
+    countRewarded(userId: string): Promise<number>;
   };
   bosses: {
     get(weekKey: DayKey): Promise<BossState | undefined>;
@@ -169,7 +187,7 @@ export interface Store {
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, room and solo timers, badges, card style, and their id in boss
+   * stats, quest rewards, room and solo timers, badges, card style, and their id in boss
    * contributor lists.
    * Community totals for past recaps are not recomputed.
    */

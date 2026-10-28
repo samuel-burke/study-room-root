@@ -7,6 +7,7 @@ import type {
   MyStatusDto,
   PersonalResultDto,
   ProgressDto,
+  QuestDto,
   RecapDto,
   RoomStateDto,
   RoomTimerDto,
@@ -20,8 +21,14 @@ import {
   reconfigureBoss,
   type BossState,
 } from "../game/boss";
-import { newlyEarnedBadges, type BadgeFacts, type SessionFacts } from "../game/badges";
+import {
+  newlyEarnedBadges,
+  type BadgeFacts,
+  type QuestFacts,
+  type SessionFacts,
+} from "../game/badges";
 import { comboFor } from "../game/combo";
+import { questProgress, questsForWeek, QUESTS_PER_WEEK, type QuestProgress } from "../game/quests";
 import {
   cardStyleById,
   isCardStyleUnlocked,
@@ -418,8 +425,10 @@ export class StudyRoomEngine {
           const member = await this.loadMember(tx, userId);
           await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
           await tx.stats.add(userId, day, { xp, goalsDone: 1 });
+          const quests = await this.rewardQuests(tx, userId, now);
           await this.awardBadges(tx, effects, userId, now, {
             goal: { secondsOpen: Math.floor((now - goal.createdAt) / 1000) },
+            quests,
             ...(await this.activityFacts(tx, userId, day)),
           });
         }
@@ -840,6 +849,7 @@ export class StudyRoomEngine {
       xp: xpEarned,
       combo,
     });
+    const quests = await this.rewardQuests(tx, userId, now);
 
     const tz = this.config.timeZone;
     const session: SessionFacts = {
@@ -855,6 +865,7 @@ export class StudyRoomEngine {
     await this.awardBadges(tx, effects, userId, now, {
       session,
       streak: { length: streak.streak, comebackFrom, freezeSaved: freezesSpent > 0 },
+      quests,
       ...(await this.activityFacts(tx, userId, day)),
     });
 
@@ -929,13 +940,71 @@ export class StudyRoomEngine {
     }
   }
 
+  /**
+   * Pays the reward for every quest the member has just finished this week.
+   * Like boss loot it is outside the daily cap: it comes at most three times
+   * a week, and a capped reward would often be zero. Returns the quest facts
+   * badges look at.
+   */
+  private async rewardQuests(tx: Store, userId: string, now: number): Promise<QuestFacts> {
+    const week = weekKey(dayKey(now, this.config.timeZone));
+    const rewarded = new Set(await tx.quests.listRewarded(userId, week));
+    let xp = 0;
+    for (const { quest, done } of await this.weeklyQuests(tx, userId, now)) {
+      if (!done || rewarded.has(quest.id)) continue;
+      const questXp = this.config.xp.enabled ? quest.xp : 0;
+      await tx.quests.markRewarded({
+        userId,
+        weekKey: week,
+        questId: quest.id,
+        xp: questXp,
+        rewardedAt: now,
+      });
+      rewarded.add(quest.id);
+      xp += questXp;
+    }
+    if (xp > 0) {
+      const member = await this.loadMember(tx, userId);
+      await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+    }
+    return {
+      doneThisWeek: rewarded.size,
+      perWeek: QUESTS_PER_WEEK,
+      totalDone: await tx.quests.countRewarded(userId),
+    };
+  }
+
+  /** This week's quests and the member's progress, from daily_stats and session_log. */
+  private async weeklyQuests(tx: Store, userId: string, now: number): Promise<QuestProgress[]> {
+    const tz = this.config.timeZone;
+    const week = weekKey(dayKey(now, tz));
+    const days = await tx.stats.listForUser(userId, week, addDays(week, 6));
+    const sessions = await tx.sessions.listForUser(
+      userId,
+      startOfDay(week, tz),
+      startOfDay(addDays(week, 7), tz),
+    );
+    return questsForWeek(week).map((quest) => questProgress(quest, { days, sessions }));
+  }
+
+  private questDto({ quest, progress, done }: QuestProgress): QuestDto {
+    return {
+      id: quest.id,
+      title: quest.title,
+      progress,
+      target: quest.target,
+      unit: quest.unit,
+      xp: this.config.xp.enabled ? quest.xp : 0,
+      done,
+    };
+  }
+
   // ---------------------------------------------------------------- badges
 
   /**
    * Awards every badge these facts newly earn. XP and level are read here,
    * after the operation's own XP has been saved, so level badges always see
-   * the latest total. Weekly quests and the leaderboard pass their facts here
-   * too once they land.
+   * the latest total. The leaderboard passes its facts here too once it lands.
    */
   private async awardBadges(
     tx: Store,
@@ -1222,6 +1291,7 @@ export class StudyRoomEngine {
       me: await this.buildMyStatus(tx, userId, now),
       days,
       totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
+      quests: (await this.weeklyQuests(tx, userId, now)).map((q) => this.questDto(q)),
       badges: (await tx.badges.list([userId])).map((b) => ({
         id: b.badgeId,
         earnedAt: b.earnedAt,

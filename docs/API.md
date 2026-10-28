@@ -23,7 +23,7 @@ The contract is `networking/src/studyroom.proto`. `npm run generate` turns it in
 | `DeleteGoal`       | `goal_id`                                      | `MyStatus`     |                                                                                               |
 | `SetGoalsPrivate`  | `goals_private`                                | `MyStatus`     |                                                                                               |
 | `DeleteMyData`     | —                                              | `MyStatus`     | Erases everything stored about the caller in this community. Cannot be undone.                |
-| `GetProgress`      | —                                              | `Progress`     | Your status, the last 35 days of focus minutes, your badges and your card look.               |
+| `GetProgress`      | —                                              | `Progress`     | Your status, 35 days of focus, this week's quests, your badges and your card look.            |
 | `SetCardStyle`     | `style` (a card style id, or empty)            | `Progress`     | Empty goes back to automatic. Fails if the style is still locked.                             |
 | `SetBadgeShowcase` | `badge_ids[]` (≤ 1, earned)                    | `Progress`     | The badge for your card. Empty shows your newest.                                             |
 
