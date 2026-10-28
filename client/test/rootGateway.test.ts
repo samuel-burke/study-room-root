@@ -53,6 +53,7 @@ vi.mock("@studyroom/gen-client", () => ({
     PhaseCompleted: "phaseCompleted",
     PersonalResult: "personalResult",
     MyStatus: "myStatus",
+    BadgesEarned: "badgesEarned",
   },
 }));
 
@@ -156,18 +157,21 @@ describe("RootGateway", () => {
       phaseCompleted: vi.fn(),
       personalResult: vi.fn(),
       myStatus: vi.fn(),
+      badgesEarned: vi.fn(),
     };
     const unsubscribe = new RootGateway().subscribe(handlers);
     service.emit("roomUpdated", { room: proto.room });
     service.emit("myStatus", { me: proto.me });
     service.emit("phaseCompleted", {});
     service.emit("personalResult", {});
+    service.emit("badgesEarned", { badgeIds: ["first-focus"] });
     expect(handlers.roomUpdated.mock.calls[0]?.[0]).toMatchObject({
       serverNow: snapshot.room.serverNow,
     });
     expect(handlers.myStatus).toHaveBeenCalledWith(snapshot.me);
     expect(handlers.phaseCompleted).toHaveBeenCalledTimes(1);
     expect(handlers.personalResult).toHaveBeenCalledTimes(1);
+    expect(handlers.badgesEarned).toHaveBeenCalledWith(["first-focus"]);
     unsubscribe();
     expect([...service.listeners.values()].every((set) => set.size === 0)).toBe(true);
   });
