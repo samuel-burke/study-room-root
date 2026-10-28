@@ -4,6 +4,13 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- The room timer retries a wake-up that failed (for example on a locked database) instead of stalling until someone acts
+- A failed presence update when a member opens or closes the app is logged instead of crashing the server
+- The app still starts when Root's job scheduler is unavailable; only the daily recap is skipped
+- Shutdown always closes the database, and the client shows a message instead of a blank screen if it fails to load
+
 ## [0.1.0] - 2026-10-28
 
 First release of **Study Squad: Group Study Timer**, covering the v1 scope.

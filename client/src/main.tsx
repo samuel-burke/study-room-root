@@ -15,10 +15,19 @@ async function createGateway(): Promise<StudyRoomGateway> {
   return new RootGateway();
 }
 
-void createGateway().then((gateway) => {
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <App gateway={gateway} />
-    </StrictMode>,
-  );
-});
+const root = createRoot(document.getElementById("root")!);
+createGateway().then(
+  (gateway) =>
+    root.render(
+      <StrictMode>
+        <App gateway={gateway} />
+      </StrictMode>,
+    ),
+  // A failed chunk load would otherwise leave a blank screen.
+  (error: unknown) => {
+    console.error("Study Squad failed to load", error);
+    root.render(
+      <p style={{ padding: 16 }}>Study Squad couldn't load. Close and reopen the app.</p>,
+    );
+  },
+);
