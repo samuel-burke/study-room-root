@@ -58,6 +58,19 @@ export class MemoryStore implements Store {
     return this.data.sessions;
   }
 
+  async eraseUser(userId: string): Promise<void> {
+    const d = this.data;
+    d.members.delete(userId);
+    d.solos.delete(userId);
+    d.participants.delete(userId);
+    for (const [id, goal] of d.goals) if (goal.userId === userId) d.goals.delete(id);
+    for (const [key, stat] of d.stats) if (stat.userId === userId) d.stats.delete(key);
+    d.sessions = d.sessions.filter((s) => s.userId !== userId);
+    for (const boss of d.bosses.values()) {
+      boss.contributorIds = boss.contributorIds.filter((id) => id !== userId);
+    }
+  }
+
   async transaction<T>(work: (tx: Store) => Promise<T>): Promise<T> {
     const draft = new MemoryStore(copy(this.data));
     const result = await work(draft);

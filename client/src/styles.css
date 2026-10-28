@@ -173,6 +173,12 @@ h3 {
   border-color: var(--break-border-strong);
 }
 
+.btn-danger {
+  border: none;
+  background: var(--coral);
+  color: #2a0a05;
+}
+
 .btn-dashed {
   border-style: dashed;
   color: var(--text-muted);

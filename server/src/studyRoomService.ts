@@ -3,6 +3,7 @@ import { StudyRoomServiceBase } from "@studyroom/gen-server";
 import type {
   AddGoalRequest,
   DeleteGoalRequest,
+  DeleteMyDataRequest,
   EndSoloRequest,
   GetProgressRequest,
   GetRoomRequest,
@@ -67,6 +68,10 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   getProgress(_request: GetProgressRequest, client: Client): Promise<Progress> {
     return this.call((h) => h.getProgress(client.userId));
+  }
+
+  deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.deleteMyData(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

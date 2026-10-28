@@ -74,6 +74,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             xpEnabled={room.features.xpEnabled}
             freezesEnabled={room.features.streakFreezesEnabled}
             onBack={() => setScreen("room")}
+            onDeleteData={actions.deleteMyData}
           />
         ) : (
           <RoomScreen

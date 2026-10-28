@@ -14,6 +14,7 @@ export interface StudyRoomActions {
   setGoalDone(goalId: string, done: boolean): Promise<boolean>;
   deleteGoal(goalId: string): Promise<boolean>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<boolean>;
+  deleteMyData(): Promise<boolean>;
   reload(): Promise<void>;
   dismissBreak(): void;
   dismissError(): void;
@@ -73,6 +74,11 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
       setGoalDone: (goalId, done) => run(() => gateway.setGoalDone(goalId, done)),
       deleteGoal: (goalId) => run(() => gateway.deleteGoal(goalId)),
       setGoalsPrivate: (goalsPrivate) => run(() => gateway.setGoalsPrivate(goalsPrivate)),
+      deleteMyData: async () => {
+        const ok = await run(() => gateway.deleteMyData());
+        if (ok) await reload();
+        return ok;
+      },
       reload,
       dismissBreak: () => dispatch({ type: "dismissBreak" }),
       dismissError: () => dispatch({ type: "dismissError" }),

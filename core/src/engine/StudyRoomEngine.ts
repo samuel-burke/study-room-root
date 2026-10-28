@@ -368,6 +368,25 @@ export class StudyRoomEngine {
     });
   }
 
+  // ---------------------------------------------------------------- privacy
+
+  /**
+   * Erases everything Study Squad stores about the member, at their request.
+   * Their card leaves the board at once, and the room timer goes idle if they
+   * were the last one on it. No XP or minutes are credited for the session cut short.
+   */
+  deleteMyData(userId: string): Promise<MyStatusDto> {
+    return this.run(async (tx, now, effects) => {
+      const participants = await tx.room.listParticipants();
+      if (participants.length === 1 && participants[0]!.userId === userId)
+        await tx.room.saveCycle(null);
+      await tx.eraseUser(userId);
+      this.touch(effects, userId);
+      this.deps.logger.info("member data erased", { userId });
+      return this.buildMyStatus(tx, userId, now);
+    });
+  }
+
   // ---------------------------------------------------------------- daily recap
 
   /** Builds the recap for the community day containing `at`. */

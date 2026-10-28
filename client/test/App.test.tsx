@@ -186,4 +186,38 @@ describe("Study Squad app", () => {
       }),
     ).toBeChecked();
   });
+
+  it("deletes my data after a confirmation and starts fresh", async () => {
+    const { user } = await renderApp();
+    await user.click(screen.getByRole("button", { name: "Join room timer" }));
+    await user.type(
+      within(screen.getByRole("dialog")).getByLabelText("Goals for this session"),
+      "Delete me",
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Start focusing" }),
+    );
+    await screen.findByRole("listitem", { name: /You, Room timer/ });
+
+    await user.click(screen.getByRole("button", { name: "Your progress" }));
+    await user.click(await screen.findByRole("button", { name: "Delete my data" }));
+    const confirm = screen.getByRole("alertdialog", { name: "Confirm delete" });
+    expect(confirm).toHaveTextContent("can't be undone");
+    await user.click(within(confirm).getByRole("button", { name: "Delete everything" }));
+
+    expect(await screen.findByRole("timer")).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: /You,/ })).not.toBeInTheDocument();
+    const panel = screen.getByRole("region", { name: "Your session" });
+    expect(within(panel).getByText("0 / 200 XP")).toBeInTheDocument();
+    expect(within(panel).queryByText("Delete me")).not.toBeInTheDocument();
+  });
+
+  it("can cancel deleting my data", async () => {
+    const { user } = await renderApp();
+    await user.click(screen.getByRole("button", { name: "Your progress" }));
+    await user.click(await screen.findByRole("button", { name: "Delete my data" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Delete my data" })).toBeInTheDocument();
+    expect(screen.getByText("5 day streak")).toBeInTheDocument();
+  });
 });

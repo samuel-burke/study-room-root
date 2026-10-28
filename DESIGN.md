@@ -58,6 +58,8 @@ A random "are you there?" tap is planned for v2. For v1:
 
 Members choose whether their goals show on the board. Private members appear as "Focusing" with a lock. The server never sends private goal text to other clients: room state is built with the text already removed, and personal data (XP, goals, results) is sent only to the member's own devices.
 
+Data is kept for as long as the app is installed, so streaks and history survive. Members can erase all of it themselves with **Delete my data** on the progress screen (`StudyRoomEngine.deleteMyData` and `Store.eraseUser`). Self-service deletion is simpler and more reliable than handling requests by email, because Root hosts the database and there's no admin console to delete from. See [PRIVACY.md](PRIVACY.md).
+
 ## Weekly boss
 
 A boss spawns lazily each Monday (community time zone) with the admin's name and HP in focus hours. Every focus minute deals damage, multiplied by the combo for room rounds. Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).

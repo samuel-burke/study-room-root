@@ -100,4 +100,13 @@ describe("StudyRoomHandlers", () => {
     expect((await handlers.deleteGoal("priya", { goalId })).goals).toEqual([]);
     expect((await handlers.getProgress("priya")).days).toHaveLength(35);
   });
+
+  it("deletes only the caller's data", async () => {
+    const { handlers } = setup();
+    await handlers.addGoal("ana", { text: "Mine" });
+    await handlers.addGoal("kai", { text: "Kai's" });
+    const me = await handlers.deleteMyData("ana");
+    expect(me.goals).toEqual([]);
+    expect((await handlers.getRoom("kai")).me?.goals.map((g) => g.text)).toEqual(["Kai's"]);
+  });
 });

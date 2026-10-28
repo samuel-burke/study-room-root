@@ -178,6 +178,9 @@ message SetGoalsPrivateRequest {
 
 message GetProgressRequest {}
 
+// Erases everything the app stores about the caller. Cannot be undone.
+message DeleteMyDataRequest {}
+
 // ---------------------------------------------------------------- broadcasts
 
 message RoomUpdatedEvent {
@@ -229,6 +232,7 @@ service StudyRoomService {
   rpc DeleteGoal(DeleteGoalRequest) returns (MyStatus);
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
+  rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);

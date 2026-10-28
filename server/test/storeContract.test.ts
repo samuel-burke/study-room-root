@@ -237,4 +237,63 @@ describe.each(implementations)("%s", (_name, open) => {
     await store.goals.insert(goal({ text }));
     expect((await store.goals.get("g1"))?.text).toBe(text);
   });
+
+  it("erases one member completely, and only that member", async () => {
+    const member = (userId: string) => ({
+      userId,
+      xpTotal: 5,
+      streak: EMPTY_STREAK,
+      goalsPrivate: true,
+    });
+    for (const id of ["ana", "kai"]) {
+      await store.members.save(member(id));
+      await store.goals.insert(goal({ id: `g-${id}`, userId: id }));
+      await store.solos.save({
+        userId: id,
+        startedAt: 1,
+        endsAt: 2,
+        minutes: 25,
+        phase: "focus",
+        breakEndsAt: 3,
+      });
+      await store.room.addParticipant({ userId: id, joinedAt: 1 });
+      await store.stats.add(id, "2026-10-28", { focusMinutes: 10, goalsDone: 1 });
+      await store.sessions.insert({
+        userId: id,
+        kind: "solo",
+        startedAt: 1,
+        endedAt: 2,
+        focusedMinutes: 10,
+        finished: true,
+        xp: 20,
+        combo: 1,
+      });
+    }
+    await store.bosses.save({
+      ...newBoss("2026-10-26", "Midterms", 100),
+      contributorIds: ["ana", "kai", "anabelle"],
+    });
+
+    await store.eraseUser("ana");
+
+    expect(await store.members.get("ana")).toBeUndefined();
+    expect(await store.goals.get("g-ana")).toBeUndefined();
+    expect(await store.solos.get("ana")).toBeUndefined();
+    expect((await store.room.listParticipants()).map((p) => p.userId)).toEqual(["kai"]);
+    expect(await store.stats.get("ana", "2026-10-28")).toBeUndefined();
+    expect((await store.bosses.get("2026-10-26"))?.contributorIds).toEqual(["kai", "anabelle"]);
+    expect(await store.stats.communityDay("2026-10-28")).toEqual({
+      focusMinutes: 10,
+      goalsDone: 1,
+      activeMembers: 1,
+    });
+
+    expect(await store.members.get("kai")).toBeDefined();
+    expect(await store.goals.get("g-kai")).toBeDefined();
+    expect(await store.solos.get("kai")).toBeDefined();
+  });
+
+  it("erasing someone with no data is harmless", async () => {
+    await expect(store.eraseUser("nobody")).resolves.toBeUndefined();
+  });
 });

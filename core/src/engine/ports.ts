@@ -131,6 +131,12 @@ export interface Store {
     get<T>(key: string): Promise<T | undefined>;
     set<T>(key: string, value: T): Promise<void>;
   };
+  /**
+   * Removes every record about a member: profile, goals, sessions, daily
+   * stats, room and solo timers, and their id in boss contributor lists.
+   * Community totals for past recaps are not recomputed.
+   */
+  eraseUser(userId: string): Promise<void>;
   /** Runs `work` atomically. Implementations must roll back if it throws. */
   transaction<T>(work: (tx: Store) => Promise<T>): Promise<T>;
 }

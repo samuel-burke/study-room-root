@@ -11,11 +11,14 @@ export function ProgressScreen({
   xpEnabled,
   freezesEnabled,
   onBack,
+  onDeleteData,
 }: {
   gateway: StudyRoomGateway;
   xpEnabled: boolean;
   freezesEnabled: boolean;
   onBack(): void;
+  /** Resolves true once the server has erased the member's data. */
+  onDeleteData(): Promise<boolean>;
 }) {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +105,67 @@ export function ProgressScreen({
           </section>
         </>
       )}
+
+      <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>
+  );
+}
+
+/** Two-step erase, because it can't be undone. */
+function DeleteMyData({ onDelete, onDone }: { onDelete(): Promise<boolean>; onDone(): void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function erase() {
+    setBusy(true);
+    const ok = await onDelete();
+    setBusy(false);
+    if (ok) onDone();
+  }
+
+  return (
+    <section className="card" aria-label="Your data">
+      <h2 style={{ fontSize: 16 }}>Your data</h2>
+      <div className="small muted">
+        Study Squad keeps your goals, sessions, XP and streak so your progress is here next time.
+        You can erase all of it at any time.
+      </div>
+      {confirming ? (
+        <div
+          role="alertdialog"
+          aria-label="Confirm delete"
+          style={{ display: "flex", flexDirection: "column", gap: 10 }}
+        >
+          <div className="small">
+            This erases your goals, session history, XP, level and streak for this community. It
+            can&apos;t be undone.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-danger"
+              style={{ flex: 1 }}
+              disabled={busy}
+              onClick={() => void erase()}
+            >
+              Delete everything
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ flex: 1 }}
+              disabled={busy}
+              onClick={() => setConfirming(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-quiet" onClick={() => setConfirming(true)}>
+          Delete my data
+        </button>
+      )}
+    </section>
   );
 }

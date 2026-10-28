@@ -128,6 +128,12 @@ export class StudyRoomHandlers {
     );
   }
 
+  deleteMyData(userId: string): Promise<MyStatus> {
+    return this.handle("deleteMyData", userId, "write", async () =>
+      myStatusToProto(await this.engine.deleteMyData(userId)),
+    );
+  }
+
   private async handle<T>(
     operation: string,
     userId: string,

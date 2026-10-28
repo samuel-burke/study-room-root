@@ -100,6 +100,34 @@ async function inChunks<T>(
 export class KnexStore implements Store {
   constructor(private readonly db: Knex | Knex.Transaction) {}
 
+  async eraseUser(userId: string): Promise<void> {
+    await this.transaction(async (tx) => {
+      const db = (tx as KnexStore).db;
+      for (const table of [
+        "members",
+        "goals",
+        "solo_sessions",
+        "room_participants",
+        "session_log",
+        "daily_stats",
+      ]) {
+        await db(table).where({ user_id: userId }).delete();
+      }
+      // Contributor lists are JSON arrays; only rewrite bosses that mention this member.
+      const bosses = await db("bosses").where(
+        "contributor_ids",
+        "like",
+        `%${JSON.stringify(userId)}%`,
+      );
+      for (const row of bosses) {
+        const ids = parseJson<string[]>(row.contributor_ids, []).filter((id) => id !== userId);
+        await db("bosses")
+          .where({ week_key: row.week_key })
+          .update({ contributor_ids: JSON.stringify(ids) });
+      }
+    });
+  }
+
   async transaction<T>(work: (tx: Store) => Promise<T>): Promise<T> {
     if (this.db.isTransaction) return work(this);
     return this.db.transaction((trx) => work(new KnexStore(trx)));

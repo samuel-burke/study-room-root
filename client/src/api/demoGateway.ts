@@ -305,6 +305,10 @@ export class DemoGateway implements StudyRoomGateway {
     return this.call(() => this.engine.setGoalsPrivate(DEMO_USER_ID, goalsPrivate));
   }
 
+  deleteMyData() {
+    return this.call(() => this.engine.deleteMyData(DEMO_USER_ID));
+  }
+
   getProgress() {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
   }

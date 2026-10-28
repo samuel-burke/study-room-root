@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- **Delete my data** on the progress screen: members can erase everything Study Squad stores about them
+- Privacy policy (`PRIVACY.md`)
+
 ### Changed
 
 - Renamed the app to **Study Squad** (store title: "Study Squad: Group Study Timer"). Code identifiers and the repository name are unchanged.

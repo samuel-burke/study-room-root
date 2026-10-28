@@ -513,3 +513,56 @@ describe("progress", () => {
     expect(progress.me.streak).toBe(1);
   });
 });
+
+describe("deleting my data", () => {
+  it("erases the member everywhere and leaves everyone else alone", async () => {
+    const { engine, store, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana", { goals: ["Mine"] });
+    await engine.joinRoomTimer("kai", { goals: ["Kai's"] });
+    await advance(FOCUS + BREAK + 3 * MINUTE);
+
+    const me = await engine.deleteMyData("ana");
+    expect(me).toMatchObject({
+      status: "idle",
+      onRoomTimer: false,
+      xpTotal: 0,
+      streak: 0,
+      goals: [],
+    });
+    expect(store.sessionLog.some((s) => s.userId === "ana")).toBe(false);
+    expect((await engine.getProgress("ana")).totalFocusMinutes).toBe(0);
+    expect(notifier.lastRoom?.members.map((m) => m.userId)).toEqual(["kai"]);
+
+    const kai = await engine.getSnapshot("kai");
+    expect(kai.me.xpTotal).toBeGreaterThan(0);
+    expect(kai.me.goals.map((g) => g.text)).toEqual(["Kai's"]);
+    expect(kai.room.timer.phase).toBe("focus");
+  });
+
+  it("stops the room timer if they were the last one on it", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(5 * MINUTE);
+    await engine.deleteMyData("ana");
+    expect((await engine.getSnapshot("ana")).room.timer.phase).toBe("idle");
+  });
+
+  it("removes them from the boss's contributors so loot can't reach them", async () => {
+    const { engine, store, advance } = createHarness();
+    await engine.startSolo("ana", 25);
+    await advance(5 * MINUTE);
+    await engine.endSolo("ana");
+    expect((await store.bosses.get("2026-10-26"))?.contributorIds).toContain("ana");
+    await engine.deleteMyData("ana");
+    expect((await store.bosses.get("2026-10-26"))?.contributorIds).toEqual([]);
+  });
+
+  it("ends a solo timer without crediting it", async () => {
+    const { engine, store, advance } = createHarness();
+    await engine.startSolo("ana", 60);
+    await advance(10 * MINUTE);
+    await engine.deleteMyData("ana");
+    expect(store.sessionLog).toEqual([]);
+    expect((await engine.getSnapshot("ana")).room.members).toEqual([]);
+  });
+});

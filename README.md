@@ -124,7 +124,7 @@ The original mockups live in [docs/design](docs/design). Implementation choices 
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow and checks, [SECURITY.md](SECURITY.md) for how to report a vulnerability, and [CHANGELOG.md](CHANGELOG.md) for release notes.
+See [PRIVACY.md](PRIVACY.md) for what the app stores and how members delete it, [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow and checks, [SECURITY.md](SECURITY.md) for how to report a vulnerability, and [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 
