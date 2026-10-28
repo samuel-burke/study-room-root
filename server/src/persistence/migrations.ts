@@ -104,7 +104,8 @@ const migrations: Migration[] = [
   },
   {
     // Boss HP and damage moved from focus minutes to XP. Existing rows convert
-    // at the XP rate of a minute, so a boss mid-week keeps its percent defeated.
+    // at the XP rate of a minute, rounded to whole XP, so a boss mid-week keeps
+    // its percent defeated.
     name: "002_boss_xp",
     async up(db) {
       await db.schema.alterTable("bosses", (t) => {
@@ -112,8 +113,8 @@ const migrations: Migration[] = [
         t.renameColumn("damage_minutes", "damage_xp");
       });
       await db("bosses").update({
-        max_hp_xp: db.raw("max_hp_xp * ?", [XP_PER_MINUTE_AT_002]),
-        damage_xp: db.raw("damage_xp * ?", [XP_PER_MINUTE_AT_002]),
+        max_hp_xp: db.raw("ROUND(max_hp_xp * ?)", [XP_PER_MINUTE_AT_002]),
+        damage_xp: db.raw("ROUND(damage_xp * ?)", [XP_PER_MINUTE_AT_002]),
       });
     },
     async down(db) {

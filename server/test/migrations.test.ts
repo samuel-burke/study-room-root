@@ -42,14 +42,14 @@ describe("migrations", () => {
         week_key: "2026-10-26",
         name: "Midterms",
         max_hp_minutes: 6000,
-        damage_minutes: 1500,
+        damage_minutes: 1500.3,
       });
       await migrateToLatest(db);
-      expect(await db("bosses").first()).toMatchObject({ max_hp_xp: 12_000, damage_xp: 3000 });
+      expect(await db("bosses").first()).toMatchObject({ max_hp_xp: 12_000, damage_xp: 3001 });
       await db.migrate.down(migratorConfig);
       expect(await db("bosses").first()).toMatchObject({
         max_hp_minutes: 6000,
-        damage_minutes: 1500,
+        damage_minutes: 1500.5,
       });
     } finally {
       await db.destroy();

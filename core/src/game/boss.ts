@@ -97,7 +97,10 @@ export function bossNameFor(week: DayKey, customName: string): string {
   return BOSSES[((weekNumber % n) + n) % n]!.name;
 }
 
-/** HP and damage are in XP: focus deals the XP it earns, before the daily cap. */
+/**
+ * HP and damage are in XP: focus deals the XP it earns, before the daily cap.
+ * Every amount is a whole number of XP.
+ */
 export interface BossState {
   weekKey: DayKey;
   name: string;
@@ -139,8 +142,9 @@ export function applyDamage(
   contributorIds: readonly string[],
   now: number,
 ): DamageResult {
-  if (xp <= 0 || boss.defeatedAt !== null) return { boss, defeatedNow: false };
-  const damageXp = Math.min(boss.maxHpXp, boss.damageXp + xp);
+  const hit = Math.round(xp);
+  if (hit <= 0 || boss.defeatedAt !== null) return { boss, defeatedNow: false };
+  const damageXp = Math.min(boss.maxHpXp, boss.damageXp + hit);
   const contributors = new Set([...boss.contributorIds, ...contributorIds]);
   const defeatedNow = damageXp >= boss.maxHpXp;
   return {

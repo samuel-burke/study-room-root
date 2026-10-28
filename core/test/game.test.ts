@@ -166,6 +166,38 @@ describe("bossStrength", () => {
   });
 });
 
+describe("whole XP", () => {
+  const combos = Array.from({ length: 12 }, (_, people) => comboFor(people + 1));
+  const minutes = [0.4, 1, 7.5, 12.3, 25, 49.99, 50, 180];
+  const isWhole = (n: number) => expect(Number.isInteger(n), String(n)).toBe(true);
+
+  it("rounds focus XP for every combo step", () => {
+    for (const combo of combos) for (const m of minutes) isWhole(focusXp(m, combo));
+    for (const m of minutes) isWhole(baseFocusXp(m));
+  });
+
+  it("rounds the daily cap remainder", () => {
+    isWhole(applyDailyCap(77, 0, 300));
+    isWhole(applyDailyCap(77, 250.5, 300));
+  });
+
+  it("rounds every boss's HP and loot for any base HP", () => {
+    for (const { name } of BOSSES) {
+      for (const base of [100, 333, 1000, 2501, 10_000, 99_999]) {
+        isWhole(newBoss("w", name, base).maxHpXp);
+        isWhole(reconfigureBoss(newBoss("w", name, 500), name, base, 1).boss.maxHpXp);
+      }
+      isWhole(bossLootXp(name));
+    }
+  });
+
+  it("rounds damage, even a fractional hit", () => {
+    const hit = applyDamage(newBoss("w", "Calc II", 1000), 12.6, ["a"], 1).boss;
+    expect(hit.damageXp).toBe(13);
+    expect(bossHpLeft(hit)).toBe(987);
+  });
+});
+
 describe("bossNameFor", () => {
   it("keeps the admin's custom name", () => {
     expect(bossNameFor("2026-10-26", "Calc II")).toBe("Calc II");
