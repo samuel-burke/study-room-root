@@ -9,6 +9,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - **Delete my data** on the progress screen: members can erase everything Study Squad stores about them
 - Privacy policy (`PRIVACY.md`)
 
+### Security
+
+- Override `sqlite3` to `^6.0.1` (the Root SDK asks for 5.x) to drop `node-gyp` and `tar@6`, which had high and critical advisories
+
 ### Changed
 
 - Renamed the app to **Study Squad** (store title: "Study Squad: Group Study Timer"). Code identifiers and the repository name are unchanged.

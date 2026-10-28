@@ -28,9 +28,10 @@ Only the latest release on `main` gets fixes.
 
 ## Known advisories
 
-`npm audit` reports advisories in packages installed by Root's SDK, which we can't change without leaving the SDK's tested configuration:
+`@rootsdk/server-app` asks for `sqlite3@^5.1.7`, which pulls in `node-gyp` and `tar@6` with high and critical advisories. `package.json` overrides it to `sqlite3@^6.0.1`, which uses a fixed `tar@7`. The full SQLite test suite passes on 6.x. Revisit the override when the SDK updates its own requirement.
 
-- `sqlite3@5.1.7` (required by `@rootsdk/server-app`) depends on `node-gyp` and old `tar` releases. These run only when sqlite3 is compiled from source at install time; they aren't used at runtime.
+One advisory remains in packages installed by Root's SDK:
+
 - `uuid@10` (required by `@rootsdk/server-app` and `@rootsdk/client-app`): the advisory affects the v3/v5/v6 functions with a caller-provided buffer, which Study Squad doesn't use.
 
 We'll pick up fixed versions as Root updates the SDK.

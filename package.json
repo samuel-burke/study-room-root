@@ -49,5 +49,8 @@
     "client": "npm run client -w @studyroom/client",
     "demo": "npm run demo -w @studyroom/client",
     "clean": "node scripts/clean.mjs"
+  },
+  "overrides": {
+    "sqlite3": "^6.0.1"
   }
 }
