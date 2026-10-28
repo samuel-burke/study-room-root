@@ -99,6 +99,8 @@ interface BusyPostState {
 
 const BUSY_KEY = "busyPost";
 const LAST_RECAP_KEY = "lastRecapDay";
+/** How long to wait before retrying a wake-up whose tick failed. */
+const TICK_RETRY_MS = 30_000;
 
 /**
  * Side effects collected while a transaction runs, released only after it
@@ -124,6 +126,7 @@ export class StudyRoomEngine {
   private readonly present = new Set<string>();
   private config: AppConfig;
   private readonly random: () => number;
+  private stopped = false;
 
   constructor(private readonly deps: EngineDeps) {
     this.config = deps.config;
@@ -134,10 +137,12 @@ export class StudyRoomEngine {
 
   /** Settles anything that came due while the server was down, then schedules wake-ups. */
   start(): Promise<void> {
+    this.stopped = false;
     return this.run(async () => undefined);
   }
 
   stop(): void {
+    this.stopped = true;
     this.deps.scheduler.cancel();
   }
 
@@ -554,10 +559,18 @@ export class StudyRoomEngine {
       this.deps.scheduler.cancel();
       return;
     }
-    this.deps.scheduler.wakeAt(at, () => {
-      this.tick().catch((error: unknown) =>
-        this.deps.logger.error("tick failed", { error: String(error) }),
-      );
+    this.deps.scheduler.wakeAt(at, () => this.wake());
+  }
+
+  /**
+   * A failed tick (say, the database was briefly locked) schedules nothing,
+   * so without a retry the room timer would stall until someone acts.
+   */
+  private wake(): void {
+    this.tick().catch((error: unknown) => {
+      this.deps.logger.error("tick failed", { error: String(error) });
+      if (this.stopped) return;
+      this.deps.scheduler.wakeAt(this.deps.clock.now() + TICK_RETRY_MS, () => this.wake());
     });
   }
 
