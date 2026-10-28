@@ -1,0 +1,202 @@
+import type { BossState } from "../game/boss";
+import type { DayKey } from "../time/calendar";
+import type {
+  CommunityDayStats,
+  DailyStatDelta,
+  DailyStatRecord,
+  GoalRecord,
+  MemberRecord,
+  ParticipantRecord,
+  RoomCycleRecord,
+  SessionLogRecord,
+  SoloRecord,
+  Store,
+} from "./ports";
+
+declare global {
+  // Available in Node 17+ and all current browsers. Core targets both, so it
+  // declares the one host API it uses instead of pulling in DOM or Node types.
+  function structuredClone<T>(value: T): T;
+}
+
+interface Data {
+  members: Map<string, MemberRecord>;
+  goals: Map<string, GoalRecord>;
+  solos: Map<string, SoloRecord>;
+  cycle: RoomCycleRecord | null;
+  participants: Map<string, ParticipantRecord>;
+  sessions: SessionLogRecord[];
+  stats: Map<string, DailyStatRecord>;
+  bosses: Map<string, BossState>;
+  kv: Map<string, unknown>;
+}
+
+const emptyData = (): Data => ({
+  members: new Map(),
+  goals: new Map(),
+  solos: new Map(),
+  cycle: null,
+  participants: new Map(),
+  sessions: [],
+  stats: new Map(),
+  bosses: new Map(),
+  kv: new Map(),
+});
+
+const statKey = (userId: string, day: DayKey) => `${userId}|${day}`;
+const copy = <T>(value: T): T => structuredClone(value);
+
+/**
+ * In-memory Store used by unit tests and the browser demo. Transactions work
+ * on a copy and swap it in on success, so a failed operation leaves no trace.
+ */
+export class MemoryStore implements Store {
+  constructor(private data: Data = emptyData()) {}
+
+  /** Read-only view for tests. */
+  get sessionLog(): readonly SessionLogRecord[] {
+    return this.data.sessions;
+  }
+
+  async transaction<T>(work: (tx: Store) => Promise<T>): Promise<T> {
+    const draft = new MemoryStore(copy(this.data));
+    const result = await work(draft);
+    this.data = draft.data;
+    return result;
+  }
+
+  members = {
+    get: async (userId: string) => copyOrUndefined(this.data.members.get(userId)),
+    list: async (userIds: readonly string[]) =>
+      userIds.flatMap((id) => {
+        const member = this.data.members.get(id);
+        return member ? [copy(member)] : [];
+      }),
+    listActiveSince: async (day: DayKey) =>
+      [...this.data.members.values()]
+        .filter((m) => m.streak.lastActiveDay !== null && m.streak.lastActiveDay >= day)
+        .map(copy),
+    save: async (member: MemberRecord) => {
+      this.data.members.set(member.userId, copy(member));
+    },
+  };
+
+  goals = {
+    get: async (id: string) => copyOrUndefined(this.data.goals.get(id)),
+    listForUser: async (userId: string, doneSince: number) =>
+      [...this.data.goals.values()]
+        .filter(
+          (g) =>
+            g.userId === userId &&
+            (!g.done || (g.completedAt !== null && g.completedAt >= doneSince)),
+        )
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map(copy),
+    firstOpen: async (userIds: readonly string[]) => {
+      const wanted = new Set(userIds);
+      const result = new Map<string, GoalRecord>();
+      const open = [...this.data.goals.values()]
+        .filter((g) => !g.done && wanted.has(g.userId))
+        .sort((a, b) => a.createdAt - b.createdAt);
+      for (const goal of open) if (!result.has(goal.userId)) result.set(goal.userId, copy(goal));
+      return result;
+    },
+    countOpen: async (userId: string) =>
+      [...this.data.goals.values()].filter((g) => g.userId === userId && !g.done).length,
+    insert: async (goal: GoalRecord) => {
+      this.data.goals.set(goal.id, copy(goal));
+    },
+    update: async (goal: GoalRecord) => {
+      this.data.goals.set(goal.id, copy(goal));
+    },
+    delete: async (id: string) => {
+      this.data.goals.delete(id);
+    },
+  };
+
+  solos = {
+    get: async (userId: string) => copyOrUndefined(this.data.solos.get(userId)),
+    list: async () => [...this.data.solos.values()].map(copy),
+    save: async (solo: SoloRecord) => {
+      this.data.solos.set(solo.userId, copy(solo));
+    },
+    delete: async (userId: string) => {
+      this.data.solos.delete(userId);
+    },
+  };
+
+  room = {
+    getCycle: async () => copyOrUndefined(this.data.cycle ?? undefined),
+    saveCycle: async (cycle: RoomCycleRecord | null) => {
+      this.data.cycle = cycle ? copy(cycle) : null;
+    },
+    listParticipants: async () =>
+      [...this.data.participants.values()].sort((a, b) => a.joinedAt - b.joinedAt).map(copy),
+    addParticipant: async (participant: ParticipantRecord) => {
+      this.data.participants.set(participant.userId, copy(participant));
+    },
+    removeParticipant: async (userId: string) => {
+      this.data.participants.delete(userId);
+    },
+  };
+
+  sessions = {
+    insert: async (log: SessionLogRecord) => {
+      this.data.sessions.push(copy(log));
+    },
+  };
+
+  stats = {
+    get: async (userId: string, day: DayKey) =>
+      copyOrUndefined(this.data.stats.get(statKey(userId, day))),
+    add: async (userId: string, day: DayKey, delta: DailyStatDelta) => {
+      const key = statKey(userId, day);
+      const current = this.data.stats.get(key) ?? {
+        userId,
+        day,
+        focusMinutes: 0,
+        xp: 0,
+        goalsDone: 0,
+        sessionsFinished: 0,
+      };
+      this.data.stats.set(key, {
+        ...current,
+        focusMinutes: current.focusMinutes + (delta.focusMinutes ?? 0),
+        xp: current.xp + (delta.xp ?? 0),
+        goalsDone: current.goalsDone + (delta.goalsDone ?? 0),
+        sessionsFinished: current.sessionsFinished + (delta.sessionsFinished ?? 0),
+      });
+    },
+    listForUser: async (userId: string, fromDay: DayKey, toDay: DayKey) =>
+      [...this.data.stats.values()]
+        .filter((s) => s.userId === userId && s.day >= fromDay && s.day <= toDay)
+        .sort((a, b) => a.day.localeCompare(b.day))
+        .map(copy),
+    communityDay: async (day: DayKey): Promise<CommunityDayStats> => {
+      const rows = [...this.data.stats.values()].filter((s) => s.day === day);
+      return {
+        focusMinutes: rows.reduce((sum, r) => sum + r.focusMinutes, 0),
+        goalsDone: rows.reduce((sum, r) => sum + r.goalsDone, 0),
+        activeMembers: rows.filter((r) => r.focusMinutes > 0).length,
+      };
+    },
+  };
+
+  bosses = {
+    get: async (weekKey: DayKey) => copyOrUndefined(this.data.bosses.get(weekKey)),
+    save: async (boss: BossState) => {
+      this.data.bosses.set(boss.weekKey, copy(boss));
+    },
+  };
+
+  kv = {
+    get: async <T>(key: string) => copyOrUndefined(this.data.kv.get(key) as T | undefined),
+    set: async <T>(key: string, value: T) => {
+      this.data.kv.set(key, copy(value));
+    },
+  };
+}
+
+function copyOrUndefined<T>(value: T | undefined): T | undefined {
+  return value === undefined ? undefined : copy(value);
+}

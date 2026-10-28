@@ -1,0 +1,515 @@
+import { describe, expect, it } from "vitest";
+import { DomainError, ErrorCode, LIMITS, PRESETS } from "../src";
+import { configWith, createHarness, MINUTE, T0 } from "./helpers";
+
+const FOCUS = 25 * MINUTE;
+const BREAK = 5 * MINUTE;
+
+async function expectError(promise: Promise<unknown>, code: ErrorCode) {
+  const error = await promise.then(
+    () => {
+      throw new Error("expected the call to fail");
+    },
+    (e: unknown) => e,
+  );
+  expect(error).toBeInstanceOf(DomainError);
+  expect((error as DomainError).code).toBe(code);
+}
+
+describe("room timer", () => {
+  it("starts a cycle when the first person joins and derives the countdown from server time", async () => {
+    const { engine } = createHarness();
+    const snap = await engine.joinRoomTimer("ana", { goals: ["Orgo ch. 4 notes"] });
+    expect(snap.room.timer).toMatchObject({
+      phase: "focus",
+      round: 1,
+      rounds: 4,
+      phaseStartedAt: T0,
+      phaseEndsAt: T0 + FOCUS,
+    });
+    expect(snap.room.serverNow).toBe(T0);
+    expect(snap.room.members).toEqual([
+      expect.objectContaining({
+        userId: "ana",
+        status: "roomFocus",
+        goalText: "Orgo ch. 4 notes",
+        endsAt: T0 + FOCUS,
+      }),
+    ]);
+    expect(snap.me).toMatchObject({ status: "roomFocus", onRoomTimer: true });
+  });
+
+  it("puts later joiners on the same shared countdown", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(10 * MINUTE);
+    const snap = await engine.joinRoomTimer("marcus");
+    expect(snap.room.timer.phaseEndsAt).toBe(T0 + FOCUS);
+    expect(snap.room.members.map((m) => m.endsAt)).toEqual([T0 + FOCUS, T0 + FOCUS]);
+    expect(snap.room.combo).toBe(1.1);
+  });
+
+  it("is idempotent when someone joins twice", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(MINUTE);
+    const snap = await engine.joinRoomTimer("ana");
+    expect(snap.room.roomParticipantCount).toBe(1);
+    expect(snap.room.timer.phaseStartedAt).toBe(T0);
+  });
+
+  it("ends the round for everyone at the same moment with shared combo and boss damage", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana", { goals: ["Make 20 flashcards"] });
+    await engine.joinRoomTimer("marcus");
+    await advance(FOCUS);
+
+    expect(notifier.phases).toHaveLength(1);
+    const phase = notifier.phases[0]!;
+    expect(phase).toMatchObject({ kind: "focus", round: 1, combo: 1.1 });
+    expect(phase.finisherIds.sort()).toEqual(["ana", "marcus"]);
+    expect(phase.roomDamageMinutes).toBeCloseTo(55);
+    expect(phase.room.timer.phase).toBe("break");
+
+    const ana = notifier.personal.find((p) => p.userId === "ana")!.event;
+    expect(ana).toMatchObject({
+      source: "room",
+      round: 1,
+      finished: true,
+      baseXp: 50,
+      combo: 1.1,
+      xpEarned: 55,
+      streak: 1,
+      streakExtended: true,
+      goalPrompt: expect.objectContaining({ text: "Make 20 flashcards" }),
+      breakEndsAt: T0 + FOCUS + BREAK,
+    });
+    expect(ana.me.status).toBe("roomBreak");
+    expect(notifier.lastRoom?.boss.damageMinutes).toBeCloseTo(55);
+  });
+
+  it("doesn't let a last-second joiner count toward the combo or a finished round", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(22 * MINUTE);
+    await engine.joinRoomTimer("late");
+    await advance(3 * MINUTE);
+
+    expect(notifier.phases[0]!.finisherIds).toEqual(["ana"]);
+    expect(notifier.phases[0]!.combo).toBe(1);
+    const late = notifier.personal.find((p) => p.userId === "late")!.event;
+    expect(late).toMatchObject({ finished: false, xpEarned: 6, streak: 0, streakExtended: false });
+  });
+
+  it("credits partial minutes when someone leaves mid-round and goes idle when the room empties", async () => {
+    const { engine, store, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(10 * MINUTE);
+    const snap = await engine.leaveRoomTimer("ana");
+
+    expect(snap.room.timer.phase).toBe("idle");
+    expect(snap.room.members).toEqual([]);
+    expect(snap.me).toMatchObject({ status: "idle", xpTotal: 20, streak: 0 });
+    expect(store.sessionLog).toEqual([
+      expect.objectContaining({
+        userId: "ana",
+        kind: "room",
+        focusedMinutes: 10,
+        finished: false,
+        xp: 20,
+      }),
+    ]);
+  });
+
+  it("doesn't credit anything for leaving during a break", async () => {
+    const { engine, store, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(FOCUS + MINUTE);
+    const before = store.sessionLog.length;
+    await engine.leaveRoomTimer("ana");
+    expect(store.sessionLog.length).toBe(before);
+  });
+
+  it("counts a break-time joiner from the next focus round", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance(FOCUS + 2 * MINUTE);
+    const snap = await engine.joinRoomTimer("kai");
+    expect(snap.room.members.find((m) => m.userId === "kai")?.status).toBe("roomBreak");
+    await advance(3 * MINUTE + FOCUS);
+    const kai = notifier.personal.filter((p) => p.userId === "kai");
+    expect(kai).toHaveLength(1);
+    expect(kai[0]!.event).toMatchObject({ round: 2, focusedMinutes: 25, finished: true });
+  });
+
+  it("releases everyone when the cycle ends, so a timer can't run forever", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance((25 * 4 + 5 * 3 + 15) * MINUTE);
+    expect(notifier.phases.map((p) => p.round)).toEqual([1, 2, 3, 4]);
+    const snap = await engine.getSnapshot("ana");
+    expect(snap.room.timer.phase).toBe("idle");
+    expect(snap.me.onRoomTimer).toBe(false);
+  });
+
+  it("rolls long-break joiners into a fresh cycle", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await advance((25 * 4 + 5 * 3 + 2) * MINUTE); // inside the long break
+    await engine.joinRoomTimer("theo");
+    await advance(13 * MINUTE);
+    const snap = await engine.getSnapshot("theo");
+    expect(snap.room.timer).toMatchObject({ phase: "focus", round: 1 });
+    expect(snap.room.members.map((m) => m.userId)).toEqual(["theo"]);
+  });
+
+  it("settles every phase that ended while the server was down", async () => {
+    const { engine, clock, notifier } = createHarness();
+    await engine.joinRoomTimer("ana");
+    clock.advance(3 * 60 * MINUTE); // no wake-ups fired
+    const snap = await engine.getSnapshot("ana");
+    expect(notifier.phases).toHaveLength(4);
+    expect(snap.me.onRoomTimer).toBe(false);
+    expect(snap.me.xpTotal).toBe(200);
+  });
+
+  it("uses the preset captured when the cycle began", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await engine.setConfig(configWith({ presetKey: "50-10", preset: PRESETS["50-10"] }));
+    await advance(MINUTE);
+    const snap = await engine.getSnapshot("ana");
+    expect(snap.room.timer.phaseEndsAt).toBe(T0 + FOCUS);
+    expect(snap.room.features.presetKey).toBe("50-10");
+  });
+
+  it("schedules a wake-up for the next phase boundary", async () => {
+    const { engine, scheduler } = createHarness();
+    expect(scheduler.at).toBeNull();
+    await engine.joinRoomTimer("ana");
+    expect(scheduler.at).toBe(T0 + FOCUS);
+  });
+});
+
+describe("solo timer", () => {
+  it("shows on the board and finishes with a solo result and a break", async () => {
+    const { engine, notifier, advance } = createHarness();
+    const snap = await engine.startSolo("priya", 30, { goals: ["Practice set B"] });
+    expect(snap.room.members).toEqual([
+      expect.objectContaining({ userId: "priya", status: "soloFocus", endsAt: T0 + 30 * MINUTE }),
+    ]);
+    await advance(30 * MINUTE);
+    const result = notifier.personal.find((p) => p.userId === "priya")!.event;
+    expect(result).toMatchObject({
+      source: "solo",
+      combo: 1,
+      xpEarned: 60,
+      finished: true,
+      streak: 1,
+    });
+    expect((await engine.getSnapshot("priya")).me.status).toBe("soloBreak");
+    await advance(BREAK);
+    expect((await engine.getSnapshot("priya")).me.status).toBe("idle");
+  });
+
+  it("credits minutes so far when ended early", async () => {
+    const { engine, advance } = createHarness();
+    await engine.startSolo("priya", 60);
+    await advance(12 * MINUTE);
+    const snap = await engine.endSolo("priya");
+    expect(snap.me).toMatchObject({ status: "idle", xpTotal: 24, streak: 0 });
+  });
+
+  it("validates the length", async () => {
+    const { engine } = createHarness();
+    await expectError(engine.startSolo("priya", 2), ErrorCode.Validation);
+    await expectError(engine.startSolo("priya", "25"), ErrorCode.Validation);
+  });
+
+  it("can't overlap with the room timer", async () => {
+    const { engine } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await expectError(engine.startSolo("ana", 25), ErrorCode.Conflict);
+    await engine.startSolo("priya", 25);
+    await expectError(engine.joinRoomTimer("priya"), ErrorCode.Conflict);
+    await expectError(engine.startSolo("priya", 25), ErrorCode.Conflict);
+  });
+
+  it("lets someone on a solo break hop onto the room timer", async () => {
+    const { engine, advance } = createHarness();
+    await engine.startSolo("priya", 25);
+    await advance(26 * MINUTE);
+    const snap = await engine.joinRoomTimer("priya");
+    expect(snap.me.status).toBe("roomFocus");
+    expect(snap.room.members).toHaveLength(1);
+  });
+});
+
+describe("goals", () => {
+  it("shows the oldest open goal on the card, or nothing when private", async () => {
+    const { engine } = createHarness();
+    await engine.joinRoomTimer("ana", { goals: ["First", "Second"] });
+    let snap = await engine.getSnapshot("ana");
+    expect(snap.room.members[0]).toMatchObject({ goalText: "First", goalPrivate: false });
+    await engine.setGoalsPrivate("ana", true);
+    snap = await engine.getSnapshot("ana");
+    expect(snap.room.members[0]).toMatchObject({ goalText: "", goalPrivate: true });
+    expect(snap.me.goals.map((g) => g.text)).toEqual(["First", "Second"]);
+  });
+
+  it("follows the community default until a member chooses", async () => {
+    const { engine } = createHarness(configWith({ goalsPublicByDefault: false }));
+    const snap = await engine.joinRoomTimer("ana", { goals: ["Secret"] });
+    expect(snap.room.members[0]).toMatchObject({ goalText: "", goalPrivate: true });
+  });
+
+  it("awards goal XP once, so toggling can't farm it", async () => {
+    const { engine } = createHarness();
+    const me = await engine.addGoal("ana", "Stats HW 5");
+    const id = me.goals[0]!.id;
+    expect((await engine.setGoalDone("ana", id, true)).xpTotal).toBe(25);
+    await engine.setGoalDone("ana", id, false);
+    expect((await engine.setGoalDone("ana", id, true)).xpTotal).toBe(25);
+  });
+
+  it("keeps finished goals visible for the rest of the day", async () => {
+    const { engine, advance } = createHarness();
+    const id = (await engine.addGoal("ana", "Essay intro draft")).goals[0]!.id;
+    await engine.setGoalDone("ana", id, true);
+    expect((await engine.getSnapshot("ana")).me.goals).toEqual([
+      { id, text: "Essay intro draft", done: true },
+    ]);
+    await advance(24 * 60 * MINUTE);
+    expect((await engine.getSnapshot("ana")).me.goals).toEqual([]);
+  });
+
+  it("refuses to touch someone else's goal and doesn't reveal that it exists", async () => {
+    const { engine } = createHarness();
+    const id = (await engine.addGoal("ana", "Mine")).goals[0]!.id;
+    await expectError(engine.setGoalDone("mallory", id, true), ErrorCode.NotFound);
+    await expectError(engine.deleteGoal("mallory", id), ErrorCode.NotFound);
+    await expectError(engine.deleteGoal("ana", "does-not-exist"), ErrorCode.NotFound);
+    expect((await engine.getSnapshot("ana")).me.goals).toHaveLength(1);
+  });
+
+  it("validates input", async () => {
+    const { engine } = createHarness();
+    await expectError(engine.addGoal("ana", ""), ErrorCode.Validation);
+    await expectError(
+      engine.addGoal("ana", "x".repeat(LIMITS.goalTextMaxLength + 1)),
+      ErrorCode.Validation,
+    );
+    await expectError(engine.setGoalDone("ana", "../x", true), ErrorCode.Validation);
+    await expectError(engine.setGoalDone("ana", "abc", "yes"), ErrorCode.Validation);
+    await expectError(engine.setGoalsPrivate("ana", 1), ErrorCode.Validation);
+  });
+
+  it("limits open goals", async () => {
+    const { engine } = createHarness();
+    for (let i = 0; i < LIMITS.maxOpenGoals; i++) await engine.addGoal("ana", `Goal ${i}`);
+    await expectError(engine.addGoal("ana", "One too many"), ErrorCode.Validation);
+  });
+
+  it("deletes goals", async () => {
+    const { engine } = createHarness();
+    const id = (await engine.addGoal("ana", "Oops")).goals[0]!.id;
+    expect((await engine.deleteGoal("ana", id)).goals).toEqual([]);
+  });
+});
+
+describe("XP rules", () => {
+  it("caps XP per day and resets the next day", async () => {
+    const { engine, advance } = createHarness(configWith({ xp: { enabled: true, dailyCap: 100 } }));
+    await engine.startSolo("ana", 60);
+    await advance(60 * MINUTE);
+    let me = (await engine.getSnapshot("ana")).me;
+    expect(me.xpTotal).toBe(100);
+    expect(me.xpToday).toBe(100);
+    await advance(24 * 60 * MINUTE);
+    await engine.startSolo("ana", 10);
+    await advance(10 * MINUTE);
+    me = (await engine.getSnapshot("ana")).me;
+    expect(me.xpTotal).toBe(120);
+  });
+
+  it("awards nothing when XP is off, but still tracks streaks", async () => {
+    const { engine, advance } = createHarness(
+      configWith({ xp: { enabled: false, dailyCap: 300 } }),
+    );
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    const me = (await engine.getSnapshot("ana")).me;
+    expect(me.xpTotal).toBe(0);
+    expect(me.streak).toBe(1);
+  });
+});
+
+describe("weekly boss", () => {
+  it("is defeated by focus minutes, pays out loot and posts once", async () => {
+    const config = configWith({ boss: { enabled: true, name: "Quiz", hpHours: 1 } });
+    const { engine, announcer, advance } = createHarness(config);
+    await engine.joinRoomTimer("ana");
+    await engine.joinRoomTimer("kai");
+    await advance(FOCUS); // 2 × 25 × 1.1 = 55 minutes
+    expect((await engine.getSnapshot("ana")).room.boss.defeated).toBe(false);
+    await advance(BREAK + FOCUS);
+    const snap = await engine.getSnapshot("ana");
+    expect(snap.room.boss).toMatchObject({ defeated: true, damageMinutes: 60, maxHpMinutes: 60 });
+    // 55 XP per round (capped later by nothing) + 50 loot.
+    expect(snap.me.xpTotal).toBe(55 + 55 + 50);
+    expect(announcer.posts.filter((p) => p.kind === "boss")).toEqual([
+      {
+        kind: "boss",
+        channelId: "channel-1",
+        detail: { bossName: "Quiz", contributorCount: 2, lootXp: 50 },
+      },
+    ]);
+  });
+
+  it("can be renamed and resized live by admins", async () => {
+    const { engine } = createHarness();
+    await engine.setConfig(configWith({ boss: { enabled: true, name: "Finals", hpHours: 20 } }));
+    const snap = await engine.getSnapshot("ana");
+    expect(snap.room.boss).toMatchObject({ name: "Finals", maxHpMinutes: 1200, enabled: true });
+  });
+
+  it("takes no damage when turned off", async () => {
+    const { engine, advance } = createHarness(
+      configWith({ boss: { enabled: false, name: "x", hpHours: 1 } }),
+    );
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    expect((await engine.getSnapshot("ana")).room.boss.enabled).toBe(false);
+  });
+});
+
+describe("channel posts", () => {
+  const busyConfig = configWith({ busyPosts: { enabled: true, threshold: 3 } });
+
+  it("posts once when the room gets busy, then waits for the cool-down", async () => {
+    const { engine, announcer, advance } = createHarness(busyConfig);
+    await engine.joinRoomTimer("a");
+    await engine.joinRoomTimer("b");
+    expect(announcer.posts).toEqual([]);
+    await engine.startSolo("c", 25);
+    await engine.joinRoomTimer("d");
+    await engine.idle();
+    expect(announcer.posts).toEqual([
+      { kind: "busy", channelId: "channel-1", detail: { focusingCount: 3, combo: 1.1 } },
+    ]);
+    // Drop below the threshold and come back quickly: still quiet.
+    await engine.leaveRoomTimer("a");
+    await engine.leaveRoomTimer("b");
+    await engine.joinRoomTimer("a");
+    await engine.joinRoomTimer("b");
+    await engine.idle();
+    expect(announcer.posts.filter((p) => p.kind === "busy")).toHaveLength(1);
+    // After the cool-down it can post again.
+    await advance(3 * 60 * MINUTE);
+    for (const id of ["a", "b", "c", "d", "e"]) await engine.joinRoomTimer(id);
+    await engine.idle();
+    expect(announcer.posts.filter((p) => p.kind === "busy")).toHaveLength(2);
+  });
+
+  it("stays quiet without a post channel", async () => {
+    const { engine, announcer } = createHarness({ ...busyConfig, postChannelId: null });
+    for (const id of ["a", "b", "c"]) await engine.joinRoomTimer(id);
+    await engine.idle();
+    expect(announcer.posts).toEqual([]);
+  });
+
+  it("posts a streak milestone on day 7", async () => {
+    const { engine, announcer, advance } = createHarness();
+    for (let day = 0; day < 7; day++) {
+      await engine.startSolo("ana", 10);
+      await advance(10 * MINUTE);
+      await advance(24 * 60 * MINUTE - 10 * MINUTE);
+    }
+    expect(announcer.posts.filter((p) => p.kind === "milestone")).toEqual([
+      { kind: "milestone", channelId: "channel-1", detail: { userId: "ana", streak: 7 } },
+    ]);
+  });
+
+  it("posts the daily recap once, and skips quiet days", async () => {
+    const { engine, announcer, advance } = createHarness();
+    expect(await engine.postDailyRecap()).toBe(false);
+    await engine.startSolo("ana", 30, { goals: ["Read"] });
+    await advance(30 * MINUTE);
+    const goalId = (await engine.getSnapshot("ana")).me.goals[0]!.id;
+    await engine.setGoalDone("ana", goalId, true);
+    expect(await engine.postDailyRecap()).toBe(true);
+    expect(await engine.postDailyRecap()).toBe(false);
+    await engine.idle();
+    const recap = announcer.posts.find((p) => p.kind === "recap")!.detail;
+    expect(recap).toMatchObject({
+      weekday: "Wednesday",
+      focusMinutes: 30,
+      goalsDone: 1,
+      activeMembers: 1,
+      topStreaks: [{ userId: "ana", streak: 1 }],
+      boss: expect.objectContaining({ name: "Midterms", daysLeft: 5 }),
+    });
+  });
+
+  it("doesn't post a recap when recaps are off", async () => {
+    const { engine, advance } = createHarness(
+      configWith({ recap: { enabled: false, hours: 21, minutes: 0 } }),
+    );
+    await engine.startSolo("ana", 10);
+    await advance(10 * MINUTE);
+    expect(await engine.postDailyRecap()).toBe(false);
+  });
+
+  it("logs post failures without breaking the operation", async () => {
+    const harness = createHarness(busyConfig);
+    harness.announcer.busyRoom = async () => {
+      throw new Error("Root is down");
+    };
+    for (const id of ["a", "b", "c"]) await harness.engine.joinRoomTimer(id);
+    await expect(harness.engine.idle()).resolves.toBeUndefined();
+  });
+});
+
+describe("presence and notifications", () => {
+  it("counts people with the app open plus anyone with a session", async () => {
+    const { engine } = createHarness();
+    await engine.setPresence(["ana", "marcus"]);
+    await engine.startSolo("priya", 25);
+    expect((await engine.getSnapshot("ana")).room.presentCount).toBe(3);
+    await engine.userDetached("marcus");
+    await engine.userAttached("priya");
+    expect((await engine.getSnapshot("ana")).room.presentCount).toBe(2);
+  });
+
+  it("pushes the room to everyone and status to the member after a change", async () => {
+    const { engine, notifier } = createHarness();
+    await engine.joinRoomTimer("ana");
+    expect(notifier.lastRoom?.members).toHaveLength(1);
+    expect(notifier.statuses.at(-1)).toMatchObject({ userId: "ana", me: { status: "roomFocus" } });
+  });
+
+  it("rolls back and stays silent when an operation fails halfway", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.startSolo("ana", 25);
+    await advance(26 * MINUTE); // solo break
+    for (let i = 0; i < LIMITS.maxOpenGoals; i++) await engine.addGoal("ana", `Goal ${i}`);
+    const rooms = notifier.rooms.length;
+    // Joining deletes the solo break, then fails on the goal limit. Nothing should stick.
+    await expectError(engine.joinRoomTimer("ana", { goals: ["extra"] }), ErrorCode.Validation);
+    expect(notifier.rooms.length).toBe(rooms);
+    expect((await engine.getSnapshot("ana")).me.status).toBe("soloBreak");
+  });
+});
+
+describe("progress", () => {
+  it("returns a 35-day window ending today", async () => {
+    const { engine, advance } = createHarness();
+    await engine.startSolo("ana", 45);
+    await advance(45 * MINUTE);
+    const progress = await engine.getProgress("ana");
+    expect(progress.days).toHaveLength(35);
+    expect(progress.days.at(-1)).toEqual({ day: "2026-10-28", focusMinutes: 45 });
+    expect(progress.totalFocusMinutes).toBe(45);
+    expect(progress.me.streak).toBe(1);
+  });
+});

@@ -1,0 +1,129 @@
+import {
+  DEFAULT_CONFIG,
+  MemoryStore,
+  StudyRoomEngine,
+  type Announcer,
+  type AppConfig,
+  type MyStatusDto,
+  type Notifier,
+  type PersonalResultDto,
+  type PhaseCompletedDto,
+  type RecapDto,
+  type RoomStateDto,
+  type WakeScheduler,
+} from "../src";
+
+export const MINUTE = 60_000;
+/** Wednesday 2026-10-28 10:00 in New York (UTC-4). */
+export const T0 = Date.UTC(2026, 9, 28, 14, 0, 0);
+
+export class FakeClock {
+  constructor(public current = T0) {}
+  now = () => this.current;
+  advance(ms: number) {
+    this.current += ms;
+  }
+}
+
+export class ManualScheduler implements WakeScheduler {
+  at: number | null = null;
+  private callback: (() => void) | null = null;
+  wakeAt(at: number, callback: () => void) {
+    this.at = at;
+    this.callback = callback;
+  }
+  cancel() {
+    this.at = null;
+    this.callback = null;
+  }
+  /** Fires the pending wake-up if the clock has reached it. */
+  fireIfDue(now: number): boolean {
+    if (this.at === null || this.callback === null || now < this.at) return false;
+    const cb = this.callback;
+    this.cancel();
+    cb();
+    return true;
+  }
+}
+
+export class RecordingNotifier implements Notifier {
+  rooms: RoomStateDto[] = [];
+  phases: PhaseCompletedDto[] = [];
+  personal: { userId: string; event: PersonalResultDto }[] = [];
+  statuses: { userId: string; me: MyStatusDto }[] = [];
+  roomUpdated(room: RoomStateDto) {
+    this.rooms.push(room);
+  }
+  phaseCompleted(event: PhaseCompletedDto) {
+    this.phases.push(event);
+  }
+  personalResult(userId: string, event: PersonalResultDto) {
+    this.personal.push({ userId, event });
+  }
+  myStatusUpdated(userId: string, me: MyStatusDto) {
+    this.statuses.push({ userId, me });
+  }
+  get lastRoom() {
+    return this.rooms.at(-1);
+  }
+}
+
+export class RecordingAnnouncer implements Announcer {
+  posts: { kind: string; channelId: string; detail: unknown }[] = [];
+  async busyRoom(channelId: string, focusingCount: number, combo: number) {
+    this.posts.push({ kind: "busy", channelId, detail: { focusingCount, combo } });
+  }
+  async streakMilestone(channelId: string, userId: string, streak: number) {
+    this.posts.push({ kind: "milestone", channelId, detail: { userId, streak } });
+  }
+  async bossDefeated(
+    channelId: string,
+    bossName: string,
+    contributorCount: number,
+    lootXp: number,
+  ) {
+    this.posts.push({ kind: "boss", channelId, detail: { bossName, contributorCount, lootXp } });
+  }
+  async dailyRecap(channelId: string, recap: RecapDto) {
+    this.posts.push({ kind: "recap", channelId, detail: recap });
+  }
+}
+
+export const silentLogger = { info() {}, warn() {}, error() {} };
+
+export function configWith(overrides: Partial<AppConfig> = {}): AppConfig {
+  return { ...DEFAULT_CONFIG, postChannelId: "channel-1", ...overrides };
+}
+
+export function createHarness(config: AppConfig = configWith(), start = T0) {
+  const clock = new FakeClock(start);
+  const scheduler = new ManualScheduler();
+  const notifier = new RecordingNotifier();
+  const announcer = new RecordingAnnouncer();
+  const store = new MemoryStore();
+  let nextId = 1;
+  const engine = new StudyRoomEngine({
+    store,
+    clock,
+    scheduler,
+    notifier,
+    announcer,
+    logger: silentLogger,
+    config,
+    newId: () => `id-${nextId++}`,
+  });
+
+  /** Moves time forward, firing scheduled wake-ups along the way like a real timer would. */
+  async function advance(ms: number) {
+    const target = clock.current + ms;
+    while (scheduler.at !== null && scheduler.at <= target) {
+      clock.current = Math.max(clock.current, scheduler.at);
+      scheduler.fireIfDue(clock.current);
+      await engine.idle();
+    }
+    clock.current = target;
+    await engine.idle();
+  }
+
+  return { engine, clock, scheduler, notifier, announcer, store, advance };
+}
