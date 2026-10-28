@@ -67,7 +67,7 @@ message MemberCard {
   bool goal_private = 5;
   int32 level = 6;
   int32 streak = 7;
-  // Up to three badge ids (the catalog is in @studyroom/core).
+  // At most one badge id for now (the catalog is in @studyroom/core).
   repeated string badges = 8;
   // A card style id, such as "gold".
   string card_style = 9;
@@ -203,7 +203,7 @@ message SetCardStyleRequest {
   string style = 1;
 }
 
-// Up to three earned badge ids. Empty means "show my most recent".
+// At most one earned badge id for now. Empty means "show my most recent".
 message SetBadgeShowcaseRequest {
   repeated string badge_ids = 1;
 }

@@ -30,7 +30,7 @@ Each community's Study Squad data is stored in that community's app database, wh
 
 ## Who can see it
 
-- **Other members of the community** can see your card on the board while you have a timer running: your name, picture, level, streak, card style, up to three badges, timer status and current goal (or "Focusing" if your goals are private).
+- **Other members of the community** can see your card on the board while you have a timer running: your name, picture, level, streak, card style, one badge, timer status and current goal (or "Focusing" if your goals are private).
 - **Only you** can see your goal list, your XP total, your progress history and your break results.
 - **Channel posts**: if an admin picks a channel for updates, Study Squad posts there. These posts can include community totals (hours focused, goals finished, how many members showed up), the nicknames and streak lengths of the top three streaks, streak milestones such as "Ana R. just hit a 30 day streak", and how many people are focusing.
 - **Community admins** choose Study Squad's settings (timer length, the post channel, recap time and so on). They don't get any extra access to your data through Study Squad.

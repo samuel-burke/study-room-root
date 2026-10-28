@@ -28,8 +28,8 @@ export const CARD_STYLES: readonly CardStyleDefinition[] = [
   { id: "solstice", name: "Solstice", unlock: { badge: "longest-day" } },
 ];
 
-/** How many badges a member card shows. */
-export const SHOWCASE_SIZE = 3;
+/** How many badges a member card shows. One keeps the board calm. */
+export const SHOWCASE_SIZE = 1;
 
 const BY_ID = new Map(CARD_STYLES.map((s) => [s.id, s]));
 

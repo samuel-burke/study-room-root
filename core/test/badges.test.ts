@@ -246,11 +246,11 @@ describe("card styles", () => {
     expect(resolveCardStyle(null, 3, new Set())).toBe("lagoon");
   });
 
-  it("shows picked badges, or the three most recent", () => {
+  it("shows the picked badge, or the most recent", () => {
     const earnedList = ["a", "b", "c", "d"].map((badgeId) => ({ badgeId }));
-    expect(resolveShowcase(null, earnedList)).toEqual(["d", "c", "b"]);
-    expect(resolveShowcase(["a", "zzz"], earnedList)).toEqual(["a"]);
-    expect(resolveShowcase(["zzz"], earnedList)).toEqual(["d", "c", "b"]);
+    expect(resolveShowcase(null, earnedList)).toEqual(["d"]);
+    expect(resolveShowcase(["a"], earnedList)).toEqual(["a"]);
+    expect(resolveShowcase(["zzz"], earnedList)).toEqual(["d"]);
     expect(resolveShowcase(null, [])).toEqual([]);
   });
 });

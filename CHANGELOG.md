@@ -8,7 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - Badges (#9): 60+ permanent badges for streaks, levels, focus time, room rounds and combos, goals and the weekly boss, including the Early Bird, Night Owl, Marathon, Comeback and First Boss badges from the progress mockup
 - Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them
-- Earned badges show on member cards (your three newest, or three you pin), with an unlock banner when you earn one
+- Earned badges show on member cards (one per card: your newest, or the one you pick), with an unlock banner when you earn one
 - Card styles: borders and colours unlocked by level (gold at level 8) or by certain badges, picked on the progress screen or left on automatic
 
 ## [0.1.0] - 2026-10-28

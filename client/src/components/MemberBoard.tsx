@@ -25,20 +25,21 @@ function goalText(member: MemberCardDto) {
   return member.goalText || null;
 }
 
-/** The badges a member shows off, as small icons with their names for screen readers. */
-function CardBadges({ ids }: { ids: string[] }) {
-  const badges = ids.flatMap((id) => {
-    const badge = badgeById(id);
-    return badge ? [badge] : [];
-  });
-  if (badges.length === 0) return null;
+/**
+ * The one badge a member features on the board: their first pin, or their
+ * newest. The rest live on their progress screen.
+ */
+function FeaturedBadge({ ids }: { ids: string[] }) {
+  const badge = ids.map(badgeById).find((b) => b !== undefined);
+  if (!badge) return null;
   return (
-    <span className="card-badges" aria-label={`Badges: ${badges.map((b) => b.name).join(", ")}`}>
-      {badges.map((b) => (
-        <span key={b.id} className="card-badge" title={b.name} aria-hidden="true">
-          {b.icon}
-        </span>
-      ))}
+    <span
+      className="featured-badge"
+      title={badge.name}
+      role="img"
+      aria-label={`Badge: ${badge.name}`}
+    >
+      {badge.icon}
     </span>
   );
 }
@@ -70,6 +71,7 @@ function MemberCard({
           <div className="member-name">
             <span className="name">{name}</span>
             <span className="level-chip">Lv {member.level}</span>
+            <FeaturedBadge ids={member.badges} />
           </div>
           <div className="streak-line">
             <FlameIcon size={13} stroke="var(--flame)" />
@@ -92,7 +94,6 @@ function MemberCard({
           <span className="dot" />
           {chip.label}
         </div>
-        <CardBadges ids={member.badges} />
       </div>
     </li>
   );
@@ -117,9 +118,11 @@ function MemberRow({
     <li className="member-row" data-style={member.cardStyle} aria-label={`${name}, ${chip.label}`}>
       <Avatar userId={member.userId} profile={profile} you={you} />
       <div className="body">
-        <div style={{ fontSize: 14, fontWeight: 700, display: "flex", gap: 6 }}>
+        <div
+          style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
+        >
           {name}
-          <CardBadges ids={member.badges} />
+          <FeaturedBadge ids={member.badges} />
         </div>
         <div className="goal-line">{goal}</div>
       </div>

@@ -25,7 +25,7 @@ The contract is `networking/src/studyroom.proto`. `npm run generate` turns it in
 | `DeleteMyData`     | —                                              | `MyStatus`     | Erases everything stored about the caller in this community. Cannot be undone.                |
 | `GetProgress`      | —                                              | `Progress`     | Your status, the last 35 days of focus minutes, your badges and your card look.               |
 | `SetCardStyle`     | `style` (a card style id, or empty)            | `Progress`     | Empty goes back to automatic. Fails if the style is still locked.                             |
-| `SetBadgeShowcase` | `badge_ids[]` (≤ 3, earned)                    | `Progress`     | Badges for your card. Empty shows your three newest.                                          |
+| `SetBadgeShowcase` | `badge_ids[]` (≤ 1, earned)                    | `Progress`     | The badge for your card. Empty shows your newest.                                             |
 
 ## Broadcasts (server → client)
 

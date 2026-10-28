@@ -34,7 +34,7 @@ describe("earning badges", () => {
       { id: "squad-up", earnedAt: T0 + FOCUS },
     ]);
     const card = notifier.lastRoom!.members.find((m) => m.userId === "ana")!;
-    expect(card.badges).toEqual(["squad-up", "first-session"]);
+    expect(card.badges).toEqual(["squad-up"]);
     expect(card.cardStyle).toBe("classic");
 
     // The next round earns nothing new, so nothing is pushed.
@@ -178,24 +178,17 @@ describe("card looks", () => {
     expect((await engine.setCardStyle("ana", "midnight")).card.style).toBe("midnight");
   });
 
-  it("lets members pin up to three earned badges", async () => {
+  it("lets members pin one earned badge to their card", async () => {
     const { engine, store } = createHarness();
-    for (const [i, badgeId] of ["first-session", "leet", "night-owl", "longest-day"].entries()) {
+    for (const [i, badgeId] of ["first-session", "leet", "night-owl"].entries()) {
       await store.badges.award({ userId: "ana", badgeId, earnedAt: T0 + i });
     }
-    expect((await engine.getProgress("ana")).card.showcase).toEqual([
-      "longest-day",
-      "night-owl",
-      "leet",
-    ]);
-    const pinned = await engine.setBadgeShowcase("ana", ["first-session", "leet"]);
-    expect(pinned.card).toMatchObject({
-      chosenShowcase: ["first-session", "leet"],
-      showcase: ["first-session", "leet"],
-    });
+    expect((await engine.getProgress("ana")).card.showcase).toEqual(["night-owl"]);
+    const pinned = await engine.setBadgeShowcase("ana", ["leet"]);
+    expect(pinned.card).toMatchObject({ chosenShowcase: ["leet"], showcase: ["leet"] });
     await expectError(engine.setBadgeShowcase("ana", ["marathon"]), ErrorCode.Validation);
     await expectError(
-      engine.setBadgeShowcase("ana", ["first-session", "leet", "night-owl", "longest-day"]),
+      engine.setBadgeShowcase("ana", ["first-session", "leet"]),
       ErrorCode.Validation,
     );
     await expectError(engine.setBadgeShowcase("ana", "leet"), ErrorCode.Validation);

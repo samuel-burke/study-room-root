@@ -76,7 +76,7 @@ Badges are permanent and come in two kinds: visible ones that say how to earn th
 
 Card styles (`core/src/game/cosmetics.ts`) change a member's card border and colour on the board. Most unlock with level (Lagoon at 3, Ember at 5, Gold at 8, Aurora at 12, Nebula at 16, Legend at 25), a few with a badge. A member who hasn't picked one gets the best style their level unlocks, so the room notices a level 8 member's gold border without anyone opening a menu. A pick that's no longer unlocked falls back to automatic rather than failing.
 
-Cards show three badges: the member's pins, or their three newest.
+Cards show one badge next to the level: the one the member picked, or their newest. An earlier version showed three, but a row of emoji on every card made the board noisy.
 
 ## Channel posts
 
