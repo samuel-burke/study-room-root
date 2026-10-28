@@ -187,6 +187,34 @@ describe.each(implementations)("%s", (_name, open) => {
     });
   });
 
+  it("sums a week of focus per member, leaving out hidden members", async () => {
+    await store.stats.add("ana", "2026-10-26", { focusMinutes: 30 });
+    await store.stats.add("ana", "2026-10-28", { focusMinutes: 15.5 });
+    await store.stats.add("kai", "2026-10-27", { focusMinutes: 45.5 });
+    await store.stats.add("lena", "2026-10-27", { focusMinutes: 45.5 });
+    await store.stats.add("devon", "2026-10-28", { goalsDone: 2 });
+    await store.stats.add("ana", "2026-10-25", { focusMinutes: 500 });
+    await store.stats.add("priya", "2026-11-02", { focusMinutes: 500 });
+    expect(await store.leaderboard.standings("2026-10-26", "2026-11-01")).toEqual([
+      { userId: "ana", focusMinutes: 45.5 },
+      { userId: "kai", focusMinutes: 45.5 },
+      { userId: "lena", focusMinutes: 45.5 },
+    ]);
+
+    expect(await store.leaderboard.isHidden("kai")).toBe(false);
+    await store.leaderboard.setHidden("kai", true);
+    await store.leaderboard.setHidden("kai", true);
+    await store.leaderboard.setHidden("ana", true);
+    expect(await store.leaderboard.isHidden("kai")).toBe(true);
+    expect(await store.leaderboard.listHidden()).toEqual(["ana", "kai"]);
+    expect(
+      (await store.leaderboard.standings("2026-10-26", "2026-11-01")).map((r) => r.userId),
+    ).toEqual(["lena"]);
+    await store.leaderboard.setHidden("ana", false);
+    await store.leaderboard.setHidden("nobody", false);
+    expect(await store.leaderboard.listHidden()).toEqual(["kai"]);
+  });
+
   it("stores bosses and key-values", async () => {
     const boss = {
       ...newBoss("2026-10-26", "Midterms", 100),
@@ -257,6 +285,7 @@ describe.each(implementations)("%s", (_name, open) => {
         breakEndsAt: 3,
       });
       await store.room.addParticipant({ userId: id, joinedAt: 1, keepGoing: false });
+      await store.leaderboard.setHidden(id, true);
       await store.stats.add(id, "2026-10-28", { focusMinutes: 10, goalsDone: 1 });
       await store.sessions.insert({
         userId: id,
@@ -283,6 +312,7 @@ describe.each(implementations)("%s", (_name, open) => {
     expect(await store.solos.get("ana")).toBeUndefined();
     expect((await store.room.listParticipants()).map((p) => p.userId)).toEqual(["kai"]);
     expect(await store.stats.get("ana", "2026-10-28")).toBeUndefined();
+    expect(await store.leaderboard.listHidden()).toEqual(["kai"]);
     expect(await store.badges.list(["ana"])).toEqual([]);
     expect(await store.cards.list(["ana"])).toEqual([]);
     expect(await store.sessions.countFinished("ana", "solo")).toBe(0);

@@ -2,6 +2,7 @@ import type {
   BossDto,
   CardLookDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MemberStatus as MemberStatusDto,
   MyStatusDto,
@@ -27,6 +28,7 @@ import {
   type Boss,
   type CardLook,
   type Goal,
+  type Leaderboard,
   type MemberCard,
   type MyStatus,
   type PersonalResultEvent,
@@ -211,6 +213,21 @@ export function progressToProto(progress: ProgressDto): Progress {
   };
 }
 
+export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
+  return {
+    weekStart: board.weekStart,
+    endsAtMs: board.endsAt,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    myRank: board.me.rank,
+    myFocusMinutes: board.me.focusMinutes,
+    hidden: board.me.hidden,
+  };
+}
+
 export function phaseCompletedToProto(event: PhaseCompletedDto): PhaseCompletedEvent {
   return {
     kind: PHASE_TO_PROTO[event.kind],
@@ -363,6 +380,19 @@ export function progressFromProto(progress: Progress): ProgressDto {
     quests: progress.quests.map(questFromProto),
     badges: (progress.badges ?? []).map((b) => ({ id: b.id, earnedAt: b.earnedAtMs })),
     card: cardLookFromProto(progress.card),
+  };
+}
+
+export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
+  return {
+    weekStart: board.weekStart,
+    endsAt: board.endsAtMs,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    me: { rank: board.myRank, focusMinutes: board.myFocusMinutes, hidden: board.hidden },
   };
 }
 

@@ -23,7 +23,10 @@ export type BadgeFeature = "quests" | "leaderboard" | "bossRoster";
  * and the built-in boss roster with strengths (#25, #28) add theirs here when
  * they land, along with the facts they feed to `StudyRoomEngine.awardBadges`.
  */
-export const LIVE_BADGE_FEATURES: ReadonlySet<BadgeFeature> = new Set<BadgeFeature>(["quests"]);
+export const LIVE_BADGE_FEATURES: ReadonlySet<BadgeFeature> = new Set<BadgeFeature>([
+  "quests",
+  "leaderboard",
+]);
 
 /** One focus block, finished or cut short. Times are in the community time zone. */
 export interface SessionFacts {

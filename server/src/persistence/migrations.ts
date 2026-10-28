@@ -140,6 +140,18 @@ const migrations: Migration[] = [
     },
   },
   {
+    name: "004_leaderboard_opt_outs",
+    async up(db) {
+      // A row means the member hid themselves from the weekly leaderboard.
+      await db.schema.createTable("leaderboard_opt_outs", (t) => {
+        t.string("user_id").primary();
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("leaderboard_opt_outs");
+    },
+  },
+  {
     name: "005_keep_going",
     async up(db) {
       await db.schema.alterTable("room_participants", (t) => {

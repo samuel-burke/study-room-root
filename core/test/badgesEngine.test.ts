@@ -205,3 +205,30 @@ describe("card looks", () => {
     expect(progress.card.style).toBe("classic");
   });
 });
+
+describe("leaderboard badges", () => {
+  it("awards Podium and Pole Position once enough members are ranked this week", async () => {
+    const { engine, store, notifier, advance } = createHarness();
+    await store.stats.add("kai", "2026-10-26", { focusMinutes: 50 });
+    await store.stats.add("lena", "2026-10-27", { focusMinutes: 40 });
+    await engine.startSolo("ana", 60);
+    await advance(60 * MINUTE);
+    expect(notifier.badgesFor("ana")).toEqual(expect.arrayContaining(["podium", "pole-position"]));
+  });
+
+  it("doesn't count a place when too few members are ranked, or when you're hidden", async () => {
+    const alone = createHarness();
+    await alone.engine.startSolo("ana", 30);
+    await alone.advance(30 * MINUTE);
+    expect(alone.notifier.badgesFor("ana")).not.toContain("podium");
+
+    const hidden = createHarness();
+    await hidden.store.stats.add("kai", "2026-10-26", { focusMinutes: 50 });
+    await hidden.store.stats.add("lena", "2026-10-27", { focusMinutes: 40 });
+    await hidden.store.stats.add("jordan", "2026-10-27", { focusMinutes: 30 });
+    await hidden.engine.setLeaderboardHidden("ana", true);
+    await hidden.engine.startSolo("ana", 60);
+    await hidden.advance(60 * MINUTE);
+    expect(hidden.notifier.badgesFor("ana")).not.toContain("podium");
+  });
+});

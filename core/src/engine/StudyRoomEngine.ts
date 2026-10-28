@@ -3,6 +3,7 @@ import type {
   BossDto,
   CardLookDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MyStatusDto,
   PersonalResultDto,
@@ -254,6 +255,20 @@ export class StudyRoomEngine {
       await tx.cards.save({ ...card, showcase: badgeIds.length > 0 ? badgeIds : null });
       this.touch(effects, userId);
       return this.buildProgress(tx, userId, now);
+    });
+  }
+
+  /** This week's focus-minute standings, plus where the caller stands. */
+  getLeaderboard(userId: string): Promise<LeaderboardDto> {
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now));
+  }
+
+  /** Opting out hides the member from the leaderboard and from rankings in recaps. */
+  async setLeaderboardHidden(userId: string, hidden: unknown): Promise<LeaderboardDto> {
+    if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
+    return this.run(async (tx, now) => {
+      await tx.leaderboard.setHidden(userId, hidden);
+      return this.buildLeaderboard(tx, userId, now);
     });
   }
 
@@ -865,6 +880,7 @@ export class StudyRoomEngine {
     await this.awardBadges(tx, effects, userId, now, {
       session,
       streak: { length: streak.streak, comebackFrom, freezeSaved: freezesSpent > 0 },
+      leaderboard: { rank: await this.weeklyRank(tx, userId, day) },
       quests,
       ...(await this.activityFacts(tx, userId, day)),
     });
@@ -1004,7 +1020,7 @@ export class StudyRoomEngine {
   /**
    * Awards every badge these facts newly earn. XP and level are read here,
    * after the operation's own XP has been saved, so level badges always see
-   * the latest total. The leaderboard passes its facts here too once it lands.
+   * the latest total. Focus blocks also pass the weekly leaderboard rank.
    */
   private async awardBadges(
     tx: Store,
@@ -1024,6 +1040,16 @@ export class StudyRoomEngine {
     effects.badges.set(userId, [...(effects.badges.get(userId) ?? []), ...earned]);
     // The card may show the new badge.
     this.touch(effects, userId);
+  }
+
+  /**
+   * The member's place on this week's leaderboard, for badges. 0 when they're
+   * hidden, unranked, or too few members are ranked for a place to mean much.
+   */
+  private async weeklyRank(tx: Store, userId: string, day: string): Promise<number> {
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekKey(day), day));
+    if (ranked.length < LIMITS.leaderboardBadgeMinRanked) return 0;
+    return ranked.find((e) => e.userId === userId)?.rank ?? 0;
   }
 
   /** Today's and all-time totals, for badges. */
@@ -1345,6 +1371,26 @@ export class StudyRoomEngine {
     };
   }
 
+  private async buildLeaderboard(tx: Store, userId: string, now: number): Promise<LeaderboardDto> {
+    const tz = this.config.timeZone;
+    const today = dayKey(now, tz);
+    const weekStart = weekKey(today);
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekStart, today));
+    const hidden = await tx.leaderboard.isHidden(userId);
+    const mine = ranked.find((e) => e.userId === userId);
+    const myRows = await tx.stats.listForUser(userId, weekStart, today);
+    return {
+      weekStart,
+      endsAt: nextWeekStart(now, tz),
+      entries: ranked.slice(0, LIMITS.leaderboardSize),
+      me: {
+        rank: mine?.rank ?? 0,
+        focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
+        hidden,
+      },
+    };
+  }
+
   /** When the member's "Keep going?" prompt closes, or 0 when it isn't showing for them. */
   private keepGoingEndsAt(
     participant: ParticipantRecord,
@@ -1360,8 +1406,10 @@ export class StudyRoomEngine {
     const tz = this.config.timeZone;
     const day = dayKey(at, tz);
     const stats = await tx.stats.communityDay(day);
+    const hidden = new Set(await tx.leaderboard.listHidden());
     const candidates = await tx.members.listActiveSince(addDays(day, -14));
     const topStreaks = candidates
+      .filter((m) => !hidden.has(m.userId))
       .map((m) => ({
         userId: m.userId,
         streak: currentStreak(m.streak, day, this.config.streakFreezesEnabled),
@@ -1369,6 +1417,11 @@ export class StudyRoomEngine {
       .filter((s) => s.streak > 0)
       .sort((a, b) => b.streak - a.streak || a.userId.localeCompare(b.userId))
       .slice(0, LIMITS.topStreaksInRecap);
+    const topFocus = this.config.recapLeaderboardEnabled
+      ? rankByMinutes(await tx.leaderboard.standings(weekKey(day), day))
+          .slice(0, LIMITS.topFocusInRecap)
+          .map(({ userId, focusMinutes }) => ({ userId, focusMinutes }))
+      : [];
     let boss: RecapDto["boss"] = null;
     if (this.config.boss.enabled) {
       const state = await this.loadBoss(tx, at);
@@ -1388,6 +1441,26 @@ export class StudyRoomEngine {
       activeMembers: stats.activeMembers,
       boss,
       topStreaks,
+      topFocus,
     };
   }
+}
+
+/**
+ * Whole minutes, ranked so ties share a place (1, 2, 2, 4). Rounding down
+ * first means two people shown with the same minutes never get different ranks.
+ */
+function rankByMinutes(rows: readonly { userId: string; focusMinutes: number }[]) {
+  const whole = rows
+    .map((r) => ({ userId: r.userId, focusMinutes: Math.floor(r.focusMinutes) }))
+    .filter((r) => r.focusMinutes > 0)
+    .sort(
+      (a, b) =>
+        b.focusMinutes - a.focusMinutes || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
+    );
+  let rank = 0;
+  return whole.map((r, i) => {
+    if (i === 0 || r.focusMinutes !== whole[i - 1]!.focusMinutes) rank = i + 1;
+    return { ...r, rank };
+  });
 }

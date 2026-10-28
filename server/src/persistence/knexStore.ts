@@ -15,6 +15,7 @@ import type {
   SoloRecord,
   Store,
   TimerPreset,
+  WeekFocusRecord,
 } from "@studyroom/core";
 import type { Knex } from "knex";
 
@@ -137,6 +138,7 @@ export class KnexStore implements Store {
         "room_participants",
         "session_log",
         "daily_stats",
+        "leaderboard_opt_outs",
         "quest_rewards",
         "member_badges",
         "member_cards",
@@ -437,6 +439,33 @@ export class KnexStore implements Store {
         sessionsFinished: num(row?.sessions_finished ?? 0),
       };
     },
+  };
+
+  leaderboard = {
+    isHidden: async (userId: string) =>
+      (await this.db("leaderboard_opt_outs").where({ user_id: userId }).first()) !== undefined,
+    setHidden: async (userId: string, hidden: boolean) => {
+      if (hidden)
+        await this.db("leaderboard_opt_outs").insert({ user_id: userId }).onConflict().ignore();
+      else await this.db("leaderboard_opt_outs").where({ user_id: userId }).delete();
+    },
+    listHidden: async () =>
+      (await this.db("leaderboard_opt_outs").orderBy("user_id", "asc")).map((r: Row) =>
+        String(r.user_id),
+      ),
+    standings: async (fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]> =>
+      (
+        await this.db("daily_stats")
+          .whereBetween("day", [fromDay, toDay])
+          .whereNotIn("user_id", this.db("leaderboard_opt_outs").select("user_id"))
+          .groupBy("user_id")
+          .having(this.db.raw("SUM(focus_minutes) > 0"))
+          .select("user_id", this.db.raw("SUM(focus_minutes) AS focus_minutes"))
+          .orderBy([
+            { column: "focus_minutes", order: "desc" },
+            { column: "user_id", order: "asc" },
+          ])
+      ).map((r: Row) => ({ userId: String(r.user_id), focusMinutes: num(r.focus_minutes) })),
   };
 
   bosses = {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  LeaderboardDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -8,6 +9,7 @@ import type {
   SnapshotDto,
 } from "@studyroom/core";
 import {
+  Leaderboard,
   type MemberStatus,
   PersonalResultEvent,
   PhaseCompletedEvent,
@@ -15,6 +17,8 @@ import {
   RoomSnapshot,
 } from "@studyroom/gen-shared";
 import {
+  leaderboardFromProto,
+  leaderboardToProto,
   personalResultFromProto,
   personalResultToProto,
   phaseCompletedFromProto,
@@ -229,6 +233,21 @@ describe("contract round trip", () => {
     };
     const bytes = Progress.toBinary(progressToProto(progress));
     expect(progressFromProto(Progress.fromBinary(bytes))).toEqual(progress);
+  });
+
+  it("preserves the leaderboard", () => {
+    const board: LeaderboardDto = {
+      weekStart: "2026-10-26",
+      endsAt: 1_793_592_000_000,
+      entries: [
+        { userId: "priya", focusMinutes: 312, rank: 1 },
+        { userId: "ana", focusMinutes: 60, rank: 2 },
+        { userId: "kai", focusMinutes: 60, rank: 2 },
+      ],
+      me: { rank: 0, focusMinutes: 15, hidden: true },
+    };
+    const bytes = Leaderboard.toBinary(leaderboardToProto(board));
+    expect(leaderboardFromProto(Leaderboard.fromBinary(bytes))).toEqual(board);
   });
 });
 

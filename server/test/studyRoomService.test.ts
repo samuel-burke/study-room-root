@@ -33,6 +33,10 @@ function bound(overrides: Partial<Record<keyof Handlers, () => Promise<unknown>>
     setGoalsPrivate: ok("setGoalsPrivate"),
     getProgress: ok("getProgress"),
     deleteMyData: ok("deleteMyData"),
+    setCardStyle: ok("setCardStyle"),
+    setBadgeShowcase: ok("setBadgeShowcase"),
+    getLeaderboard: ok("getLeaderboard"),
+    setLeaderboardHidden: ok("setLeaderboardHidden"),
     keepGoing: ok("keepGoing"),
     ...overrides,
   };
@@ -64,6 +68,18 @@ describe("StudyRoomService", () => {
       ],
       ["getProgress", () => service.getProgress({}, client)],
       ["deleteMyData", () => service.deleteMyData({}, client)],
+      ["setCardStyle", () => service.setCardStyle({ style: "ember" }, client), { style: "ember" }],
+      [
+        "setBadgeShowcase",
+        () => service.setBadgeShowcase({ badgeIds: ["podium"] }, client),
+        { badgeIds: ["podium"] },
+      ],
+      ["getLeaderboard", () => service.getLeaderboard({}, client)],
+      [
+        "setLeaderboardHidden",
+        () => service.setLeaderboardHidden({ hidden: true }, client),
+        { hidden: true },
+      ],
       ["keepGoing", () => service.keepGoing({}, client)],
     ];
     for (const [name, call, request] of calls) {

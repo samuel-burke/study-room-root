@@ -172,9 +172,17 @@
             }
           },
           {
+            "key": "recapLeaderboard",
+            "title": "Leaderboard in recap",
+            "description": "Add the week's top 3 by focus minutes to the daily recap. Members who hid themselves are never listed.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
             "key": "timeZone",
             "title": "Community time zone",
-            "description": "Decides when a day starts for streaks, recaps and the weekly boss.",
+            "description": "Decides when a day starts for streaks, recaps, the weekly boss and the leaderboard.",
             "select": {
               "multiSelect": false,
               "values": ["America/New_York"],

@@ -77,6 +77,11 @@ export interface DailyStatRecord {
 
 export type DailyStatDelta = Partial<Omit<DailyStatRecord, "userId" | "day">>;
 
+export interface WeekFocusRecord {
+  userId: string;
+  focusMinutes: number;
+}
+
 /** A weekly quest reward that has been paid, so it is paid only once. */
 export interface QuestRewardRecord {
   userId: string;
@@ -158,6 +163,16 @@ export interface Store {
     communityDay(day: DayKey): Promise<CommunityDayStats>;
     lifetime(userId: string): Promise<LifetimeStats>;
   };
+  leaderboard: {
+    isHidden(userId: string): Promise<boolean>;
+    setHidden(userId: string, hidden: boolean): Promise<void>;
+    listHidden(): Promise<string[]>;
+    /**
+     * Focus minutes per member summed over [fromDay, toDay], most first (ties
+     * by user id). Members who are hidden or have no minutes are left out.
+     */
+    standings(fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]>;
+  };
   quests: {
     /** Ids of the weekly quests whose reward the member has already received. */
     listRewarded(userId: string, weekKey: DayKey): Promise<string[]>;
@@ -187,7 +202,7 @@ export interface Store {
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, quest rewards, room and solo timers, badges, card style, and their id in boss
+   * stats, quest rewards, room and solo timers, leaderboard opt-out, badges, card style, and their id in boss
    * contributor lists.
    * Community totals for past recaps are not recomputed.
    */

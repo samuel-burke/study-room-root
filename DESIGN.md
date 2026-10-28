@@ -67,6 +67,16 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 A boss spawns lazily each Monday (community time zone) with the admin's name and HP in focus hours. Every focus minute deals damage, multiplied by the combo for room rounds. Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
+## Weekly leaderboard
+
+- Ranked by focus **minutes**, not goals, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
+- Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
+- The board lists the top 10. You always see your own rank and minutes, even below the top 10.
+- Members can hide themselves. Hidden members are left out of the board and out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
+- The daily recap lists the week's top 3 when the admin setting **Leaderboard in recap** is on (default).
+- The Podium and Pole Position badges use the rank at the end of each focus block. A place only counts once at least 3 members are ranked that week, so the first person to focus on a Monday doesn't win by default.
+
 ## Weekly quests
 
 Each week (Monday to Sunday, community time zone) shows three quests from a pool of seven (`core/src/game/quests.ts`), such as "Finish 5 goals", "Finish 3 room rounds" and "Focus on a weekend day". Week _n_ takes three neighbouring quests from the pool, so the set is the same for everyone, consecutive weeks never share a quest, and every quest comes around within three weeks.

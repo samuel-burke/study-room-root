@@ -31,6 +31,7 @@ describe("channel posts", () => {
           { userId: "a", streak: 31 },
           { userId: "missing", streak: 17 },
         ],
+        topFocus: [],
       },
       new Map([
         ["p", "Priya"],
@@ -57,9 +58,36 @@ describe("channel posts", () => {
         activeMembers: 1,
         boss: null,
         topStreaks: [],
+        topFocus: [],
       },
       new Map(),
     );
     expect(text.split("\n")).toHaveLength(2);
+  });
+
+  it("lists the week's top focusers when the recap carries them", () => {
+    const text = dailyRecapPost(
+      {
+        day: "2026-10-28",
+        weekday: "Wednesday",
+        focusMinutes: 300,
+        goalsDone: 0,
+        activeMembers: 3,
+        boss: null,
+        topStreaks: [],
+        topFocus: [
+          { userId: "p", focusMinutes: 312 },
+          { userId: "a", focusMinutes: 60 },
+          { userId: "missing", focusMinutes: 45 },
+        ],
+      },
+      new Map([
+        ["p", "Priya"],
+        ["a", "Ana R."],
+      ]),
+    );
+    expect(text.split("\n").at(-1)).toBe(
+      "This week: 1. Priya 5.2 hrs · 2. Ana R. 1 hr · 3. Someone 45 min",
+    );
   });
 });

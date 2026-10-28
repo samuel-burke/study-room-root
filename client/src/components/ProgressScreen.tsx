@@ -5,8 +5,9 @@ import { heatLevel, percent } from "../lib/view";
 import { BadgeShelf, CardStylePicker } from "./BadgeShelf";
 import { BackIcon, FlameIcon } from "./Icons";
 import { XpBar } from "./SessionPanel";
+import { WeeklyLeaderboard } from "./WeeklyLeaderboard";
 
-/** Level, streak with freeze status, a five-week heatmap, weekly quests, badges and card style. */
+/** Level, streak with freeze status, a five-week heatmap, weekly quests, the weekly leaderboard, badges and card style. */
 export function ProgressScreen({
   gateway,
   xpEnabled,
@@ -134,6 +135,8 @@ export function ProgressScreen({
           />
         </>
       )}
+
+      <WeeklyLeaderboard gateway={gateway} />
 
       <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>

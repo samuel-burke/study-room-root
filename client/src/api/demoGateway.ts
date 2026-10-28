@@ -263,6 +263,13 @@ export class DemoGateway implements StudyRoomGateway {
         await this.store.stats.add(DEMO_USER_ID, addDays(today, -back), { focusMinutes: minutes });
     }
     if (!this.options.bots) return;
+    // Earlier days this week, so the weekly leaderboard has standings to show.
+    for (const [i, bot] of BOTS.entries()) {
+      for (let day = weekKey(today); day < today; day = addDays(day, 1)) {
+        const focusMinutes = 30 + ((i * 47 + Number(day.slice(-2)) * 29) % 120);
+        await this.store.stats.add(bot.userId, day, { focusMinutes });
+      }
+    }
     for (const bot of BOTS) {
       await member(bot.userId, bot.xp, bot.streak);
       await award(bot.userId, bot.badges);
@@ -388,6 +395,14 @@ export class DemoGateway implements StudyRoomGateway {
 
   getProgress() {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
+  }
+
+  getLeaderboard() {
+    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID));
+  }
+
+  setLeaderboardHidden(hidden: boolean) {
+    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden));
   }
 
   setCardStyle(style: string) {
