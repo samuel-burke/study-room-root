@@ -68,10 +68,7 @@ export function TimerCard({
             <span
               key={i}
               className="round-dot"
-              data-done={
-                timer.phase !== "idle" &&
-                (i < timer.round - 1 || (i === timer.round - 1 && timer.phase !== "focus"))
-              }
+              data-done={timer.phase !== "idle" && i < timer.round}
             />
           ))}
           <span style={{ marginLeft: 6 }}>{nextLabel(timer)}</span>

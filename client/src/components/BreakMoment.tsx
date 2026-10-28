@@ -147,7 +147,9 @@ export function BreakMoment({
           <div className="tiny" style={{ color: "var(--break-muted)" }}>
             {breakLeft > 0 ? "Break ends in" : "Break's over"}
           </div>
-          <div className="break-countdown">{formatCountdown(breakLeft)}</div>
+          <div className="break-countdown">
+            {formatCountdown(breakLeft).replace(/^0(\d)/, "$1")}
+          </div>
           {chatChannel && (
             <div className="tiny" style={{ color: "var(--break-muted)" }}>
               Say hi in #{chatChannel}

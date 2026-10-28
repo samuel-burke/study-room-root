@@ -123,7 +123,9 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
         <SettingsSheet room={room} onClose={() => setOverlay(null)} />
       )}
 
-      {state.celebration && <Celebration celebration={state.celebration} />}
+      {state.celebration && (
+        <Celebration celebration={state.celebration} quiet={state.breakMoment !== null} />
+      )}
       {state.breakMoment && (
         <BreakMoment
           result={state.breakMoment}

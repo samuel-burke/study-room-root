@@ -23,7 +23,13 @@ export function confettiPieces(seed: number, count = 36) {
  * The same small burst on every screen when a round ends. Positions come
  * from the round number, so every client renders identical confetti.
  */
-export function Celebration({ celebration }: { celebration: CelebrationState }) {
+export function Celebration({
+  celebration,
+  quiet = false,
+}: {
+  celebration: CelebrationState;
+  quiet?: boolean;
+}) {
   const pieces = useMemo(
     () => confettiPieces(celebration.round * 9973 + celebration.finisherIds.length),
     [celebration.round, celebration.finisherIds.length],
@@ -45,7 +51,7 @@ export function Celebration({ celebration }: { celebration: CelebrationState }) 
           />
         ))}
       </div>
-      <div className="celebration" role="status">
+      <div className={quiet ? "visually-hidden" : "celebration"} role="status">
         Round {celebration.round} complete · {people === 1 ? "1 person" : `${people} people`}{" "}
         finished
         {celebration.combo > 1 ? ` at ${formatCombo(celebration.combo)}` : ""} · break time

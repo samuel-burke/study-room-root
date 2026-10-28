@@ -1380,6 +1380,31 @@ h3 {
   .sheet-handle {
     display: block;
   }
+
+  .app-header {
+    border-bottom: none;
+  }
+
+  /* The break moment takes over the whole screen on phones, like the mockup. */
+  .backdrop:has(.break-sheet) {
+    background: var(--break-bg);
+  }
+
+  .sheet.break-sheet {
+    min-height: 100vh;
+    max-height: 100vh;
+    border: none;
+    border-radius: 0;
+    animation: fade-in 0.2s ease;
+  }
+
+  .break-sheet .sheet-handle {
+    display: none;
+  }
+
+  .break-sheet .break-footer {
+    margin-top: auto;
+  }
 }
 
 /* ---------------------------------------------------------------- motion */

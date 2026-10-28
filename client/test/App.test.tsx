@@ -50,6 +50,14 @@ describe("Study Room app", () => {
     const card = within(board).getByRole("listitem", { name: /You, Room timer/ });
     expect(card).toHaveTextContent("Make 20 flashcards");
     expect(screen.getByText("Focus · round 1 of 4")).toBeInTheDocument();
+    // Like the mockup, the dot for the round in progress is filled.
+    const dots = document.querySelectorAll(".round-dot");
+    expect([...dots].map((d) => d.getAttribute("data-done"))).toEqual([
+      "true",
+      "false",
+      "false",
+      "false",
+    ]);
     expect(screen.getByRole("button", { name: "Leave room timer" })).toBeInTheDocument();
   });
 
