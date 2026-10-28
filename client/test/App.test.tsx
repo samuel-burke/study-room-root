@@ -148,6 +148,8 @@ describe("Study Squad app", () => {
     expect(screen.getByRole("list", { name: "Focus time, last 5 weeks" }).children).toHaveLength(
       35,
     );
+    const quests = screen.getByRole("region", { name: "Weekly quests" });
+    expect(within(quests).getAllByRole("progressbar")).toHaveLength(3);
     await user.click(screen.getByRole("button", { name: "Back to the room" }));
     expect(await screen.findByRole("timer")).toBeInTheDocument();
   });

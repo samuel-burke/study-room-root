@@ -170,7 +170,8 @@ describe("room timer", () => {
     const snap = await engine.getSnapshot("ana");
     expect(notifier.phases).toHaveLength(4);
     expect(snap.me.onRoomTimer).toBe(false);
-    expect(snap.me.xpTotal).toBe(200);
+    // 4 rounds × 25 min × 2 XP, plus this week's "Finish 3 room rounds" quest.
+    expect(snap.me.xpTotal).toBe(200 + 40);
   });
 
   it("uses the preset captured when the cycle began", async () => {
@@ -511,6 +512,66 @@ describe("progress", () => {
     expect(progress.days.at(-1)).toEqual({ day: "2026-10-28", focusMinutes: 45 });
     expect(progress.totalFocusMinutes).toBe(45);
     expect(progress.me.streak).toBe(1);
+  });
+});
+
+describe("weekly quests", () => {
+  // T0's week (Monday 2026-10-26) rotates in: goals, room rounds, weekend focus.
+  const questIds = (quests: { id: string }[]) => quests.map((q) => q.id);
+
+  it("shows this week's three quests with progress", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana", { goals: ["One", "Two"] });
+    const goals = (await engine.getSnapshot("ana")).me.goals;
+    await engine.setGoalDone("ana", goals[0]!.id, true);
+    await advance(FOCUS);
+    const { quests } = await engine.getProgress("ana");
+    expect(questIds(quests)).toEqual(["goals", "roomRounds", "weekendFocus"]);
+    expect(quests).toEqual([
+      expect.objectContaining({ progress: 1, target: 5, xp: 40, done: false }),
+      expect.objectContaining({ progress: 1, target: 3, unit: "count", done: false }),
+      expect.objectContaining({ progress: 0, target: 1, done: false }),
+    ]);
+  });
+
+  it("pays a finished quest once, outside the daily cap", async () => {
+    const { engine } = createHarness(configWith({ xp: { enabled: true, dailyCap: 50 } }));
+    for (let i = 0; i < 6; i++) await engine.addGoal("ana", `Goal ${i}`);
+    const goals = (await engine.getSnapshot("ana")).me.goals;
+    for (const goal of goals.slice(0, 5)) await engine.setGoalDone("ana", goal.id, true);
+    // Two goals fill the 50 XP cap; the quest adds 40 on top.
+    expect((await engine.getSnapshot("ana")).me.xpTotal).toBe(50 + 40);
+    await engine.setGoalDone("ana", goals[5]!.id, true);
+    await engine.setGoalDone("ana", goals[0]!.id, false);
+    await engine.setGoalDone("ana", goals[0]!.id, true);
+    expect((await engine.getSnapshot("ana")).me.xpTotal).toBe(90);
+    const goalsQuest = (await engine.getProgress("ana")).quests[0]!;
+    expect(goalsQuest).toMatchObject({ id: "goals", progress: 5, done: true });
+  });
+
+  it("counts a weekend day and resets on Monday", async () => {
+    const saturday = Date.UTC(2026, 9, 31, 14, 0, 0);
+    const { engine, advance } = createHarness(configWith(), saturday);
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    let progress = await engine.getProgress("ana");
+    expect(progress.quests[2]).toMatchObject({ id: "weekendFocus", done: true });
+    expect(progress.me.xpTotal).toBe(50 + 30);
+
+    await advance(2 * 24 * 60 * MINUTE);
+    progress = await engine.getProgress("ana");
+    expect(questIds(progress.quests)).toEqual(["focusTime", "soloTimers", "activeDays"]);
+    expect(progress.quests.every((q) => q.progress === 0 && !q.done)).toBe(true);
+  });
+
+  it("shows no reward and pays none when XP is off", async () => {
+    const { engine } = createHarness(configWith({ xp: { enabled: false, dailyCap: 300 } }));
+    for (let i = 0; i < 5; i++) await engine.addGoal("ana", `Goal ${i}`);
+    for (const goal of (await engine.getSnapshot("ana")).me.goals)
+      await engine.setGoalDone("ana", goal.id, true);
+    const progress = await engine.getProgress("ana");
+    expect(progress.quests[0]).toMatchObject({ done: true, xp: 0 });
+    expect(progress.me.xpTotal).toBe(0);
   });
 });
 

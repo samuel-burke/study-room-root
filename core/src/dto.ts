@@ -1,6 +1,7 @@
 import type { PhaseKind } from "./timer/roomCycle";
 import type { PresetKey, TimerPreset } from "./timer/presets";
 import type { DayKey } from "./time/calendar";
+import type { QuestUnit } from "./game/quests";
 
 /**
  * Transport-neutral shapes the engine produces. The server maps them to
@@ -129,10 +130,23 @@ export interface DayStatDto {
   focusMinutes: number;
 }
 
+export interface QuestDto {
+  id: string;
+  title: string;
+  /** Capped at the target. Whole minutes when `unit` is "minutes". */
+  progress: number;
+  target: number;
+  unit: QuestUnit;
+  /** Reward for finishing; 0 when XP is off. */
+  xp: number;
+  done: boolean;
+}
+
 export interface ProgressDto {
   me: MyStatusDto;
   days: DayStatDto[];
   totalFocusMinutes: number;
+  quests: QuestDto[];
 }
 
 export interface RecapDto {

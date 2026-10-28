@@ -22,6 +22,7 @@ describe("migrations", () => {
         "goals",
         "kv",
         "members",
+        "quest_rewards",
         "room_cycle",
         "room_participants",
         "session_log",

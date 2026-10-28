@@ -10,6 +10,8 @@ import type {
   PhaseKind,
   PresetKey as PresetKeyDto,
   ProgressDto,
+  QuestDto,
+  QuestUnit as QuestUnitDto,
   RoomPhase,
   RoomStateDto,
   SnapshotDto,
@@ -19,6 +21,7 @@ import {
   MemberStatus,
   Phase,
   PresetKey,
+  QuestUnit,
   ResultSource,
   type Boss,
   type Goal,
@@ -27,6 +30,7 @@ import {
   type PersonalResultEvent,
   type PhaseCompletedEvent,
   type Progress,
+  type Quest,
   type RoomSnapshot,
   type RoomState,
   type TimerPreset,
@@ -61,6 +65,11 @@ const PRESET_TO_PROTO: Record<PresetKeyDto, PresetKey> = {
   custom: PresetKey.CUSTOM,
 };
 
+const QUEST_UNIT_TO_PROTO: Record<QuestUnitDto, QuestUnit> = {
+  count: QuestUnit.COUNT,
+  minutes: QuestUnit.MINUTES,
+};
+
 function invert<K extends string, V extends number>(map: Record<K, V>): Map<V, K> {
   return new Map(Object.entries(map).map(([k, v]) => [v as V, k as K]));
 }
@@ -68,6 +77,7 @@ function invert<K extends string, V extends number>(map: Record<K, V>): Map<V, K
 const PHASE_FROM_PROTO = invert(PHASE_TO_PROTO);
 const STATUS_FROM_PROTO = invert(STATUS_TO_PROTO);
 const PRESET_FROM_PROTO = invert(PRESET_TO_PROTO);
+const QUEST_UNIT_FROM_PROTO = invert(QUEST_UNIT_TO_PROTO);
 
 function phaseFromProto(phase: Phase): RoomPhase {
   return PHASE_FROM_PROTO.get(phase) ?? "idle";
@@ -168,11 +178,22 @@ export function snapshotToProto(snapshot: SnapshotDto): RoomSnapshot {
   return { room: roomToProto(snapshot.room), me: myStatusToProto(snapshot.me) };
 }
 
+const questToProto = (q: QuestDto): Quest => ({
+  id: q.id,
+  title: q.title,
+  progress: q.progress,
+  target: q.target,
+  unit: QUEST_UNIT_TO_PROTO[q.unit],
+  xp: q.xp,
+  done: q.done,
+});
+
 export function progressToProto(progress: ProgressDto): Progress {
   return {
     me: myStatusToProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    quests: progress.quests.map(questToProto),
   };
 }
 
@@ -300,11 +321,22 @@ export function snapshotFromProto(snapshot: RoomSnapshot): SnapshotDto {
   return { room: roomFromProto(snapshot.room), me: myStatusFromProto(snapshot.me) };
 }
 
+const questFromProto = (q: Quest): QuestDto => ({
+  id: q.id,
+  title: q.title,
+  progress: q.progress,
+  target: q.target,
+  unit: QUEST_UNIT_FROM_PROTO.get(q.unit) ?? "count",
+  xp: q.xp,
+  done: q.done,
+});
+
 export function progressFromProto(progress: Progress): ProgressDto {
   return {
     me: myStatusFromProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    quests: progress.quests.map(questFromProto),
   };
 }
 

@@ -7,6 +7,7 @@ import type {
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
+  QuestRewardRecord,
   RoomCycleRecord,
   SessionLogRecord,
   SoloRecord,
@@ -27,6 +28,7 @@ interface Data {
   participants: Map<string, ParticipantRecord>;
   sessions: SessionLogRecord[];
   stats: Map<string, DailyStatRecord>;
+  questRewards: QuestRewardRecord[];
   bosses: Map<string, BossState>;
   kv: Map<string, unknown>;
 }
@@ -39,6 +41,7 @@ const emptyData = (): Data => ({
   participants: new Map(),
   sessions: [],
   stats: new Map(),
+  questRewards: [],
   bosses: new Map(),
   kv: new Map(),
 });
@@ -66,6 +69,7 @@ export class MemoryStore implements Store {
     for (const [id, goal] of d.goals) if (goal.userId === userId) d.goals.delete(id);
     for (const [key, stat] of d.stats) if (stat.userId === userId) d.stats.delete(key);
     d.sessions = d.sessions.filter((s) => s.userId !== userId);
+    d.questRewards = d.questRewards.filter((r) => r.userId !== userId);
     for (const boss of d.bosses.values()) {
       boss.contributorIds = boss.contributorIds.filter((id) => id !== userId);
     }
@@ -156,6 +160,27 @@ export class MemoryStore implements Store {
   sessions = {
     insert: async (log: SessionLogRecord) => {
       this.data.sessions.push(copy(log));
+    },
+    listForUser: async (userId: string, fromMs: number, toMs: number) =>
+      this.data.sessions
+        .filter((s) => s.userId === userId && s.endedAt >= fromMs && s.endedAt < toMs)
+        .sort((a, b) => a.endedAt - b.endedAt)
+        .map(copy),
+  };
+
+  quests = {
+    listRewarded: async (userId: string, weekKey: DayKey) =>
+      this.data.questRewards
+        .filter((r) => r.userId === userId && r.weekKey === weekKey)
+        .map((r) => r.questId),
+    markRewarded: async (record: QuestRewardRecord) => {
+      const exists = this.data.questRewards.some(
+        (r) =>
+          r.userId === record.userId &&
+          r.weekKey === record.weekKey &&
+          r.questId === record.questId,
+      );
+      if (!exists) this.data.questRewards.push(copy(record));
     },
   };
 

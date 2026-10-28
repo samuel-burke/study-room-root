@@ -6,6 +6,7 @@ import type {
   MyStatusDto,
   PersonalResultDto,
   ProgressDto,
+  QuestDto,
   RecapDto,
   RoomStateDto,
   RoomTimerDto,
@@ -20,6 +21,7 @@ import {
   type BossState,
 } from "../game/boss";
 import { comboFor } from "../game/combo";
+import { questProgress, questsForWeek, type QuestProgress } from "../game/quests";
 import { currentStreak, EMPTY_STREAK, freezeAvailable, recordActiveDay } from "../game/streak";
 import { applyDailyCap, baseFocusXp, focusXp, levelFromXp } from "../game/xp";
 import type { AppConfig } from "../settings";
@@ -187,6 +189,7 @@ export class StudyRoomEngine {
         me: await this.buildMyStatus(tx, userId, now),
         days,
         totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
+        quests: (await this.weeklyQuests(tx, userId, now)).map((q) => this.questDto(q)),
       };
     });
   }
@@ -340,6 +343,7 @@ export class StudyRoomEngine {
           const member = await this.loadMember(tx, userId);
           await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
           await tx.stats.add(userId, day, { xp, goalsDone: 1 });
+          await this.rewardQuests(tx, userId, now);
         }
         await tx.goals.update(updated);
       }
@@ -721,6 +725,7 @@ export class StudyRoomEngine {
       xp: xpEarned,
       combo,
     });
+    await this.rewardQuests(tx, userId, now);
 
     const channelId = this.config.postChannelId;
     if (
@@ -772,6 +777,58 @@ export class StudyRoomEngine {
         a.bossDefeated(channelId, boss.name, boss.contributorIds.length, lootXp),
       );
     }
+  }
+
+  /**
+   * Pays the reward for every quest the member has just finished this week.
+   * Like boss loot it is outside the daily cap: it comes at most three times
+   * a week, and a capped reward would often be zero.
+   */
+  private async rewardQuests(tx: Store, userId: string, now: number): Promise<void> {
+    const week = weekKey(dayKey(now, this.config.timeZone));
+    const rewarded = new Set(await tx.quests.listRewarded(userId, week));
+    let xp = 0;
+    for (const { quest, done } of await this.weeklyQuests(tx, userId, now)) {
+      if (!done || rewarded.has(quest.id)) continue;
+      const questXp = this.config.xp.enabled ? quest.xp : 0;
+      await tx.quests.markRewarded({
+        userId,
+        weekKey: week,
+        questId: quest.id,
+        xp: questXp,
+        rewardedAt: now,
+      });
+      xp += questXp;
+    }
+    if (xp > 0) {
+      const member = await this.loadMember(tx, userId);
+      await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+    }
+  }
+
+  /** This week's quests and the member's progress, from daily_stats and session_log. */
+  private async weeklyQuests(tx: Store, userId: string, now: number): Promise<QuestProgress[]> {
+    const tz = this.config.timeZone;
+    const week = weekKey(dayKey(now, tz));
+    const days = await tx.stats.listForUser(userId, week, addDays(week, 6));
+    const sessions = await tx.sessions.listForUser(
+      userId,
+      startOfDay(week, tz),
+      startOfDay(addDays(week, 7), tz),
+    );
+    return questsForWeek(week).map((quest) => questProgress(quest, { days, sessions }));
+  }
+
+  private questDto({ quest, progress, done }: QuestProgress): QuestDto {
+    return {
+      id: quest.id,
+      title: quest.title,
+      progress,
+      target: quest.target,
+      unit: quest.unit,
+      xp: this.config.xp.enabled ? quest.xp : 0,
+      done,
+    };
   }
 
   private async checkBusyRoom(tx: Store, now: number, effects: Effects): Promise<void> {

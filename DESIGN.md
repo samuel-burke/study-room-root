@@ -36,6 +36,7 @@ The room timer is the default and the brighter button because joining it is what
 | Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
 | Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
 | Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
+| Weekly quests     | +30 to +40 XP per quest, once per week, outside the cap           | At most three a week; a capped reward would often be zero                |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
@@ -64,6 +65,15 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 A boss spawns lazily each Monday (community time zone) with the admin's name and HP in focus hours. Every focus minute deals damage, multiplied by the combo for room rounds. Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
+## Weekly quests
+
+Each week (Monday to Sunday, community time zone) shows three quests from a pool of seven (`core/src/game/quests.ts`), such as "Finish 5 goals", "Finish 3 room rounds" and "Focus on a weekend day". Week _n_ takes three neighbouring quests from the pool, so the set is the same for everyone, consecutive weeks never share a quest, and every quest comes around within three weeks.
+
+- Quests are sized so a new member can finish them in an ordinary week.
+- Progress is read from `session_log` and `daily_stats`, so there are no extra counters to keep in sync. The only new table, `quest_rewards`, records which rewards were paid so each is paid once.
+- "Focus" quests count finished sessions, the same rule as streak days, so a few seconds on a timer doesn't count.
+- A reward is paid the moment a quest is finished. When XP is off, quests still show progress but pay nothing, and turning XP back on doesn't pay out quests already finished that week.
+
 ## Channel posts
 
 - **Busy room**: once when the number of people focusing reaches the threshold, then not again until it drops below and three hours have passed.
@@ -82,7 +92,8 @@ Numeric settings are `select` items, not `number` items: in `@rootsdk/dev-tools`
 
 - **Name**: the mockups say "Study Room"; the app is now called Study Squad. Internal code names (`StudyRoomEngine`, the `StudyRoomService` Protobuf service, `@studyroom/*` packages) keep the old name, because renaming the service would change the wire paths for no user benefit.
 - **Admin setup** is Root's App settings screen (see above). The room shows a read-only summary behind the settings button.
-- **Weekly quests and badges** on the progress screen are not in v1. They were in the gamification ideas but outside the v1 scope (XP, combo, boss).
+- **Badges** on the progress screen are not built yet. Weekly quests shipped after v1.
+- **Weekly quests**: rewards are smaller than the mockup's (+30 to +40 XP rather than +50 to +100) to keep them a bonus next to focus XP, and "Join 3 room timers" counts finished room rounds.
 - **"Chat in #study-hall"** on the break screen is a hint, not a link, because the SDK has no supported way to deep-link to a channel.
 - **Avatars** use Root profile pictures when a member has one, and the design's initials and colors otherwise.
 - Fonts (DM Sans, Space Grotesk) are bundled with the client instead of loaded from Google Fonts, to avoid third-party requests from inside Root.

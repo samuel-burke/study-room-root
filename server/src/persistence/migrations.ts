@@ -99,6 +99,24 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    // Progress itself is read from session_log and daily_stats; this only
+    // records which weekly quest rewards were paid, so each is paid once.
+    name: "002_quest_rewards",
+    async up(db) {
+      await db.schema.createTable("quest_rewards", (t) => {
+        t.string("user_id").notNullable();
+        t.string("week_key").notNullable();
+        t.string("quest_id").notNullable();
+        t.integer("xp").notNullable();
+        t.bigInteger("rewarded_at").notNullable();
+        t.primary(["user_id", "week_key", "quest_id"]);
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("quest_rewards");
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {
