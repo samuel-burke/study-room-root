@@ -8,6 +8,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - AFK check: one "Still there?" tap per room cycle (about every two hours on 25/5), never in your first round, and one in solo timers of an hour or more. A missed tap never stops the timer and still counts the minutes; only that round earns no combo and doesn't count toward the streak. Admins can turn it off under **Game layer → AFK checks**.
 
+### Changed
+
+- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), AFK checks and the on-device sound mute.
+
 ## [0.1.0] - 2026-10-28
 
 First release of **Study Squad: Group Study Timer**, covering the v1 scope.
