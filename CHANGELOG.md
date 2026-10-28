@@ -7,6 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
+- Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength. This turns on the Giant Slayer and Survived Finals badges.
 - Weekly leaderboard on the progress screen, ranked by focus minutes and reset every Monday in the community time zone. Members can hide themselves, which also keeps them out of recap rankings.
 - The daily recap lists the week's top 3 by focus minutes (admin setting **Leaderboard in recap**, on by default)
 - Weekly quests on the progress screen: three rotating quests each week that reset on Monday and pay a small XP bonus, plus the three quest badges
@@ -18,6 +19,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- Boss HP and damage are measured in XP instead of focus minutes. Every XP earned focusing (combo included, before the daily cap) is damage. The "Boss HP (focus hours)" setting is replaced by "Boss base HP (XP)", default 10,000. Bosses already in the database convert at 2 XP per minute.
+- Boss loot is 100 XP times the boss's strength (50 to 200 XP), up from a flat 50.
 - Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), "Keep going?" taps and the on-device sound mute.
 
 ### Fixed

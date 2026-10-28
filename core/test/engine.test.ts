@@ -68,7 +68,7 @@ describe("room timer", () => {
     const phase = notifier.phases[0]!;
     expect(phase).toMatchObject({ kind: "focus", round: 1, combo: 1.1 });
     expect(phase.finisherIds.sort()).toEqual(["ana", "marcus"]);
-    expect(phase.roomDamageMinutes).toBeCloseTo(55);
+    expect(phase.roomDamageXp).toBe(110); // 2 × 50 base XP × 1.1
     expect(phase.room.timer.phase).toBe("break");
 
     const ana = notifier.personal.find((p) => p.userId === "ana")!.event;
@@ -85,7 +85,7 @@ describe("room timer", () => {
       breakEndsAt: T0 + FOCUS + BREAK,
     });
     expect(ana.me.status).toBe("roomBreak");
-    expect(notifier.lastRoom?.boss.damageMinutes).toBeCloseTo(55);
+    expect(notifier.lastRoom?.boss.damageXp).toBe(110);
   });
 
   it("doesn't let a last-second joiner count toward the combo or a finished round", async () => {
@@ -346,37 +346,66 @@ describe("XP rules", () => {
 });
 
 describe("weekly boss", () => {
-  it("is defeated by focus minutes, pays out loot and posts once", async () => {
-    const config = configWith({ boss: { enabled: true, name: "Quiz", hpHours: 1 } });
+  it("is defeated by XP earned, pays out loot scaled by strength and posts once", async () => {
+    // "Quiz" is a 0.75x boss: 200 base HP becomes 150, and loot is 75 XP.
+    const config = configWith({ boss: { enabled: true, name: "Quiz", baseHpXp: 200 } });
     const { engine, announcer, advance } = createHarness(config);
     await engine.joinRoomTimer("ana");
     await engine.joinRoomTimer("kai");
-    await advance(FOCUS); // 2 × 25 × 1.1 = 55 minutes
-    expect((await engine.getSnapshot("ana")).room.boss.defeated).toBe(false);
+    await advance(FOCUS); // 2 × 55 XP = 110 damage
+    const before = (await engine.getSnapshot("ana")).room.boss;
+    expect(before).toMatchObject({ defeated: false, damageXp: 110, maxHpXp: 150 });
+    expect(before).toMatchObject({ strength: 0.75, lootXp: 75 });
     await advance(BREAK + FOCUS);
     const snap = await engine.getSnapshot("ana");
-    expect(snap.room.boss).toMatchObject({ defeated: true, damageMinutes: 60, maxHpMinutes: 60 });
-    // 55 XP per round (capped later by nothing) + 50 loot.
-    expect(snap.me.xpTotal).toBe(55 + 55 + 50);
+    expect(snap.room.boss).toMatchObject({ defeated: true, damageXp: 150, maxHpXp: 150 });
+    // 55 XP per round + 75 loot.
+    expect(snap.me.xpTotal).toBe(55 + 55 + 75);
     expect(announcer.posts.filter((p) => p.kind === "boss")).toEqual([
       {
         kind: "boss",
         channelId: "channel-1",
-        detail: { bossName: "Quiz", contributorCount: 2, lootXp: 50 },
+        detail: { bossName: "Quiz", contributorCount: 2, lootXp: 75 },
       },
     ]);
   });
 
-  it("can be renamed and resized live by admins", async () => {
-    const { engine } = createHarness();
-    await engine.setConfig(configWith({ boss: { enabled: true, name: "Finals", hpHours: 20 } }));
+  it("takes the XP a session earns before the daily cap", async () => {
+    const { engine, advance } = createHarness(configWith({ xp: { enabled: true, dailyCap: 20 } }));
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
     const snap = await engine.getSnapshot("ana");
-    expect(snap.room.boss).toMatchObject({ name: "Finals", maxHpMinutes: 1200, enabled: true });
+    expect(snap.me.xpToday).toBe(20);
+    expect(snap.room.boss.damageXp).toBe(50);
+  });
+
+  it("still takes damage with XP turned off, but drops no loot", async () => {
+    const { engine, advance } = createHarness(
+      configWith({ xp: { enabled: false, dailyCap: 300 } }),
+    );
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    const boss = (await engine.getSnapshot("ana")).room.boss;
+    expect(boss.damageXp).toBe(50);
+    expect(boss.lootXp).toBe(0);
+  });
+
+  it("can be renamed and resized live by admins, with strength from the name", async () => {
+    const { engine } = createHarness();
+    await engine.setConfig(configWith({ boss: { enabled: true, name: "Finals", baseHpXp: 1000 } }));
+    const snap = await engine.getSnapshot("ana");
+    expect(snap.room.boss).toMatchObject({
+      name: "Finals",
+      maxHpXp: 2000,
+      strength: 2,
+      lootXp: 200,
+      enabled: true,
+    });
   });
 
   it("takes no damage when turned off", async () => {
     const { engine, advance } = createHarness(
-      configWith({ boss: { enabled: false, name: "x", hpHours: 1 } }),
+      configWith({ boss: { enabled: false, name: "x", baseHpXp: 100 } }),
     );
     await engine.startSolo("ana", 25);
     await advance(25 * MINUTE);

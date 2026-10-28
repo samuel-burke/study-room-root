@@ -51,7 +51,7 @@ describe("roomReducer", () => {
       kind: "focus" as const,
       round: 2,
       finisherIds: ["a", "b"],
-      roomDamageMinutes: 55,
+      roomDamageXp: 110,
       combo: 1.1,
       room: snap.room,
     };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DomainError, ErrorCode, EMPTY_STREAK, DEFAULT_CONFIG, addDays } from "../src";
+import { DomainError, ErrorCode, EMPTY_STREAK, addDays } from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
@@ -81,7 +81,8 @@ describe("earning badges", () => {
   });
 
   it("gives boss badges to everyone who helped, and Final Blow to whoever finished it", async () => {
-    const config = configWith({ boss: { ...DEFAULT_CONFIG.boss, hpHours: 1 } });
+    // A 1x boss with 100 HP: each 30-minute solo deals 60 XP of damage.
+    const config = configWith({ boss: { enabled: true, name: "Calc II", baseHpXp: 100 } });
     const { engine, notifier, advance } = createHarness(config);
     await engine.startSolo("kai", 30);
     await advance(30 * MINUTE);
@@ -95,13 +96,22 @@ describe("earning badges", () => {
   });
 
   it("gives One-Person Army for a boss defeated alone", async () => {
-    const config = configWith({ boss: { ...DEFAULT_CONFIG.boss, hpHours: 0.5 } });
+    const config = configWith({ boss: { enabled: true, name: "Calc II", baseHpXp: 50 } });
     const { engine, notifier, advance } = createHarness(config);
     await engine.startSolo("ana", 30);
     await advance(30 * MINUTE);
     expect(notifier.badgesFor("ana")).toEqual(
       expect.arrayContaining(["first-boss", "final-blow", "one-person-army"]),
     );
+  });
+
+  it("gives Giant Slayer for a 2x boss, using the boss's strength", async () => {
+    // "Finals" is a 2x boss, so 25 base HP becomes 50.
+    const config = configWith({ boss: { enabled: true, name: "Finals", baseHpXp: 25 } });
+    const { engine, notifier, advance } = createHarness(config);
+    await engine.startSolo("ana", 30);
+    await advance(30 * MINUTE);
+    expect(notifier.badgesFor("ana")).toContain("giant-slayer");
   });
 
   it("gives Comeback to someone whose streak broke and who came back", async () => {

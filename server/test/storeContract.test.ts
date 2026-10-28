@@ -217,8 +217,8 @@ describe.each(implementations)("%s", (_name, open) => {
 
   it("stores bosses and key-values", async () => {
     const boss = {
-      ...newBoss("2026-10-26", "Midterms", 100),
-      damageMinutes: 12.5,
+      ...newBoss("2026-10-26", "Midterms", 10_000),
+      damageXp: 25,
       contributorIds: ["a"],
     };
     await store.bosses.save(boss);

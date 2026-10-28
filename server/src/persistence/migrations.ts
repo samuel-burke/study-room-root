@@ -1,5 +1,8 @@
 import type { Knex } from "knex";
 
+/** XP per focus minute when 006_boss_xp shipped. Frozen here so the migration never changes. */
+const XP_PER_MINUTE_AT_006 = 2;
+
 /**
  * Schema migrations, defined in code so they ship inside server/dist with no
  * extra files to package. Append new migrations; never edit a released one.
@@ -164,6 +167,32 @@ const migrations: Migration[] = [
       });
     },
   },
+  {
+    // Boss HP and damage moved from focus minutes to XP. Existing rows convert
+    // at the XP rate of a minute, rounded to whole XP, so a boss mid-week keeps
+    // its percent defeated.
+    name: "006_boss_xp",
+    async up(db) {
+      await db.schema.alterTable("bosses", (t) => {
+        t.renameColumn("max_hp_minutes", "max_hp_xp");
+        t.renameColumn("damage_minutes", "damage_xp");
+      });
+      await db("bosses").update({
+        max_hp_xp: db.raw("ROUND(max_hp_xp * ?)", [XP_PER_MINUTE_AT_006]),
+        damage_xp: db.raw("ROUND(damage_xp * ?)", [XP_PER_MINUTE_AT_006]),
+      });
+    },
+    async down(db) {
+      await db("bosses").update({
+        max_hp_xp: db.raw("max_hp_xp / ?", [XP_PER_MINUTE_AT_006]),
+        damage_xp: db.raw("damage_xp / ?", [XP_PER_MINUTE_AT_006]),
+      });
+      await db.schema.alterTable("bosses", (t) => {
+        t.renameColumn("max_hp_xp", "max_hp_minutes");
+        t.renameColumn("damage_xp", "damage_minutes");
+      });
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {
@@ -178,16 +207,16 @@ class CodeMigrationSource implements Knex.MigrationSource<Migration> {
   }
 }
 
+/** Knex migrator config. Exported so tests can step through migrations one at a time. */
+export const migratorConfig: Knex.MigratorConfig = {
+  migrationSource: new CodeMigrationSource(),
+  tableName: "knex_migrations",
+};
+
 export async function migrateToLatest(db: Knex): Promise<void> {
-  await db.migrate.latest({
-    migrationSource: new CodeMigrationSource(),
-    tableName: "knex_migrations",
-  });
+  await db.migrate.latest(migratorConfig);
 }
 
 export async function rollbackAll(db: Knex): Promise<void> {
-  await db.migrate.rollback(
-    { migrationSource: new CodeMigrationSource(), tableName: "knex_migrations" },
-    true,
-  );
+  await db.migrate.rollback(migratorConfig, true);
 }

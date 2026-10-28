@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   applyDailyCap,
   applyDamage,
-  BOSS_NAMES,
+  BOSSES,
+  bossLootXp,
   bossNameFor,
   baseFocusXp,
-  bossHpLeftMinutes,
+  bossHpLeft,
+  bossStrength,
   comboFor,
   formatCombo,
   focusXp,
@@ -66,26 +68,29 @@ describe("XP", () => {
 });
 
 describe("boss", () => {
-  const boss = newBoss("2026-10-26", "Midterms", 100);
+  // "Calc II" has no keyword, so it's a 1x boss and HP is the base.
+  const boss = newBoss("2026-10-26", "Calc II", 6000);
 
-  it("converts HP hours into minutes", () => {
-    expect(boss.maxHpMinutes).toBe(6000);
-    expect(bossHpLeftMinutes(boss)).toBe(6000);
+  it("starts with the base HP times its strength", () => {
+    expect(boss.maxHpXp).toBe(6000);
+    expect(bossHpLeft(boss)).toBe(6000);
+    expect(newBoss("w", "Midterms", 6000).maxHpXp).toBe(9000);
+    expect(newBoss("w", "The Final Final Exam", 6000).maxHpXp).toBe(12_000);
   });
 
   it("takes damage and tracks contributors once each", () => {
     const first = applyDamage(boss, 225, ["a", "b"], 1);
     const second = applyDamage(first.boss, 30, ["b", "c"], 2);
-    expect(second.boss.damageMinutes).toBe(255);
+    expect(second.boss.damageXp).toBe(255);
     expect(second.boss.contributorIds.sort()).toEqual(["a", "b", "c"]);
     expect(second.defeatedNow).toBe(false);
   });
 
   it("is defeated exactly once and never overkilled", () => {
-    const small = newBoss("w", "Quiz", 1);
+    const small = newBoss("w", "Calc II", 60);
     const hit = applyDamage(small, 90, ["a"], 5);
     expect(hit.defeatedNow).toBe(true);
-    expect(hit.boss.damageMinutes).toBe(60);
+    expect(hit.boss.damageXp).toBe(60);
     expect(hit.boss.defeatedAt).toBe(5);
     const again = applyDamage(hit.boss, 10, ["b"], 6);
     expect(again.defeatedNow).toBe(false);
@@ -100,27 +105,96 @@ describe("boss", () => {
   describe("reconfigureBoss", () => {
     it("renames and resizes without healing", () => {
       const hurt = applyDamage(boss, 600, ["a"], 1).boss;
-      const result = reconfigureBoss(hurt, "Finals", 50, 2);
+      const result = reconfigureBoss(hurt, "Finals", 1500, 2);
       expect(result.boss.name).toBe("Finals");
-      expect(result.boss.maxHpMinutes).toBe(3000);
-      expect(result.boss.damageMinutes).toBe(600);
+      expect(result.boss.maxHpXp).toBe(3000);
+      expect(result.boss.damageXp).toBe(600);
       expect(result.defeatedNow).toBe(false);
     });
 
     it("defeats the boss when HP drops below damage dealt", () => {
       const hurt = applyDamage(boss, 600, ["a"], 1).boss;
-      const result = reconfigureBoss(hurt, "Midterms", 5, 2);
+      const result = reconfigureBoss(hurt, "Midterms", 200, 2);
       expect(result.defeatedNow).toBe(true);
-      expect(result.boss.damageMinutes).toBe(300);
+      expect(result.boss.damageXp).toBe(300);
     });
 
     it("keeps a defeated boss defeated", () => {
-      const dead = applyDamage(newBoss("w", "Quiz", 1), 60, ["a"], 1).boss;
-      const result = reconfigureBoss(dead, "Quiz 2", 100, 2);
+      const dead = applyDamage(newBoss("w", "Calc II", 60), 60, ["a"], 1).boss;
+      const result = reconfigureBoss(dead, "Calc III", 100, 2);
       expect(result.boss.defeatedAt).toBe(1);
-      expect(result.boss.maxHpMinutes).toBe(60);
+      expect(result.boss.maxHpXp).toBe(60);
       expect(result.defeatedNow).toBe(false);
     });
+  });
+});
+
+describe("bossStrength", () => {
+  it("makes exams tougher than quizzes", () => {
+    expect(bossStrength("The Final Final Exam")).toBe(2);
+    expect(bossStrength("The Midterm Minotaur")).toBe(1.5);
+    expect(bossStrength("Professor Pop Quiz")).toBe(0.75);
+    expect(bossStrength("Snack Break Goblin")).toBe(0.5);
+    expect(bossStrength("Finals")).toBeGreaterThan(bossStrength("Midterms"));
+    expect(bossStrength("Midterms")).toBeGreaterThan(bossStrength("Pop quiz"));
+    expect(bossStrength("Calc II")).toBe(1);
+  });
+
+  it("matches whole words only", () => {
+    expect(bossStrength("Finalsville")).toBe(1);
+    expect(bossStrength("Quizzes")).toBe(0.75);
+  });
+
+  it("averages exactly 1x across the built-in list", () => {
+    const mean = BOSSES.reduce((sum, b) => sum + b.strength, 0) / BOSSES.length;
+    expect(mean).toBeCloseTo(1, 10);
+    expect(BOSSES.some((b) => b.strength < 1)).toBe(true);
+    expect(BOSSES.some((b) => b.strength > 1)).toBe(true);
+  });
+
+  it("keeps every built-in boss between 0.5x and 2x", () => {
+    for (const b of BOSSES) {
+      expect(b.strength).toBeGreaterThanOrEqual(0.5);
+      expect(b.strength).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it("scales loot with strength", () => {
+    expect(bossLootXp("Calc II")).toBe(100);
+    expect(bossLootXp("Professor Pop Quiz")).toBe(75);
+    expect(bossLootXp("The Final Final Exam")).toBe(200);
+  });
+});
+
+describe("whole XP", () => {
+  const combos = Array.from({ length: 12 }, (_, people) => comboFor(people + 1));
+  const minutes = [0.4, 1, 7.5, 12.3, 25, 49.99, 50, 180];
+  const isWhole = (n: number) => expect(Number.isInteger(n), String(n)).toBe(true);
+
+  it("rounds focus XP for every combo step", () => {
+    for (const combo of combos) for (const m of minutes) isWhole(focusXp(m, combo));
+    for (const m of minutes) isWhole(baseFocusXp(m));
+  });
+
+  it("rounds the daily cap remainder", () => {
+    isWhole(applyDailyCap(77, 0, 300));
+    isWhole(applyDailyCap(77, 250.5, 300));
+  });
+
+  it("rounds every boss's HP and loot for any base HP", () => {
+    for (const { name } of BOSSES) {
+      for (const base of [100, 333, 1000, 2501, 10_000, 99_999]) {
+        isWhole(newBoss("w", name, base).maxHpXp);
+        isWhole(reconfigureBoss(newBoss("w", name, 500), name, base, 1).boss.maxHpXp);
+      }
+      isWhole(bossLootXp(name));
+    }
+  });
+
+  it("rounds damage, even a fractional hit", () => {
+    const hit = applyDamage(newBoss("w", "Calc II", 1000), 12.6, ["a"], 1).boss;
+    expect(hit.damageXp).toBe(13);
+    expect(bossHpLeft(hit)).toBe(987);
   });
 });
 
@@ -130,22 +204,23 @@ describe("bossNameFor", () => {
   });
 
   it("gives every week a built-in name and moves to the next one each Monday", () => {
-    const first = BOSS_NAMES.indexOf(bossNameFor("2026-10-26", ""));
+    const names = BOSSES.map((b) => b.name);
+    const first = names.indexOf(bossNameFor("2026-10-26", ""));
     expect(first).toBeGreaterThanOrEqual(0);
-    expect(bossNameFor("2026-11-02", "")).toBe(BOSS_NAMES[(first + 1) % BOSS_NAMES.length]);
+    expect(bossNameFor("2026-11-02", "")).toBe(names[(first + 1) % names.length]);
   });
 
   it("does not repeat a name until the list runs out", () => {
     const names = new Set<string>();
-    for (let week = 0; week < BOSS_NAMES.length; week++) {
+    for (let week = 0; week < BOSSES.length; week++) {
       const monday = new Date(Date.UTC(2026, 9, 26) + week * 7 * 86_400_000);
       names.add(bossNameFor(monday.toISOString().slice(0, 10), ""));
     }
-    expect(names.size).toBe(BOSS_NAMES.length);
+    expect(names.size).toBe(BOSSES.length);
   });
 
   it("only has names that fit the 40-character limit", () => {
-    expect(new Set(BOSS_NAMES).size).toBe(BOSS_NAMES.length);
-    for (const name of BOSS_NAMES) expect(name.length).toBeLessThanOrEqual(40);
+    expect(new Set(BOSSES.map((b) => b.name)).size).toBe(BOSSES.length);
+    for (const { name } of BOSSES) expect(name.length).toBeLessThanOrEqual(40);
   });
 });

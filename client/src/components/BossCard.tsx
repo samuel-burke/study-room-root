@@ -1,4 +1,4 @@
-import { formatCombo, type BossDto } from "@studyroom/core";
+import { formatCombo, formatXp, type BossDto } from "@studyroom/core";
 import { percent } from "../lib/view";
 import { SwordIcon } from "./Icons";
 
@@ -10,19 +10,23 @@ function daysLeft(boss: BossDto, now: number): string {
 }
 
 function hpLeft(boss: BossDto) {
-  return Math.max(0, boss.maxHpMinutes - boss.damageMinutes);
+  return Math.max(0, boss.maxHpXp - boss.damageXp);
 }
 
-/** "61 of 100 hrs" — HP left rounds up so a boss never reads 0 before it's defeated. */
+/** "7,320 of 12,000" — HP left rounds up so a boss never reads 0 before it's defeated. */
 export function hpText(boss: BossDto): string {
-  const left = boss.defeated ? 0 : Math.ceil(hpLeft(boss) / 60);
-  const max = Math.round(boss.maxHpMinutes / 60);
-  return `${left} of ${max} ${max === 1 ? "hr" : "hrs"}`;
+  const left = boss.defeated ? 0 : Math.ceil(hpLeft(boss));
+  return `${formatXp(left)} of ${formatXp(boss.maxHpXp)}`;
+}
+
+/** "Strength 1.5×" — 1 decimal, like the combo. */
+export function strengthText(boss: BossDto): string {
+  return `Strength ${boss.strength.toFixed(1)}×`;
 }
 
 export function BossCard({ boss, combo, now }: { boss: BossDto; combo: number; now: number }) {
   const left = hpLeft(boss);
-  const defeatedPct = percent(boss.damageMinutes, boss.maxHpMinutes);
+  const defeatedPct = percent(boss.damageXp, boss.maxHpXp);
   return (
     <section aria-label="Weekly boss" className="card boss" data-defeated={boss.defeated}>
       <div className="row-between">
@@ -32,14 +36,22 @@ export function BossCard({ boss, combo, now }: { boss: BossDto; combo: number; n
         </div>
         <div className="tiny muted">{daysLeft(boss, now)}</div>
       </div>
-      <div className="boss-name">{boss.name}</div>
+      <div className="row-between">
+        <div className="boss-name">{boss.name}</div>
+        <div
+          className="tiny"
+          style={{ color: "var(--boss-muted)", whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          {strengthText(boss)}
+        </div>
+      </div>
       <div>
         <div
           className="bar"
           role="meter"
           aria-label={`${boss.name} health`}
           aria-valuemin={0}
-          aria-valuemax={boss.maxHpMinutes}
+          aria-valuemax={boss.maxHpXp}
           aria-valuenow={left}
         >
           <span style={{ width: `${100 - defeatedPct}%` }} />
@@ -54,11 +66,16 @@ export function BossCard({ boss, combo, now }: { boss: BossDto; combo: number; n
       </div>
       <div className="boss-text">
         {boss.defeated ? (
-          "Defeated! Everyone who pitched in earned loot. A new boss spawns Monday."
+          boss.lootXp > 0 ? (
+            `Defeated! Everyone who pitched in earned +${boss.lootXp} XP. A new boss spawns Monday.`
+          ) : (
+            "Defeated! A new boss spawns Monday."
+          )
         ) : (
           <>
-            Every focus minute is damage. Right now the room hits at{" "}
+            Every XP you earn focusing is damage. Right now the room hits at{" "}
             <strong>{formatCombo(combo)}</strong>.
+            {boss.lootXp > 0 && <> Defeat it for +{boss.lootXp} XP each.</>}
           </>
         )}
       </div>
@@ -76,7 +93,7 @@ export function MobileBoss({ boss }: { boss: BossDto }) {
         </span>
       </div>
       <div className="bar" aria-hidden="true">
-        <span style={{ width: `${100 - percent(boss.damageMinutes, boss.maxHpMinutes)}%` }} />
+        <span style={{ width: `${100 - percent(boss.damageXp, boss.maxHpXp)}%` }} />
       </div>
     </div>
   );

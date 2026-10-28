@@ -91,7 +91,7 @@ describe("ChannelAnnouncer", () => {
       focusMinutes: 120,
       goalsDone: 3,
       activeMembers: 2,
-      boss: { name: "<Midterms>", hpLeftMinutes: 60, daysLeft: 4, defeated: false },
+      boss: { name: "<Midterms>", hpLeftXp: 1200, daysLeft: 4, defeated: false },
       topStreaks: [{ userId: "ana", streak: 31 }],
       topFocus: [{ userId: "ana", focusMinutes: 90 }],
     };
@@ -101,7 +101,7 @@ describe("ChannelAnnouncer", () => {
     expect(posts[0]!.content).toContain("Top streaks: everyone Ana R. 31");
     expect(posts[0]!.content).toContain("This week: 1. everyone Ana R. 1.5 hrs");
     expect(channel.nickname).toHaveBeenCalledTimes(1);
-    expect(posts[0]!.content).toContain("Midterms: down to 1 hr HP");
+    expect(posts[0]!.content).toContain("Midterms: down to 1,200 HP");
     expect(posts[0]!.content).not.toContain("<");
     expect(posts[1]!.content).toContain("6 people are focusing");
     expect(posts[2]!.content).toContain("defeated Midterms");

@@ -278,10 +278,10 @@ export class DemoGateway implements StudyRoomGateway {
         await this.store.cards.save({ userId: bot.userId, style: bot.cardStyle, showcase: null });
     }
     const week = weekKey(dayKey(Date.now(), tz));
-    const boss = newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.hpHours);
+    const boss = newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.baseHpXp);
     await this.store.bosses.save({
       ...boss,
-      damageMinutes: Math.round(boss.maxHpMinutes * BOSS_DAMAGE_SHARE),
+      damageXp: Math.round(boss.maxHpXp * BOSS_DAMAGE_SHARE),
     });
   }
 

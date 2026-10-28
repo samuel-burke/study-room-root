@@ -4,8 +4,8 @@ export const GAME = {
   xpPerFocusMinute: 2,
   /** XP for finishing a goal. Awarded once per goal. */
   xpPerGoal: 25,
-  /** Bonus XP each contributor gets when the weekly boss is defeated. Not capped. */
-  bossLootXp: 50,
+  /** Bonus XP each contributor gets when a 1x boss is defeated, scaled by its strength. Not capped. */
+  bossLootXp: 100,
   /** Combo grows by this much per extra person who finishes a room round. */
   comboStep: 0.1,
   comboMax: 2,

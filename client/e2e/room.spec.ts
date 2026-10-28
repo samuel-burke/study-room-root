@@ -13,7 +13,7 @@ test.describe("focus room", () => {
     await expect(page.getByText("Ana R.")).toBeVisible();
     if (!isPhone(page)) {
       await expect(page.getByRole("region", { name: "Weekly boss" })).toContainText(
-        "61 of 100 hrs HP left",
+        /[\d,]+ of [\d,]+ HP left/,
       );
       await expect(page.getByRole("region", { name: "Combo meter" })).toContainText("1.4x");
     }

@@ -35,7 +35,7 @@ The room timer is the default and the brighter button because joining it is what
 | Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x | Rewards focusing together                                                |
 | Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
 | Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
-| Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
+| Boss loot         | +100 XP × boss strength to every contributor, outside the cap     | Happens once a week; a capped reward would often be zero                 |
 | Weekly quests     | +30 to +40 XP per quest, once per week, outside the cap           | At most three a week; a capped reward would often be zero                |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
@@ -65,7 +65,11 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 ## Weekly boss
 
-A boss spawns lazily each Monday (community time zone) with the admin's name and HP in focus hours. Every focus minute deals damage, multiplied by the combo for room rounds. Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
+A boss spawns lazily each Monday (community time zone) with the admin's name (or the week's built-in name) and HP in XP. Each boss has a strength from 0.5x to 2x that fits its name, so "The Final Final Exam" is tougher than "Professor Pop Quiz". The built-in list averages exactly 1x, with weaker bosses below and stronger ones above. Its HP (the XP it takes to defeat) is the admin's base HP times its strength, and so is its loot. Names an admin types get strength from keywords: finals, thesis and boards are 2x; midterms, exams, deadlines and projects 1.5x; quizzes and homework 0.75x; anything else 1x.
+
+Damage is the focus XP a session earns, combo included, counted **before** the daily cap. The cap limits what a member earns, not how much they help the room, so the people studying most still hit the boss. Goal XP doesn't count, because checking off goals is too easy to farm. Damage is dealt even with XP turned off; there's just no loot then.
+
+Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
 ## Weekly leaderboard
 
