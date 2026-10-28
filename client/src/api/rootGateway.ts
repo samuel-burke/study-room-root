@@ -93,6 +93,10 @@ export class RootGateway implements StudyRoomGateway {
     return myStatusFromProto(await call(() => client.deleteMyData({})));
   }
 
+  async keepGoing() {
+    return myStatusFromProto(await call(() => client.keepGoing({})));
+  }
+
   async getProgress() {
     return progressFromProto(await call(() => client.getProgress({})));
   }

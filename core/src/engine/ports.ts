@@ -51,6 +51,8 @@ export interface RoomCycleRecord {
 export interface ParticipantRecord {
   userId: string;
   joinedAt: number;
+  /** Tapped "Keep going?" this cycle, so the cycle end carries them into the next one. */
+  keepGoing: boolean;
 }
 
 export interface SessionLogRecord {

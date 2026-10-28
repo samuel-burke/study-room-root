@@ -8,6 +8,7 @@ import type {
   GetLeaderboardRequest,
   GetProgressRequest,
   GetRoomRequest,
+  KeepGoingRequest,
   JoinRoomTimerRequest,
   Leaderboard,
   LeaveRoomTimerRequest,
@@ -93,6 +94,10 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
     return this.call((h) => h.deleteMyData(client.userId));
+  }
+
+  keepGoing(_request: KeepGoingRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.keepGoing(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

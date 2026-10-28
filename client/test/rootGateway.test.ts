@@ -39,6 +39,7 @@ const service = vi.hoisted(() => {
       deleteGoal: vi.fn(),
       setGoalsPrivate: vi.fn(),
       deleteMyData: vi.fn(),
+      keepGoing: vi.fn(),
       getProgress: vi.fn(),
       getLeaderboard: vi.fn(),
       setLeaderboardHidden: vi.fn(),
@@ -109,7 +110,14 @@ describe("RootGateway", () => {
   it("converts goal and data calls", async () => {
     const me = (await realSnapshot()).me;
     const proto = myStatusToProto(me);
-    for (const rpc of ["addGoal", "setGoalDone", "deleteGoal", "setGoalsPrivate", "deleteMyData"])
+    for (const rpc of [
+      "addGoal",
+      "setGoalDone",
+      "deleteGoal",
+      "setGoalsPrivate",
+      "deleteMyData",
+      "keepGoing",
+    ])
       vi.mocked(service.client[rpc as "addGoal"]).mockResolvedValue(proto);
     const gateway = new RootGateway();
     await expect(gateway.addGoal("x")).resolves.toEqual(me);
@@ -117,6 +125,8 @@ describe("RootGateway", () => {
     await expect(gateway.deleteGoal("g")).resolves.toEqual(me);
     await expect(gateway.setGoalsPrivate(false)).resolves.toEqual(me);
     await expect(gateway.deleteMyData()).resolves.toEqual(me);
+    await expect(gateway.keepGoing()).resolves.toEqual(me);
+    expect(service.client.keepGoing).toHaveBeenCalledWith({});
     expect(service.client.setGoalDone).toHaveBeenCalledWith({ goalId: "g", done: true });
   });
 
@@ -198,14 +208,14 @@ describe("RootGateway", () => {
     service.emit("myStatus", { me: proto.me });
     service.emit("phaseCompleted", {});
     service.emit("personalResult", {});
-    service.emit("badgesEarned", { badgeIds: ["first-session"] });
+    service.emit("badgesEarned", { badgeIds: ["first-focus"] });
     expect(handlers.roomUpdated.mock.calls[0]?.[0]).toMatchObject({
       serverNow: snapshot.room.serverNow,
     });
     expect(handlers.myStatus).toHaveBeenCalledWith(snapshot.me);
     expect(handlers.phaseCompleted).toHaveBeenCalledTimes(1);
     expect(handlers.personalResult).toHaveBeenCalledTimes(1);
-    expect(handlers.badgesEarned).toHaveBeenCalledWith(["first-session"]);
+    expect(handlers.badgesEarned).toHaveBeenCalledWith(["first-focus"]);
     unsubscribe();
     expect([...service.listeners.values()].every((set) => set.size === 0)).toBe(true);
   });

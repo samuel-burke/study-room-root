@@ -167,6 +167,12 @@ export class StudyRoomHandlers {
     );
   }
 
+  keepGoing(userId: string): Promise<MyStatus> {
+    return this.handle("keepGoing", userId, "write", async () =>
+      myStatusToProto(await this.engine.keepGoing(userId)),
+    );
+  }
+
   private async handle<T>(
     operation: string,
     userId: string,
