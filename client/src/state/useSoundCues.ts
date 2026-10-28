@@ -48,7 +48,12 @@ export function useSoundCues(
     // No chime for the status you already had when the app opened.
     if (prev === null || status === null || muted) return;
     const cue = cueFor(prev, status);
-    if (cue) play(cue);
+    if (!cue) return;
+    try {
+      play(cue);
+    } catch {
+      // A chime must never break the room screen.
+    }
   }, [status, muted, play]);
 
   const setMuted = useCallback((next: boolean) => {

@@ -48,4 +48,27 @@ describe("useSoundCues", () => {
     expect(window.localStorage.getItem("studysquad.soundsMuted")).toBe("1");
     expect(setup("idle").result.current.muted).toBe(true);
   });
+
+  it("keeps working when a chime throws", () => {
+    const { play, rerender } = setup("idle");
+    play.mockImplementation(() => {
+      throw new Error("audio device lost");
+    });
+    expect(() => rerender({ status: "roomFocus" })).not.toThrow();
+    expect(play).toHaveBeenCalledWith("focusStart");
+  });
+
+  it("falls back to sounds on when storage is blocked", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+    const { result } = setup("idle");
+    expect(result.current.muted).toBe(false);
+    act(() => result.current.setMuted(true));
+    expect(result.current.muted).toBe(true);
+    vi.restoreAllMocks();
+  });
 });

@@ -114,14 +114,35 @@ function getContext(): AudioContext | null {
  */
 export function unlockAudio(): void {
   const ctx = getContext();
-  if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
+  if (ctx) resume(ctx);
 }
 
+/** Ask a suspended context to start. A refusal just means no sound yet. */
+function resume(ctx: AudioContext): void {
+  if (ctx.state !== "suspended") return;
+  try {
+    void ctx.resume().catch(() => {});
+  } catch {
+    // Some engines throw instead of rejecting. Either way, stay quiet.
+  }
+}
+
+/**
+ * Plays a chime. Sound is a nice-to-have, so any audio failure (no Web Audio,
+ * a closed context, a blocked device) is swallowed and the app carries on.
+ */
 export function playCue(cue: SoundCue): void {
   const ctx = getContext();
   if (!ctx) return;
-  if (ctx.state === "suspended") void ctx.resume().catch(() => {});
-  const { notes, wave } = MELODIES[cue];
+  resume(ctx);
+  try {
+    scheduleNotes(ctx, MELODIES[cue]);
+  } catch {
+    // Nothing to recover: this chime is skipped.
+  }
+}
+
+function scheduleNotes(ctx: AudioContext, { notes, wave }: (typeof MELODIES)[SoundCue]): void {
   const start = ctx.currentTime + 0.02;
   for (const note of notes) {
     const osc = ctx.createOscillator();
