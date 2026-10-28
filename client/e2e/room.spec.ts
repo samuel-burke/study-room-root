@@ -82,7 +82,9 @@ test.describe("the break moment", () => {
 
     const moment = page.getByRole("dialog", { name: "Nice work, everyone" });
     await expect(moment).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status")).toContainText("Round 1 complete");
+    await expect(page.getByRole("status").filter({ hasText: "Round 1 complete" })).toHaveCount(1);
+    // The round also earns a badge, announced in its own banner.
+    await expect(page.getByText("Badge unlocked")).toBeVisible();
     await expect(moment).toContainText("6 days");
     await expect(moment).toContainText(/finished together/);
     await expect(moment).toContainText("Midterms");
@@ -120,5 +122,21 @@ test.describe("progress", () => {
     await expect(show).toHaveAttribute("aria-checked", "false");
     await expect(board.getByText("You're hidden.")).toBeVisible();
     await expect(board.getByRole("listitem", { name: /, You,/ })).toHaveCount(0);
+  });
+
+  test("shows the badge shelf and card styles", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    const shelf = page.getByRole("region", { name: "Badges" });
+    await expect(shelf.getByRole("button", { name: "First Steps, earned" })).toBeVisible();
+    await expect(
+      shelf.getByRole("button", { name: "Secret badge, not found yet" }).first(),
+    ).toBeVisible();
+    const styles = page.getByRole("radiogroup", { name: "Card style" });
+    await styles.getByRole("radio", { name: /Ember/ }).click();
+    await expect(styles.getByRole("radio", { name: /Ember/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 });

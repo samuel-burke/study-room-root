@@ -2,11 +2,12 @@ import { formatHours, type ProgressDto } from "@studyroom/core";
 import { useEffect, useState } from "react";
 import { toGatewayError, type StudyRoomGateway } from "../api/gateway";
 import { heatLevel } from "../lib/view";
+import { BadgeShelf, CardStylePicker } from "./BadgeShelf";
 import { BackIcon, FlameIcon } from "./Icons";
 import { XpBar } from "./SessionPanel";
 import { WeeklyLeaderboard } from "./WeeklyLeaderboard";
 
-/** Level, streak with freeze status, a five-week heatmap, and the weekly leaderboard. */
+/** Level, streak with freeze status, a five-week heatmap, badges, card style and the weekly leaderboard. */
 export function ProgressScreen({
   gateway,
   xpEnabled,
@@ -23,6 +24,19 @@ export function ProgressScreen({
 }) {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(work: () => Promise<ProgressDto>) {
+    setSaving(true);
+    setError(null);
+    try {
+      setProgress(await work());
+    } catch (e) {
+      setError(toGatewayError(e).message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +118,20 @@ export function ProgressScreen({
               <span>{formatHours(progress.totalFocusMinutes)} total</span>
             </div>
           </section>
+
+          <BadgeShelf
+            earned={progress.badges}
+            card={progress.card}
+            busy={saving}
+            onShowcase={(ids) => void save(() => gateway.setBadgeShowcase(ids))}
+          />
+          <CardStylePicker
+            level={progress.me.level}
+            earned={progress.badges}
+            card={progress.card}
+            busy={saving}
+            onPick={(style) => void save(() => gateway.setCardStyle(style))}
+          />
         </>
       )}
 
@@ -140,8 +168,8 @@ function DeleteMyData({ onDelete, onDone }: { onDelete(): Promise<boolean>; onDo
           style={{ display: "flex", flexDirection: "column", gap: 10 }}
         >
           <div className="small">
-            This erases your goals, session history, XP, level and streak for this community. It
-            can&apos;t be undone.
+            This erases your goals, session history, XP, level, streak and badges for this
+            community. It can&apos;t be undone.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button

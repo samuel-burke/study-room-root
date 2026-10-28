@@ -1,9 +1,11 @@
 import type { BossState } from "../game/boss";
 import type { DayKey } from "../time/calendar";
 import type {
+  CardRecord,
   CommunityDayStats,
   DailyStatDelta,
   DailyStatRecord,
+  EarnedBadgeRecord,
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
@@ -31,6 +33,8 @@ interface Data {
   leaderboardHidden: Set<string>;
   bosses: Map<string, BossState>;
   kv: Map<string, unknown>;
+  badges: EarnedBadgeRecord[];
+  cards: Map<string, CardRecord>;
 }
 
 const emptyData = (): Data => ({
@@ -44,6 +48,8 @@ const emptyData = (): Data => ({
   leaderboardHidden: new Set(),
   bosses: new Map(),
   kv: new Map(),
+  badges: [],
+  cards: new Map(),
 });
 
 const statKey = (userId: string, day: DayKey) => `${userId}|${day}`;
@@ -70,6 +76,8 @@ export class MemoryStore implements Store {
     for (const [id, goal] of d.goals) if (goal.userId === userId) d.goals.delete(id);
     for (const [key, stat] of d.stats) if (stat.userId === userId) d.stats.delete(key);
     d.sessions = d.sessions.filter((s) => s.userId !== userId);
+    d.badges = d.badges.filter((b) => b.userId !== userId);
+    d.cards.delete(userId);
     for (const boss of d.bosses.values()) {
       boss.contributorIds = boss.contributorIds.filter((id) => id !== userId);
     }
@@ -161,6 +169,8 @@ export class MemoryStore implements Store {
     insert: async (log: SessionLogRecord) => {
       this.data.sessions.push(copy(log));
     },
+    countFinished: async (userId: string, kind: SessionLogRecord["kind"]) =>
+      this.data.sessions.filter((s) => s.userId === userId && s.kind === kind && s.finished).length,
   };
 
   stats = {
@@ -197,6 +207,14 @@ export class MemoryStore implements Store {
         activeMembers: rows.filter((r) => r.focusMinutes > 0).length,
       };
     },
+    lifetime: async (userId: string) => {
+      const rows = [...this.data.stats.values()].filter((s) => s.userId === userId);
+      return {
+        focusMinutes: rows.reduce((sum, r) => sum + r.focusMinutes, 0),
+        goalsDone: rows.reduce((sum, r) => sum + r.goalsDone, 0),
+        sessionsFinished: rows.reduce((sum, r) => sum + r.sessionsFinished, 0),
+      };
+    },
   };
 
   leaderboard = {
@@ -223,6 +241,40 @@ export class MemoryStore implements Store {
     get: async (weekKey: DayKey) => copyOrUndefined(this.data.bosses.get(weekKey)),
     save: async (boss: BossState) => {
       this.data.bosses.set(boss.weekKey, copy(boss));
+    },
+    countDefeatedWith: async (userId: string) =>
+      [...this.data.bosses.values()].filter(
+        (b) => b.defeatedAt !== null && b.contributorIds.includes(userId),
+      ).length,
+  };
+
+  badges = {
+    list: async (userIds: readonly string[]) => {
+      const wanted = new Set(userIds);
+      return this.data.badges
+        .filter((b) => wanted.has(b.userId))
+        .sort(
+          (a, b) =>
+            a.earnedAt - b.earnedAt || (a.badgeId < b.badgeId ? -1 : a.badgeId > b.badgeId ? 1 : 0),
+        )
+        .map(copy);
+    },
+    award: async (record: EarnedBadgeRecord) => {
+      const held = this.data.badges.some(
+        (b) => b.userId === record.userId && b.badgeId === record.badgeId,
+      );
+      if (!held) this.data.badges.push(copy(record));
+    },
+  };
+
+  cards = {
+    list: async (userIds: readonly string[]) =>
+      userIds.flatMap((id) => {
+        const card = this.data.cards.get(id);
+        return card ? [copy(card)] : [];
+      }),
+    save: async (card: CardRecord) => {
+      this.data.cards.set(card.userId, copy(card));
     },
   };
 

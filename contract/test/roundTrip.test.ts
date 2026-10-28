@@ -49,6 +49,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 12,
       streak: 31,
+      badges: ["night-owl", "first-boss", "longest-day"],
+      cardStyle: "gold",
     },
     {
       userId: "u2",
@@ -58,6 +60,8 @@ const room: RoomStateDto = {
       goalPrivate: true,
       level: 9,
       streak: 0,
+      badges: [],
+      cardStyle: "classic",
     },
     {
       userId: "u3",
@@ -67,6 +71,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 15,
       streak: 54,
+      badges: [],
+      cardStyle: "classic",
     },
     {
       userId: "u4",
@@ -76,6 +82,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 3,
       streak: 2,
+      badges: [],
+      cardStyle: "classic",
     },
   ],
   presentCount: 9,
@@ -191,6 +199,16 @@ describe("contract round trip", () => {
         { day: "2026-10-28", focusMinutes: 42.5 },
       ],
       totalFocusMinutes: 42.5,
+      badges: [
+        { id: "first-session", earnedAt: 1_793_150_000_000 },
+        { id: "leet", earnedAt: 1_793_150_000_500 },
+      ],
+      card: {
+        chosenStyle: "",
+        chosenShowcase: ["leet"],
+        style: "lagoon",
+        showcase: ["leet"],
+      },
     };
     const bytes = Progress.toBinary(progressToProto(progress));
     expect(progressFromProto(Progress.fromBinary(bytes))).toEqual(progress);

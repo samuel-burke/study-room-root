@@ -27,6 +27,8 @@ export const LIMITS = {
   /** Rows on the weekly leaderboard. */
   leaderboardSize: 10,
   topFocusInRecap: 3,
+  /** Leaderboard badges need this many members ranked, so focusing alone on Monday isn't a win. */
+  leaderboardBadgeMinRanked: 3,
 } as const;
 
 /** "Room is busy" posts re-arm only after this cool-down. */

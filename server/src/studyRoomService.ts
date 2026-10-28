@@ -14,6 +14,8 @@ import type {
   MyStatus,
   Progress,
   RoomSnapshot,
+  SetBadgeShowcaseRequest,
+  SetCardStyleRequest,
   SetGoalDoneRequest,
   SetGoalsPrivateRequest,
   SetLeaderboardHiddenRequest,
@@ -79,6 +81,14 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   setLeaderboardHidden(request: SetLeaderboardHiddenRequest, client: Client): Promise<Leaderboard> {
     return this.call((h) => h.setLeaderboardHidden(client.userId, request));
+  }
+
+  setCardStyle(request: SetCardStyleRequest, client: Client): Promise<Progress> {
+    return this.call((h) => h.setCardStyle(client.userId, request));
+  }
+
+  setBadgeShowcase(request: SetBadgeShowcaseRequest, client: Client): Promise<Progress> {
+    return this.call((h) => h.setBadgeShowcase(client.userId, request));
   }
 
   deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
