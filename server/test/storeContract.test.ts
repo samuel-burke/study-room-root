@@ -142,12 +142,12 @@ describe.each(implementations)("%s", (_name, open) => {
       preset,
       settledCount: 3,
     });
-    await store.room.addParticipant({ userId: "b", joinedAt: 20 });
-    await store.room.addParticipant({ userId: "a", joinedAt: 10 });
-    await store.room.addParticipant({ userId: "b", joinedAt: 30 });
+    await store.room.addParticipant({ userId: "b", joinedAt: 20, keepGoing: false });
+    await store.room.addParticipant({ userId: "a", joinedAt: 10, keepGoing: false });
+    await store.room.addParticipant({ userId: "b", joinedAt: 30, keepGoing: true });
     expect(await store.room.listParticipants()).toEqual([
-      { userId: "a", joinedAt: 10 },
-      { userId: "b", joinedAt: 30 },
+      { userId: "a", joinedAt: 10, keepGoing: false },
+      { userId: "b", joinedAt: 30, keepGoing: true },
     ]);
     await store.room.removeParticipant("a");
     await store.room.saveCycle(null);
@@ -256,7 +256,7 @@ describe.each(implementations)("%s", (_name, open) => {
         phase: "focus",
         breakEndsAt: 3,
       });
-      await store.room.addParticipant({ userId: id, joinedAt: 1 });
+      await store.room.addParticipant({ userId: id, joinedAt: 1, keepGoing: false });
       await store.stats.add(id, "2026-10-28", { focusMinutes: 10, goalsDone: 1 });
       await store.sessions.insert({
         userId: id,

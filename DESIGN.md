@@ -42,9 +42,11 @@ The live combo on screen counts everyone on the room timer, as a preview. The co
 
 ## Anti-AFK guardrails
 
-A random "are you there?" tap is planned for v2. For v1:
+The room timer never interrupts a focus round and never takes back anything earned. The only check is at the end of a cycle:
 
-- participants are released from the room timer when a cycle ends (about two hours with 25/5), so a forgotten timer can't run all night;
+- **"Keep going?"** During the cycle's final long break, everyone who focused that cycle is asked "Keep going?" and has the whole break (15 minutes on 25/5) to tap. Tapping rolls them straight into the next cycle, so a multi-hour session never has to rejoin. Anyone who doesn't tap is released when the cycle ends (about every two hours with 25/5), keeping all their XP, combo and streak credit, and can rejoin at any time. A forgotten timer therefore stops after one cycle, and missing the tap costs nothing.
+  - This replaced a random mid-round "Still there?" check. That one interrupted focus, and couldn't reach people with their screen off, so it ended up penalising people who were genuinely studying. The app has no way to send a phone notification, so the generous window matters.
+  - Solo timers need no check: they end on their own (at most three hours).
 - people who joined during the final long break haven't focused yet, so they roll into a fresh cycle instead of being dropped;
 - the daily XP cap bounds what any idle timer can earn.
 

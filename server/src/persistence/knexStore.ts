@@ -302,10 +302,11 @@ export class KnexStore implements Store {
       (await this.db("room_participants").orderBy("joined_at", "asc")).map((r: Row) => ({
         userId: String(r.user_id),
         joinedAt: num(r.joined_at),
+        keepGoing: bool(r.keep_going),
       })),
     addParticipant: async (p: ParticipantRecord) => {
       await this.db("room_participants")
-        .insert({ user_id: p.userId, joined_at: p.joinedAt })
+        .insert({ user_id: p.userId, joined_at: p.joinedAt, keep_going: p.keepGoing })
         .onConflict("user_id")
         .merge();
     },
