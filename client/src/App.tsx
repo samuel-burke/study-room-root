@@ -11,6 +11,7 @@ import { Toast } from "./components/Toast";
 import { useMediaQuery } from "./state/useMediaQuery";
 import { useNow } from "./state/useNow";
 import { useProfiles } from "./state/useProfiles";
+import { useSoundCues } from "./state/useSoundCues";
 import { useStudyRoom } from "./state/useStudyRoom";
 
 type Overlay =
@@ -22,6 +23,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
   const compact = useMediaQuery("(max-width: 760px)");
   const [screen, setScreen] = useState<"room" | "progress">("room");
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const sounds = useSoundCues(state.me?.status ?? null);
 
   const userIds = useMemo(
     () => [
@@ -84,6 +86,8 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             now={now}
             busy={busy}
             compact={compact}
+            soundsMuted={sounds.muted}
+            onToggleSounds={() => sounds.setMuted(!sounds.muted)}
             onStart={(mode) => setOverlay({ kind: "start", mode })}
             onLeave={() => void actions.leaveRoomTimer()}
             onEndSolo={() => void actions.endSolo()}
