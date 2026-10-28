@@ -1,6 +1,6 @@
 {
   "name": "@studyroom/app",
-  "description": "Study Room: focus together inside your Root community",
+  "description": "Study Room: a group study timer for Root communities. Pomodoro focus timer, study together with friends.",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
