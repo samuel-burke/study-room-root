@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { createHarness } from "../../core/test/helpers";
+import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { GoalsSheet } from "../src/components/GoalsSheet";
 import { Sheet } from "../src/components/Sheet";
 
@@ -73,5 +74,25 @@ describe("GoalsSheet", () => {
     expect(onToggle).toHaveBeenCalledWith(me.goals[0]!.id, true);
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("ErrorBoundary", () => {
+  it("replaces a crashed tree with a retry that remounts it", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    let crash = true;
+    function Fragile() {
+      if (crash) throw new Error("render bug");
+      return <p>Room is back</p>;
+    }
+    render(
+      <ErrorBoundary>
+        <Fragile />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong");
+    crash = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByText("Room is back")).toBeInTheDocument();
   });
 });

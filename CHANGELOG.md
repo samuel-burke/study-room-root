@@ -9,7 +9,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The room timer retries a wake-up that failed (for example on a locked database) instead of stalling until someone acts
 - A failed presence update when a member opens or closes the app is logged instead of crashing the server
 - The app still starts when Root's job scheduler is unavailable; only the daily recap is skipped
-- Shutdown always closes the database, and the client shows a message instead of a blank screen if it fails to load
+- Shutdown always closes the database
+- The client shows a message with a retry instead of a blank screen if it fails to load or hits a rendering bug
 
 ## [0.1.0] - 2026-10-28
 
