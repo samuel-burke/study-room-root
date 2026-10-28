@@ -1,0 +1,168 @@
+import {
+  formatCountdown,
+  formatHours,
+  type BossDto,
+  type PersonalResultDto,
+} from "@studyroom/core";
+import type { Profile } from "../api/gateway";
+import { percent } from "../lib/view";
+import { Avatar } from "./Avatar";
+import { hpText } from "./BossCard";
+import { Sheet } from "./Sheet";
+
+interface BreakMomentProps {
+  result: PersonalResultDto;
+  boss: BossDto;
+  profiles: Map<string, Profile>;
+  youId: string;
+  xpEnabled: boolean;
+  chatChannel: string;
+  now: number;
+  busy: boolean;
+  onGoalDone(goalId: string): void;
+  onClose(): void;
+}
+
+const MAX_AVATARS = 6;
+
+/**
+ * The moment the round ends: everyone who finished sees this at once, with
+ * the XP math, the streak, the damage the room did, and a nudge to check off
+ * the goal they were working on.
+ */
+export function BreakMoment({
+  result,
+  boss,
+  profiles,
+  youId,
+  xpEnabled,
+  chatChannel,
+  now,
+  busy,
+  onGoalDone,
+  onClose,
+}: BreakMomentProps) {
+  const solo = result.source === "solo";
+  const finishers = [youId, ...result.finisherIds.filter((id) => id !== youId)].filter((id) =>
+    result.finisherIds.includes(id),
+  );
+  const hpLeft = Math.max(0, boss.maxHpMinutes - boss.damageMinutes);
+  const hitPct = percent(Math.min(result.roomDamageMinutes, boss.damageMinutes), boss.maxHpMinutes);
+  const leftPct = percent(hpLeft, boss.maxHpMinutes);
+  const breakLeft = result.breakEndsAt - now;
+
+  return (
+    <Sheet labelledBy="break-title" onClose={onClose} className="break-sheet">
+      <div className="break-hero">
+        <div className="eyebrow">
+          {solo ? "Solo session complete" : `Round ${result.round} complete`}
+        </div>
+        <h1 id="break-title">
+          {solo ? "Nice work" : result.finisherIds.length > 1 ? "Nice work, everyone" : "Nice work"}
+        </h1>
+        {!solo && finishers.length > 0 && (
+          <div className="stack">
+            {finishers.slice(0, MAX_AVATARS).map((id) => (
+              <Avatar key={id} userId={id} profile={profiles.get(id)} you={id === youId} />
+            ))}
+            <span className="stack-label">
+              {result.finisherIds.length === 1
+                ? "You finished the round"
+                : `${result.finisherIds.length} finished together`}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="stat-grid">
+        {xpEnabled && (
+          <div className="stat">
+            <div className="stat-label">You earned</div>
+            <div className="stat-value" style={{ color: "var(--teal)" }}>
+              +{result.xpEarned} XP
+            </div>
+            <div className="stat-sub">
+              {result.capped
+                ? "Daily XP cap reached"
+                : result.combo > 1 && result.baseXp > 0
+                  ? `${result.baseXp} base × ${result.combo.toFixed(1)} combo`
+                  : `${Math.floor(result.focusedMinutes)} minutes focused`}
+            </div>
+          </div>
+        )}
+        <div className="stat">
+          <div className="stat-label">Streak</div>
+          <div className="stat-value" style={{ color: "var(--flame)" }}>
+            {result.streak} {result.streak === 1 ? "day" : "days"}
+          </div>
+          <div className="stat-sub">
+            {result.finished ? "Today counts" : "Finish a full round to count today"}
+          </div>
+        </div>
+      </div>
+
+      {boss.enabled && (
+        <div className="break-panel boss-hit">
+          <strong style={{ color: "var(--coral-text)", fontSize: 13 }}>
+            {solo ? "You" : "The room"} hit {boss.name} for {formatHours(result.roomDamageMinutes)}
+          </strong>
+          <div className="bar" aria-hidden="true">
+            <span style={{ width: `${leftPct}%`, background: "var(--coral)", borderRadius: 0 }} />
+            <span
+              style={{ width: `${hitPct}%`, background: "var(--coral-pale)", borderRadius: 0 }}
+            />
+          </div>
+          <div className="tiny tabular" style={{ color: "var(--boss-muted)" }}>
+            {boss.defeated
+              ? `${boss.name} is defeated!`
+              : `${hpText(boss)} HP left · ${percent(boss.damageMinutes, boss.maxHpMinutes)}% defeated`}
+          </div>
+        </div>
+      )}
+
+      {result.goalPrompt && (
+        <div className="break-panel">
+          <div style={{ fontSize: 14 }}>
+            Did you finish <strong>{result.goalPrompt.text}</strong>?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-teal"
+              style={{ flex: 1 }}
+              disabled={busy}
+              onClick={() => onGoalDone(result.goalPrompt!.id)}
+            >
+              {xpEnabled ? "Done, +25 XP" : "Done"}
+            </button>
+            <button type="button" className="btn btn-break" style={{ flex: 1 }} onClick={onClose}>
+              Not yet
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="break-footer">
+        <div style={{ flex: 1 }}>
+          <div className="tiny" style={{ color: "var(--break-muted)" }}>
+            {breakLeft > 0 ? "Break ends in" : "Break's over"}
+          </div>
+          <div className="break-countdown">{formatCountdown(breakLeft)}</div>
+          {chatChannel && (
+            <div className="tiny" style={{ color: "var(--break-muted)" }}>
+              Say hi in #{chatChannel}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn btn-break"
+          style={{ color: "var(--teal)" }}
+          onClick={onClose}
+        >
+          Back to the room
+        </button>
+      </div>
+    </Sheet>
+  );
+}
