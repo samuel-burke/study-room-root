@@ -100,7 +100,29 @@ const migrations: Migration[] = [
     },
   },
   {
-    name: "002_afk_checks",
+    // Progress toward badges is read from daily_stats, session_log and bosses;
+    // these only record which badges were earned and how each card looks.
+    name: "002_badges",
+    async up(db) {
+      await db.schema.createTable("member_badges", (t) => {
+        t.string("user_id").notNullable();
+        t.string("badge_id").notNullable();
+        t.bigInteger("earned_at").notNullable();
+        t.primary(["user_id", "badge_id"]);
+      });
+      await db.schema.createTable("member_cards", (t) => {
+        t.string("user_id").primary();
+        t.string("style").nullable();
+        t.text("showcase").nullable();
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("member_cards");
+      await db.schema.dropTableIfExists("member_badges");
+    },
+  },
+  {
+    name: "005_afk_checks",
     async up(db) {
       for (const table of ["room_participants", "solo_sessions"]) {
         await db.schema.alterTable(table, (t) => {

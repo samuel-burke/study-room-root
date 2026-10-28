@@ -285,6 +285,8 @@ describe.each(implementations)("%s", (_name, open) => {
         xp: 20,
         combo: 1,
       });
+      await store.badges.award({ userId: id, badgeId: "first-session", earnedAt: 5 });
+      await store.cards.save({ userId: id, style: "gold", showcase: ["first-session"] });
     }
     await store.bosses.save({
       ...newBoss("2026-10-26", "Midterms", 100),
@@ -298,6 +300,9 @@ describe.each(implementations)("%s", (_name, open) => {
     expect(await store.solos.get("ana")).toBeUndefined();
     expect((await store.room.listParticipants()).map((p) => p.userId)).toEqual(["kai"]);
     expect(await store.stats.get("ana", "2026-10-28")).toBeUndefined();
+    expect(await store.badges.list(["ana"])).toEqual([]);
+    expect(await store.cards.list(["ana"])).toEqual([]);
+    expect(await store.sessions.countFinished("ana", "solo")).toBe(0);
     expect((await store.bosses.get("2026-10-26"))?.contributorIds).toEqual(["kai", "anabelle"]);
     expect(await store.stats.communityDay("2026-10-28")).toEqual({
       focusMinutes: 10,
@@ -308,6 +313,93 @@ describe.each(implementations)("%s", (_name, open) => {
     expect(await store.members.get("kai")).toBeDefined();
     expect(await store.goals.get("g-kai")).toBeDefined();
     expect(await store.solos.get("kai")).toBeDefined();
+    expect(await store.badges.list(["kai"])).toHaveLength(1);
+    expect(await store.cards.list(["kai"])).toHaveLength(1);
+  });
+
+  it("records badges once, oldest first, for any set of members", async () => {
+    await store.badges.award({ userId: "ana", badgeId: "night-owl", earnedAt: 200 });
+    await store.badges.award({ userId: "ana", badgeId: "first-session", earnedAt: 100 });
+    await store.badges.award({ userId: "ana", badgeId: "early-bird", earnedAt: 200 });
+    await store.badges.award({ userId: "kai", badgeId: "leet", earnedAt: 150 });
+    // Awarding again keeps the first time it was earned.
+    await store.badges.award({ userId: "ana", badgeId: "first-session", earnedAt: 999 });
+    expect(await store.badges.list(["ana"])).toEqual([
+      { userId: "ana", badgeId: "first-session", earnedAt: 100 },
+      { userId: "ana", badgeId: "early-bird", earnedAt: 200 },
+      { userId: "ana", badgeId: "night-owl", earnedAt: 200 },
+    ]);
+    expect((await store.badges.list(["ana", "kai"])).map((b) => b.badgeId)).toEqual([
+      "first-session",
+      "leet",
+      "early-bird",
+      "night-owl",
+    ]);
+    expect(await store.badges.list([])).toEqual([]);
+  });
+
+  it("saves card looks, including automatic (null) choices", async () => {
+    await store.cards.save({ userId: "ana", style: null, showcase: null });
+    expect(await store.cards.list(["ana", "nobody"])).toEqual([
+      { userId: "ana", style: null, showcase: null },
+    ]);
+    await store.cards.save({ userId: "ana", style: "gold", showcase: ["leet", "night-owl"] });
+    expect(await store.cards.list(["ana"])).toEqual([
+      { userId: "ana", style: "gold", showcase: ["leet", "night-owl"] },
+    ]);
+  });
+
+  it("totals a member's history for badges", async () => {
+    await store.stats.add("ana", "2026-10-27", {
+      focusMinutes: 30.5,
+      goalsDone: 2,
+      sessionsFinished: 1,
+    });
+    await store.stats.add("ana", "2026-10-28", { focusMinutes: 25, sessionsFinished: 1 });
+    await store.stats.add("kai", "2026-10-28", { focusMinutes: 99 });
+    expect(await store.stats.lifetime("ana")).toEqual({
+      focusMinutes: 55.5,
+      goalsDone: 2,
+      sessionsFinished: 2,
+    });
+    expect(await store.stats.lifetime("nobody")).toEqual({
+      focusMinutes: 0,
+      goalsDone: 0,
+      sessionsFinished: 0,
+    });
+    const log = {
+      userId: "ana",
+      startedAt: 1,
+      endedAt: 2,
+      focusedMinutes: 25,
+      xp: 50,
+      combo: 1,
+    };
+    await store.sessions.insert({ ...log, kind: "room", finished: true });
+    await store.sessions.insert({ ...log, kind: "room", finished: false });
+    await store.sessions.insert({ ...log, kind: "solo", finished: true });
+    expect(await store.sessions.countFinished("ana", "room")).toBe(1);
+    expect(await store.sessions.countFinished("ana", "solo")).toBe(1);
+  });
+
+  it("counts defeated bosses a member helped with, by exact id", async () => {
+    await store.bosses.save({
+      ...newBoss("2026-10-12", "Midterms", 1),
+      defeatedAt: 10,
+      contributorIds: ["ana", "kai"],
+    });
+    await store.bosses.save({
+      ...newBoss("2026-10-19", "Finals", 1),
+      defeatedAt: 20,
+      contributorIds: ["anabelle"],
+    });
+    await store.bosses.save({
+      ...newBoss("2026-10-26", "Quiz", 1),
+      contributorIds: ["ana"],
+    });
+    expect(await store.bosses.countDefeatedWith("ana")).toBe(1);
+    expect(await store.bosses.countDefeatedWith("anabelle")).toBe(1);
+    expect(await store.bosses.countDefeatedWith("nobody")).toBe(0);
   });
 
   it("erasing someone with no data is harmless", async () => {

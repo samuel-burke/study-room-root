@@ -7,6 +7,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - AFK check: one "Still there?" tap per room cycle (about every two hours on 25/5), never in your first round, and one in solo timers of an hour or more. A missed tap never stops the timer and still counts the minutes; only that round earns no combo and doesn't count toward the streak. Admins can turn it off under **Game layer → AFK checks**.
+- Badges (#9): 60+ permanent badges for streaks, levels, focus time, room rounds and combos, goals and the weekly boss, including the Early Bird, Night Owl, Marathon, Comeback and First Boss badges from the progress mockup
+- Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them
+- Earned badges show on member cards (one per card: your newest, or the one you pick), with a full-screen unlock animation and fanfare that get more epic with each tier
+- Card styles: borders and colours unlocked by level (gold at level 8) or by certain badges, picked on the progress screen or left on automatic
 
 ### Changed
 

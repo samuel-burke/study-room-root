@@ -23,6 +23,7 @@ Everything Study Squad keeps is about your studying, and each piece has a job:
 | Which weekly quest rewards you've already received                | So each reward is given once                                              |
 | Your streak and the streak freezes you've used this week          | To show and protect your streak                                           |
 | That you helped fight the weekly boss                             | To reward everyone who helped when the boss is defeated                   |
+| Badges you've earned and when, your card style and pinned badge   | To show your badges and the look of your card                             |
 
 A few things Study Squad **uses but doesn't save**:
 
@@ -36,7 +37,7 @@ Each community's Study Squad data lives in that community's own app storage, hos
 
 - **Just you:** your goal list, your XP total, your progress history, your weekly quests and your break results.
 - **Other members of the community:**
-  - your card on the board while your timer is running (your name, picture, level, streak, timer and current goal, or just "Focusing" if you keep goals private);
+  - your card on the board while your timer is running (your name, picture, level, streak, card style, one badge, timer and current goal, or just "Focusing" if you keep goals private);
   - the weekly leaderboard, which shows the names, pictures and focus minutes of the week's top 10. You can hide yourself from it any time under **Your progress**.
 - **Channel posts:** if an admin turns on updates, Study Squad posts friendly highlights to a channel. These can include community totals (hours focused, goals finished, how many people showed up), the names and streak lengths of the top three streaks, the names and focus time of the week's top three (never anyone who hid from the leaderboard), streak milestones like "Ana R. just hit a 30 day streak", and how many people are focusing.
 - **Community admins** choose Study Squad's settings, like timer length and which channel gets updates. They don't get any extra view of your data.
@@ -59,7 +60,7 @@ You're always in control, and you don't need to ask anyone. To delete everything
 1. Open Study Squad and tap **Your progress**.
 2. Under **Your data**, tap **Delete my data**, then **Delete everything**.
 
-This removes your goals, session history, daily stats, XP, level, streak, quest rewards and privacy choices in that community straight away. It also stops any timer you have running and takes you off the weekly boss's helper list. Deleting is permanent, so your progress can't be brought back afterwards.
+This removes your goals, session history, daily stats, XP, level, streak, badges, card style, quest rewards and privacy choices in that community straight away. It also stops any timer you have running and takes you off the weekly boss's helper list. Deleting is permanent, so your progress can't be brought back afterwards.
 
 A couple of things live outside Study Squad, so deleting doesn't touch them:
 

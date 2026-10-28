@@ -51,6 +51,7 @@ export class RecordingNotifier implements Notifier {
   phases: PhaseCompletedDto[] = [];
   personal: { userId: string; event: PersonalResultDto }[] = [];
   statuses: { userId: string; me: MyStatusDto }[] = [];
+  badges: { userId: string; badgeIds: string[] }[] = [];
   roomUpdated(room: RoomStateDto) {
     this.rooms.push(room);
   }
@@ -62,6 +63,13 @@ export class RecordingNotifier implements Notifier {
   }
   myStatusUpdated(userId: string, me: MyStatusDto) {
     this.statuses.push({ userId, me });
+  }
+  badgesEarned(userId: string, badgeIds: string[]) {
+    this.badges.push({ userId, badgeIds });
+  }
+  /** Every badge pushed to a member so far. */
+  badgesFor(userId: string) {
+    return this.badges.filter((b) => b.userId === userId).flatMap((b) => b.badgeIds);
   }
   get lastRoom() {
     return this.rooms.at(-1);

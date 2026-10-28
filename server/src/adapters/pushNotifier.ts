@@ -12,6 +12,7 @@ import type {
   RoomStateDto,
 } from "@studyroom/core";
 import type {
+  BadgesEarnedEvent,
   MyStatusEvent,
   PersonalResultEvent,
   PhaseCompletedEvent,
@@ -26,6 +27,7 @@ export interface Broadcaster<C> {
   broadcastPhaseCompleted(message: PhaseCompletedEvent, clients: BroadcastTarget<C>): void;
   broadcastPersonalResult(message: PersonalResultEvent, clients: BroadcastTarget<C>): void;
   broadcastMyStatus(message: MyStatusEvent, clients: BroadcastTarget<C>): void;
+  broadcastBadgesEarned(message: BadgesEarnedEvent, clients: BroadcastTarget<C>): void;
 }
 
 /**
@@ -55,5 +57,10 @@ export class PushNotifier<C> implements Notifier {
   myStatusUpdated(userId: string, me: MyStatusDto): void {
     const client = this.findClient(userId);
     if (client) this.broadcaster.broadcastMyStatus({ me: myStatusToProto(me) }, [client]);
+  }
+
+  badgesEarned(userId: string, badgeIds: string[]): void {
+    const client = this.findClient(userId);
+    if (client) this.broadcaster.broadcastBadgesEarned({ badgeIds }, [client]);
   }
 }
