@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- AFK check: one "Still there?" tap per room cycle (about every two hours on 25/5), never in your first round, and one in solo timers of an hour or more. A missed tap still counts the minutes, but rounds don't count as finished until the next cycle, so they earn no combo and don't count toward the streak. Admins can turn it off under **Game layer → AFK checks**.
+- AFK check: one "Still there?" tap per room cycle (about every two hours on 25/5), never in your first round, and one in solo timers of an hour or more. A missed tap never stops the timer and still counts the minutes; only that round earns no combo and doesn't count toward the streak. Admins can turn it off under **Game layer → AFK checks**.
 
 ## [0.1.0] - 2026-10-28
 

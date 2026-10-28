@@ -74,7 +74,7 @@ describe("AFK check on the room timer", () => {
     expect((await engine.getSnapshot("ana")).me.afkCheckEndsAt).toBe(0);
   });
 
-  it("after a missed check, keeps minutes but drops combo and streak credit for the rest of the cycle", async () => {
+  it("costs only the round with the missed check: minutes count, combo and streak don't", async () => {
     const { engine, notifier, advance } = createHarness(on(), T0, 0);
     for (const id of ["ana", "ben", "cal"]) await engine.joinRoomTimer(id);
     await advance(roundStart(2) + MINUTE - T0);
@@ -83,14 +83,20 @@ describe("AFK check on the room timer", () => {
     await advance(roundStart(4) + FOCUS - (roundStart(2) + MINUTE));
 
     expect(resultFor(notifier, "cal", 1)).toMatchObject({ finished: true, combo: 1.2 });
-    for (const round of [2, 3, 4]) {
-      expect(notifier.phases.find((p) => p.round === round)!.finisherIds).toEqual(["ana", "ben"]);
-      expect(resultFor(notifier, "ana", round)).toMatchObject({ finished: true, combo: 1.1 });
+    expect(notifier.phases.find((p) => p.round === 2)!.finisherIds).toEqual(["ana", "ben"]);
+    expect(resultFor(notifier, "ana", 2)).toMatchObject({ finished: true, combo: 1.1 });
+    expect(resultFor(notifier, "cal", 2)).toMatchObject({
+      finished: false,
+      afkCheckMissed: true,
+      focusedMinutes: 25,
+      combo: 1,
+    });
+    // The timer keeps running, and the next rounds count again.
+    for (const round of [3, 4]) {
       expect(resultFor(notifier, "cal", round)).toMatchObject({
-        finished: false,
-        afkCheckMissed: true,
-        focusedMinutes: 25,
-        combo: 1,
+        finished: true,
+        afkCheckMissed: false,
+        combo: 1.2,
       });
     }
     // Boss damage in round 2: 25 min x 1.1 for each finisher, plus cal's 25 at 1.0x.

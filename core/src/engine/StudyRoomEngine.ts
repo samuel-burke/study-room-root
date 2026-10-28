@@ -542,8 +542,8 @@ export class StudyRoomEngine {
     return planRoomAfkCheck(buildCycle(cycleStartedAt, preset), from, this.random);
   }
 
-  private missedAfkCheck(check: AfkCheckState, blockEndsAt: number): boolean {
-    return this.config.afkChecksEnabled && afkCheckMissed(check, blockEndsAt);
+  private missedAfkCheck(check: AfkCheckState, block: { startsAt: number; endsAt: number }) {
+    return this.config.afkChecksEnabled && afkCheckMissed(check, block);
   }
 
   private async settleRoomCycle(tx: Store, now: number, effects: Effects): Promise<void> {
@@ -616,11 +616,10 @@ export class StudyRoomEngine {
       }))
       .filter((s) => s.minutes > 0);
     const finishThreshold = Math.min(GAME.minRoundMinutesToFinish, focusMinutes / 2);
-    // A missed AFK check keeps the minutes but not the finish, so no combo or streak,
-    // from the round it came up in to the end of the cycle.
+    // A missed AFK check keeps the minutes but not this round's finish, so no combo or streak.
     const missedIds = new Set(
       minuteShares
-        .filter((s) => this.missedAfkCheck(s.participant, phase.endsAt))
+        .filter((s) => this.missedAfkCheck(s.participant, phase))
         .map((s) => s.participant.userId),
     );
     const finisherIds = minuteShares
@@ -696,7 +695,7 @@ export class StudyRoomEngine {
   private async settleSolos(tx: Store, now: number, effects: Effects): Promise<void> {
     for (const solo of await tx.solos.list()) {
       if (solo.phase === "focus" && solo.endsAt <= now) {
-        const missed = this.missedAfkCheck(solo, solo.endsAt);
+        const missed = this.missedAfkCheck(solo, { startsAt: solo.startedAt, endsAt: solo.endsAt });
         const credit = await this.creditFocus(tx, effects, {
           userId: solo.userId,
           kind: "solo",

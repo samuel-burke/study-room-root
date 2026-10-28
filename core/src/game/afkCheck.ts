@@ -74,10 +74,17 @@ export function afkCheckOpen(check: AfkCheckState, now: number): boolean {
 }
 
 /**
- * True when a check that came up before `blockEndsAt` went unanswered. On the
- * room timer this holds for the round with the check and every round after it
- * in the same cycle.
+ * True when the block had a check that went unanswered. Only the block the
+ * check came up in is affected, so one missed tap never costs more than one round.
  */
-export function afkCheckMissed(check: AfkCheckState, blockEndsAt: number): boolean {
-  return check.afkCheckAt !== null && !check.afkCheckAnswered && check.afkCheckAt < blockEndsAt;
+export function afkCheckMissed(
+  check: AfkCheckState,
+  block: { startsAt: number; endsAt: number },
+): boolean {
+  return (
+    check.afkCheckAt !== null &&
+    !check.afkCheckAnswered &&
+    check.afkCheckAt >= block.startsAt &&
+    check.afkCheckAt < block.endsAt
+  );
 }
