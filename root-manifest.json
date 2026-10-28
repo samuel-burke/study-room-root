@@ -469,7 +469,7 @@
           {
             "key": "afkChecks",
             "title": "AFK checks",
-            "description": "Ask for one tap at a random moment in focus blocks of 25 minutes or more. A missed tap still counts the minutes, but not the combo or streak.",
+            "description": "Ask for one tap per room cycle (about every two hours on 25/5) and in solo timers of an hour or more. A missed tap still counts the minutes, but not the combo or streak.",
             "checkbox": {
               "defaultValue": true
             }

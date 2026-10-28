@@ -26,23 +26,23 @@ The room timer is the default and the brighter button because joining it is what
 
 ## Rewards
 
-| Rule              | Value                                                             | Why                                                                      |
-| ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Focus XP          | 2 XP per whole minute × combo                                     | Rewards time, not task count                                             |
-| Goal XP           | +25 once per goal                                                 | Unchecking and rechecking can't farm it                                  |
-| Daily cap         | 300 XP (admin setting)                                            | Nobody should feel pushed to study 12 hours                              |
-| Level curve       | Level _n_ needs 150 + 50·_n_ XP (level 7 needs 500)               | Matches the mockups; early levels come fast                              |
-| Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x | Rewards focusing together                                                |
-| Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
-| Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
-| Missed AFK check  | Minutes are credited at 1.0x, round not finished                  | Losing is soft: no combo or streak, but the time isn't thrown away       |
-| Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
+| Rule              | Value                                                              | Why                                                                      |
+| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Focus XP          | 2 XP per whole minute × combo                                      | Rewards time, not task count                                             |
+| Goal XP           | +25 once per goal                                                  | Unchecking and rechecking can't farm it                                  |
+| Daily cap         | 300 XP (admin setting)                                             | Nobody should feel pushed to study 12 hours                              |
+| Level curve       | Level _n_ needs 150 + 50·_n_ XP (level 7 needs 500)                | Matches the mockups; early levels come fast                              |
+| Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x  | Rewards focusing together                                                |
+| Finishing a round | At least 5 minutes in that round (or half the round, if shorter)   | Joining in the last seconds doesn't count toward the combo or the streak |
+| Leaving early     | Minutes so far are credited, round not finished                    | Honest time still counts                                                 |
+| Missed AFK check  | Minutes credited at 1.0x, rounds not finished until the next cycle | Losing is soft: no combo or streak, but the time isn't thrown away       |
+| Boss loot         | +50 XP to every contributor, outside the cap                       | Happens once a week; a capped reward would often be zero                 |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
 ## Anti-AFK guardrails
 
-**AFK check.** Every focus block of 25 minutes or more (a room round or a solo timer) asks for one "Still there?" tap at a random moment, and waits two minutes for it. The server picks the moment when the block is planned (on joining, and for the next round when a round ends) and stores it with the participant or solo timer, so it survives restarts and nobody can read it ahead of time: clients only learn about a check once it is open. Nobody is asked in their first minute, and someone who joins too late for a full two-minute window isn't asked at all. A missed check keeps the minutes (XP at 1.0x, boss damage), but the block doesn't count as finished, so it gives no combo, doesn't count toward anyone else's combo, and doesn't extend the streak. Admins can turn checks off; turning them off mid-block also forgives a check that is already open or missed.
+**AFK check.** The room timer asks for one "Still there?" tap per cycle (about every two hours on 25/5, four on 50/10), at a random moment in a random round after the first one you take part in, and waits two minutes for it. Long study sessions shouldn't be interrupted every round, and the cycle already releases everyone at its end, so one check per cycle is enough to stop a forgotten timer from earning credit. Your first round is never interrupted, and someone who joins in the last round isn't asked. Solo timers of an hour or more get one check, never in the first 25 minutes; shorter solos get none. The server picks the moment when you join (and again when a new cycle starts) and stores it with the participant or solo timer, so it survives restarts and nobody can read it ahead of time: clients only learn about a check once it is open. A missed check keeps the minutes (XP at 1.0x, boss damage), but from that round to the end of the cycle (or for that solo), rounds don't count as finished, so they give no combo, don't count toward anyone else's combo, and don't extend the streak. Leaving and rejoining starts fresh. Admins can turn checks off; turning them off also forgives a check that is already open or missed.
 
 The other guardrails:
 

@@ -17,7 +17,8 @@ import {
   afkCheckMissed,
   afkCheckOpen,
   NO_AFK_CHECK,
-  planAfkCheck,
+  planRoomAfkCheck,
+  planSoloAfkCheck,
   type AfkCheckState,
 } from "../game/afkCheck";
 import {
@@ -293,7 +294,7 @@ export class StudyRoomEngine {
         phase: "focus",
         breakEndsAt: endsAt + this.config.preset.breakMinutes * MINUTE_MS,
         ...(this.config.afkChecksEnabled
-          ? planAfkCheck({ startsAt: now, endsAt, minutes }, now, this.random)
+          ? planSoloAfkCheck(now, minutes, this.random)
           : NO_AFK_CHECK),
       });
       this.touch(effects, userId);
@@ -535,14 +536,10 @@ export class StudyRoomEngine {
     }
   }
 
-  /** Plans the check for the focus round that is running or next at `from`. */
+  /** Plans the one check for the rest of this cycle, for someone on the timer from `from`. */
   private planRoomCheck(cycleStartedAt: number, preset: TimerPreset, from: number): AfkCheckState {
     if (!this.config.afkChecksEnabled) return NO_AFK_CHECK;
-    const block = buildCycle(cycleStartedAt, preset).find(
-      (p) => p.kind === "focus" && p.endsAt > from,
-    );
-    if (!block) return NO_AFK_CHECK;
-    return planAfkCheck({ ...block, minutes: preset.focusMinutes }, from, this.random);
+    return planRoomAfkCheck(buildCycle(cycleStartedAt, preset), from, this.random);
   }
 
   private missedAfkCheck(check: AfkCheckState, blockEndsAt: number): boolean {
@@ -619,7 +616,8 @@ export class StudyRoomEngine {
       }))
       .filter((s) => s.minutes > 0);
     const finishThreshold = Math.min(GAME.minRoundMinutesToFinish, focusMinutes / 2);
-    // A missed AFK check keeps the minutes but not the finish, so no combo or streak.
+    // A missed AFK check keeps the minutes but not the finish, so no combo or streak,
+    // from the round it came up in to the end of the cycle.
     const missedIds = new Set(
       minuteShares
         .filter((s) => this.missedAfkCheck(s.participant, phase.endsAt))
@@ -649,13 +647,6 @@ export class StudyRoomEngine {
           finished: finisherIds.includes(share.participant.userId),
           now: phase.endsAt,
         }),
-      });
-    }
-    // Everyone still on the timer gets a fresh check for the next focus round.
-    for (const p of participants) {
-      await tx.room.addParticipant({
-        ...p,
-        ...this.planRoomCheck(phases[0]!.startsAt, preset, phase.endsAt),
       });
     }
     await this.damageBoss(

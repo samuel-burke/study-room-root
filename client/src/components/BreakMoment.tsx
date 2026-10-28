@@ -97,7 +97,9 @@ export function BreakMoment({
           </div>
           <div className="stat-sub">
             {result.afkCheckMissed
-              ? "Missed the AFK check, so this one doesn't count"
+              ? solo
+                ? "Missed the AFK check, so this session doesn't count"
+                : "Missed the AFK check, so rounds don't count until the next cycle"
               : result.finished
                 ? "Today counts"
                 : "Finish a full round to count today"}

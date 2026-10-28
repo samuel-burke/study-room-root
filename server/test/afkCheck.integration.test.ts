@@ -15,9 +15,10 @@ import {
 import { freshDatabase } from "./sqlite";
 
 const MINUTE = 60_000;
-const FOCUS = 25 * MINUTE;
-/** With random() = 0 the check opens one minute into the block. */
-const CHECK_AT = T0 + MINUTE;
+/** With random() = 0 the cycle's check opens one minute into round 2 (25/5 rounds). */
+const ROUND_2 = T0 + 30 * MINUTE;
+const ROUND_2_ENDS = ROUND_2 + 25 * MINUTE;
+const CHECK_AT = ROUND_2 + MINUTE;
 const CHECK_ENDS = CHECK_AT + 2 * MINUTE;
 
 const mockLogger = () => ({
@@ -102,14 +103,18 @@ describe("AFK check through the handlers on SQLite", () => {
     expect(me.afkCheckEndsAtMs).toBe(0);
     expect(me.userId).toBe("ana");
 
-    await advanceTo(T0 + FOCUS);
-    const result = (userId: string) => notifier.personal.find((p) => p.userId === userId)!.event;
+    await advanceTo(ROUND_2_ENDS);
+    const result = (userId: string) =>
+      notifier.personal.find((p) => p.userId === userId && p.event.round === 2)!.event;
     expect(result("ana")).toMatchObject({ finished: true, afkCheckMissed: false });
     expect(result("kai")).toMatchObject({ finished: false, afkCheckMissed: true, xpEarned: 50 });
+    // Round 1 had no check, so it counted for both.
+    expect(notifier.phases.find((p) => p.round === 1)!.finisherIds.sort()).toEqual(["ana", "kai"]);
   });
 
   it("keeps the planned check across a server restart", async () => {
     await handlers.joinRoomTimer("ana", { goals: [] });
+    await advanceTo(ROUND_2);
     expect(scheduler.at).toBe(CHECK_AT);
     engine.stop();
 
@@ -118,8 +123,10 @@ describe("AFK check through the handlers on SQLite", () => {
     expect(scheduler.at).toBe(CHECK_AT);
     await advanceTo(CHECK_AT);
     await handlers.confirmPresence("ana");
-    await advanceTo(T0 + FOCUS);
-    expect(notifier.personal.find((p) => p.userId === "ana")!.event.finished).toBe(true);
+    await advanceTo(ROUND_2_ENDS);
+    expect(
+      notifier.personal.find((p) => p.userId === "ana" && p.event.round === 2)!.event.finished,
+    ).toBe(true);
   });
 
   it("treats a tap with no open check as a harmless no-op", async () => {
@@ -130,8 +137,11 @@ describe("AFK check through the handlers on SQLite", () => {
     await handlers.confirmPresence("ana");
     await advanceTo(CHECK_ENDS);
     await handlers.confirmPresence("ana");
-    await advanceTo(T0 + FOCUS);
-    expect(notifier.personal.find((p) => p.userId === "ana")!.event.afkCheckMissed).toBe(true);
+    await advanceTo(ROUND_2_ENDS);
+    expect(
+      notifier.personal.find((p) => p.userId === "ana" && p.event.round === 2)!.event
+        .afkCheckMissed,
+    ).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
   });
 
