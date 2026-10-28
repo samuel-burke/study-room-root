@@ -1,6 +1,7 @@
 import type {
   BossDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MemberStatus as MemberStatusDto,
   MyStatusDto,
@@ -22,6 +23,7 @@ import {
   ResultSource,
   type Boss,
   type Goal,
+  type Leaderboard,
   type MemberCard,
   type MyStatus,
   type PersonalResultEvent,
@@ -176,6 +178,21 @@ export function progressToProto(progress: ProgressDto): Progress {
   };
 }
 
+export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
+  return {
+    weekStart: board.weekStart,
+    endsAtMs: board.endsAt,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    myRank: board.me.rank,
+    myFocusMinutes: board.me.focusMinutes,
+    hidden: board.me.hidden,
+  };
+}
+
 export function phaseCompletedToProto(event: PhaseCompletedDto): PhaseCompletedEvent {
   return {
     kind: PHASE_TO_PROTO[event.kind],
@@ -305,6 +322,19 @@ export function progressFromProto(progress: Progress): ProgressDto {
     me: myStatusFromProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+  };
+}
+
+export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
+  return {
+    weekStart: board.weekStart,
+    endsAt: board.endsAtMs,
+    entries: board.entries.map((e) => ({
+      userId: e.userId,
+      focusMinutes: e.focusMinutes,
+      rank: e.rank,
+    })),
+    me: { rank: board.myRank, focusMinutes: board.myFocusMinutes, hidden: board.hidden },
   };
 }
 

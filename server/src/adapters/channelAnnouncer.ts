@@ -50,7 +50,9 @@ export class ChannelAnnouncer implements Announcer {
 
   async dailyRecap(channelId: string, recap: RecapDto): Promise<void> {
     const names = new Map<string, string>();
-    for (const { userId } of recap.topStreaks) names.set(userId, await this.displayName(userId));
+    for (const { userId } of [...recap.topStreaks, ...recap.topFocus]) {
+      if (!names.has(userId)) names.set(userId, await this.displayName(userId));
+    }
     const safeRecap = recap.boss
       ? { ...recap, boss: { ...recap.boss, name: safeDisplayName(recap.boss.name) } }
       : recap;

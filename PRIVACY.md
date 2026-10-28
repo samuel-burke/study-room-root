@@ -15,6 +15,7 @@ When you use Study Squad in a community, it stores:
 | Your Root user ID                                                         | To know which goals, sessions and progress are yours                    |
 | Goals you type in, and whether they're done                               | To show your goal list and your current goal on the board               |
 | Your choice to keep goals private                                         | So the board shows "Focusing" instead of your goal                      |
+| Whether you hid yourself from the weekly leaderboard                      | So you're never ranked or named in rankings                             |
 | When your focus sessions started and ended, and whether you finished them | To run the room and solo timers and count your streak                   |
 | Focus minutes, XP, goals finished and sessions finished per day           | For your level, progress heatmap, the daily XP cap and community recaps |
 | Your streak and which weekly streak freezes you've used                   | To show and protect your streak                                         |
@@ -30,8 +31,9 @@ Each community's Study Squad data is stored in that community's app database, wh
 ## Who can see it
 
 - **Other members of the community** can see your card on the board while you have a timer running: your name, picture, level, streak, timer status and current goal (or "Focusing" if your goals are private).
+- **Other members** can also see the weekly leaderboard: the names, pictures and focus minutes of this week's top 10, unless you hide yourself under **Your progress**.
 - **Only you** can see your goal list, your XP total, your progress history and your break results.
-- **Channel posts**: if an admin picks a channel for updates, Study Squad posts there. These posts can include community totals (hours focused, goals finished, how many members showed up), the nicknames and streak lengths of the top three streaks, streak milestones such as "Ana R. just hit a 30 day streak", and how many people are focusing.
+- **Channel posts**: if an admin picks a channel for updates, Study Squad posts there. These posts can include community totals (hours focused, goals finished, how many members showed up), the nicknames and streak lengths of the top three streaks, the nicknames and focus time of this week's top three (never anyone who hid themselves from the leaderboard), streak milestones such as "Ana R. just hit a 30 day streak", and how many people are focusing.
 - **Community admins** choose Study Squad's settings (timer length, the post channel, recap time and so on). They don't get any extra access to your data through Study Squad.
 - **We** don't look through community data. Root may show us error logs, which contain user IDs and counts but never your goal text.
 
@@ -51,7 +53,7 @@ You can delete your data at any time, yourself, from inside the app:
 1. Open Study Squad and tap the **Your progress** button.
 2. Under **Your data**, tap **Delete my data**, then **Delete everything**.
 
-This immediately and permanently erases your goals, session history, daily stats, XP, level, streak and privacy choice in that community, ends any timer you have running, and removes you from the weekly boss's contributor list. It can't be undone.
+This immediately and permanently erases your goals, session history, daily stats, XP, level, streak and privacy choices in that community, ends any timer you have running, and removes you from the weekly boss's contributor list. It can't be undone.
 
 Deletion doesn't change:
 

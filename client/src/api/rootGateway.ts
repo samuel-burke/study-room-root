@@ -1,5 +1,6 @@
 import { ImageUriResolution, rootClient } from "@rootsdk/client-app";
 import {
+  leaderboardFromProto,
   myStatusFromProto,
   personalResultFromProto,
   phaseCompletedFromProto,
@@ -94,6 +95,14 @@ export class RootGateway implements StudyRoomGateway {
 
   async getProgress() {
     return progressFromProto(await call(() => client.getProgress({})));
+  }
+
+  async getLeaderboard() {
+    return leaderboardFromProto(await call(() => client.getLeaderboard({})));
+  }
+
+  async setLeaderboardHidden(hidden: boolean) {
+    return leaderboardFromProto(await call(() => client.setLeaderboardHidden({ hidden })));
   }
 
   async getProfiles(userIds: string[]): Promise<Profile[]> {

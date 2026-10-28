@@ -75,6 +75,11 @@ export interface DailyStatRecord {
 
 export type DailyStatDelta = Partial<Omit<DailyStatRecord, "userId" | "day">>;
 
+export interface WeekFocusRecord {
+  userId: string;
+  focusMinutes: number;
+}
+
 export interface CommunityDayStats {
   focusMinutes: number;
   goalsDone: number;
@@ -123,6 +128,16 @@ export interface Store {
     listForUser(userId: string, fromDay: DayKey, toDay: DayKey): Promise<DailyStatRecord[]>;
     communityDay(day: DayKey): Promise<CommunityDayStats>;
   };
+  leaderboard: {
+    isHidden(userId: string): Promise<boolean>;
+    setHidden(userId: string, hidden: boolean): Promise<void>;
+    listHidden(): Promise<string[]>;
+    /**
+     * Focus minutes per member summed over [fromDay, toDay], most first (ties
+     * by user id). Members who are hidden or have no minutes are left out.
+     */
+    standings(fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]>;
+  };
   bosses: {
     get(weekKey: DayKey): Promise<BossState | undefined>;
     save(boss: BossState): Promise<void>;
@@ -133,7 +148,8 @@ export interface Store {
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, room and solo timers, and their id in boss contributor lists.
+   * stats, room and solo timers, leaderboard opt-out, and their id in boss
+   * contributor lists.
    * Community totals for past recaps are not recomputed.
    */
   eraseUser(userId: string): Promise<void>;

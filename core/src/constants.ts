@@ -24,6 +24,9 @@ export const LIMITS = {
   displayNameMaxLength: 32,
   progressWindowDays: 35,
   topStreaksInRecap: 3,
+  /** Rows on the weekly leaderboard. */
+  leaderboardSize: 10,
+  topFocusInRecap: 3,
 } as const;
 
 /** "Room is busy" posts re-arm only after this cool-down. */

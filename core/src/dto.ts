@@ -135,6 +135,25 @@ export interface ProgressDto {
   totalFocusMinutes: number;
 }
 
+export interface LeaderboardEntryDto {
+  userId: string;
+  /** Whole focus minutes this week. */
+  focusMinutes: number;
+  /** 1-based. Members with the same minutes share a rank. */
+  rank: number;
+}
+
+/** This week's focus-minute standings. Members who opted out are never listed. */
+export interface LeaderboardDto {
+  /** Monday of this week, in the community time zone. */
+  weekStart: DayKey;
+  /** When the board resets (next Monday 00:00 in the community time zone). */
+  endsAt: number;
+  entries: LeaderboardEntryDto[];
+  /** The caller's own week. rank is 0 when they're hidden or haven't focused yet. */
+  me: { rank: number; focusMinutes: number; hidden: boolean };
+}
+
 export interface RecapDto {
   day: DayKey;
   weekday: string;
@@ -143,4 +162,6 @@ export interface RecapDto {
   activeMembers: number;
   boss: { name: string; hpLeftMinutes: number; daysLeft: number; defeated: boolean } | null;
   topStreaks: { userId: string; streak: number }[];
+  /** Most focus minutes so far this week. Empty when the admin turned it off. */
+  topFocus: { userId: string; focusMinutes: number }[];
 }

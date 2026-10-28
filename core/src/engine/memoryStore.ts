@@ -11,6 +11,7 @@ import type {
   SessionLogRecord,
   SoloRecord,
   Store,
+  WeekFocusRecord,
 } from "./ports";
 
 declare global {
@@ -27,6 +28,7 @@ interface Data {
   participants: Map<string, ParticipantRecord>;
   sessions: SessionLogRecord[];
   stats: Map<string, DailyStatRecord>;
+  leaderboardHidden: Set<string>;
   bosses: Map<string, BossState>;
   kv: Map<string, unknown>;
 }
@@ -39,6 +41,7 @@ const emptyData = (): Data => ({
   participants: new Map(),
   sessions: [],
   stats: new Map(),
+  leaderboardHidden: new Set(),
   bosses: new Map(),
   kv: new Map(),
 });
@@ -63,6 +66,7 @@ export class MemoryStore implements Store {
     d.members.delete(userId);
     d.solos.delete(userId);
     d.participants.delete(userId);
+    d.leaderboardHidden.delete(userId);
     for (const [id, goal] of d.goals) if (goal.userId === userId) d.goals.delete(id);
     for (const [key, stat] of d.stats) if (stat.userId === userId) d.stats.delete(key);
     d.sessions = d.sessions.filter((s) => s.userId !== userId);
@@ -195,6 +199,26 @@ export class MemoryStore implements Store {
     },
   };
 
+  leaderboard = {
+    isHidden: async (userId: string) => this.data.leaderboardHidden.has(userId),
+    setHidden: async (userId: string, hidden: boolean) => {
+      if (hidden) this.data.leaderboardHidden.add(userId);
+      else this.data.leaderboardHidden.delete(userId);
+    },
+    listHidden: async () => [...this.data.leaderboardHidden].sort(),
+    standings: async (fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]> => {
+      const totals = new Map<string, number>();
+      for (const s of this.data.stats.values()) {
+        if (s.day < fromDay || s.day > toDay || this.data.leaderboardHidden.has(s.userId)) continue;
+        totals.set(s.userId, (totals.get(s.userId) ?? 0) + s.focusMinutes);
+      }
+      return [...totals]
+        .filter(([, focusMinutes]) => focusMinutes > 0)
+        .map(([userId, focusMinutes]) => ({ userId, focusMinutes }))
+        .sort((a, b) => b.focusMinutes - a.focusMinutes || compareIds(a.userId, b.userId));
+    },
+  };
+
   bosses = {
     get: async (weekKey: DayKey) => copyOrUndefined(this.data.bosses.get(weekKey)),
     save: async (boss: BossState) => {
@@ -208,6 +232,11 @@ export class MemoryStore implements Store {
       this.data.kv.set(key, copy(value));
     },
   };
+}
+
+/** Byte order, like SQLite's default collation, so both stores break ties the same way. */
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function copyOrUndefined<T>(value: T | undefined): T | undefined {

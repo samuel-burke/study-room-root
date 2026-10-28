@@ -203,6 +203,13 @@ export class DemoGateway implements StudyRoomGateway {
     }
     if (!this.options.bots) return;
     for (const bot of BOTS) await member(bot.userId, bot.xp, bot.streak);
+    // Earlier days this week, so the weekly leaderboard has standings to show.
+    for (const [i, bot] of BOTS.entries()) {
+      for (let day = weekKey(today); day < today; day = addDays(day, 1)) {
+        const focusMinutes = 30 + ((i * 47 + Number(day.slice(-2)) * 29) % 120);
+        await this.store.stats.add(bot.userId, day, { focusMinutes });
+      }
+    }
     const boss = newBoss(
       weekKey(dayKey(Date.now(), tz)),
       this.config.boss.name,
@@ -311,6 +318,14 @@ export class DemoGateway implements StudyRoomGateway {
 
   getProgress() {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
+  }
+
+  getLeaderboard() {
+    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID));
+  }
+
+  setLeaderboardHidden(hidden: boolean) {
+    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden));
   }
 
   async getProfiles(userIds: string[]): Promise<Profile[]> {

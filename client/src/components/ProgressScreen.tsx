@@ -4,8 +4,9 @@ import { toGatewayError, type StudyRoomGateway } from "../api/gateway";
 import { heatLevel } from "../lib/view";
 import { BackIcon, FlameIcon } from "./Icons";
 import { XpBar } from "./SessionPanel";
+import { WeeklyLeaderboard } from "./WeeklyLeaderboard";
 
-/** Level, streak with freeze status, and a five-week heatmap. */
+/** Level, streak with freeze status, a five-week heatmap, and the weekly leaderboard. */
 export function ProgressScreen({
   gateway,
   xpEnabled,
@@ -105,6 +106,8 @@ export function ProgressScreen({
           </section>
         </>
       )}
+
+      <WeeklyLeaderboard gateway={gateway} />
 
       <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>

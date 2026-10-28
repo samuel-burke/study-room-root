@@ -2,6 +2,7 @@ import { BUSY_POST_COOLDOWN_MS, GAME, LIMITS, MINUTE_MS } from "../constants";
 import type {
   BossDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
   MyStatusDto,
   PersonalResultDto,
@@ -188,6 +189,20 @@ export class StudyRoomEngine {
         days,
         totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
       };
+    });
+  }
+
+  /** This week's focus-minute standings, plus where the caller stands. */
+  getLeaderboard(userId: string): Promise<LeaderboardDto> {
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now));
+  }
+
+  /** Opting out hides the member from the leaderboard and from rankings in recaps. */
+  async setLeaderboardHidden(userId: string, hidden: unknown): Promise<LeaderboardDto> {
+    if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
+    return this.run(async (tx, now) => {
+      await tx.leaderboard.setHidden(userId, hidden);
+      return this.buildLeaderboard(tx, userId, now);
     });
   }
 
@@ -1010,12 +1025,34 @@ export class StudyRoomEngine {
     };
   }
 
+  private async buildLeaderboard(tx: Store, userId: string, now: number): Promise<LeaderboardDto> {
+    const tz = this.config.timeZone;
+    const today = dayKey(now, tz);
+    const weekStart = weekKey(today);
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekStart, today));
+    const hidden = await tx.leaderboard.isHidden(userId);
+    const mine = ranked.find((e) => e.userId === userId);
+    const myRows = await tx.stats.listForUser(userId, weekStart, today);
+    return {
+      weekStart,
+      endsAt: nextWeekStart(now, tz),
+      entries: ranked.slice(0, LIMITS.leaderboardSize),
+      me: {
+        rank: mine?.rank ?? 0,
+        focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
+        hidden,
+      },
+    };
+  }
+
   private async recapFor(tx: Store, at: number, now: number): Promise<RecapDto> {
     const tz = this.config.timeZone;
     const day = dayKey(at, tz);
     const stats = await tx.stats.communityDay(day);
+    const hidden = new Set(await tx.leaderboard.listHidden());
     const candidates = await tx.members.listActiveSince(addDays(day, -14));
     const topStreaks = candidates
+      .filter((m) => !hidden.has(m.userId))
       .map((m) => ({
         userId: m.userId,
         streak: currentStreak(m.streak, day, this.config.streakFreezesEnabled),
@@ -1023,6 +1060,11 @@ export class StudyRoomEngine {
       .filter((s) => s.streak > 0)
       .sort((a, b) => b.streak - a.streak || a.userId.localeCompare(b.userId))
       .slice(0, LIMITS.topStreaksInRecap);
+    const topFocus = this.config.recapLeaderboardEnabled
+      ? rankByMinutes(await tx.leaderboard.standings(weekKey(day), day))
+          .slice(0, LIMITS.topFocusInRecap)
+          .map(({ userId, focusMinutes }) => ({ userId, focusMinutes }))
+      : [];
     let boss: RecapDto["boss"] = null;
     if (this.config.boss.enabled) {
       const state = await this.loadBoss(tx, at);
@@ -1042,6 +1084,26 @@ export class StudyRoomEngine {
       activeMembers: stats.activeMembers,
       boss,
       topStreaks,
+      topFocus,
     };
   }
+}
+
+/**
+ * Whole minutes, ranked so ties share a place (1, 2, 2, 4). Rounding down
+ * first means two people shown with the same minutes never get different ranks.
+ */
+function rankByMinutes(rows: readonly { userId: string; focusMinutes: number }[]) {
+  const whole = rows
+    .map((r) => ({ userId: r.userId, focusMinutes: Math.floor(r.focusMinutes) }))
+    .filter((r) => r.focusMinutes > 0)
+    .sort(
+      (a, b) =>
+        b.focusMinutes - a.focusMinutes || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
+    );
+  let rank = 0;
+  return whole.map((r, i) => {
+    if (i === 0 || r.focusMinutes !== whole[i - 1]!.focusMinutes) rank = i + 1;
+    return { ...r, rank };
+  });
 }

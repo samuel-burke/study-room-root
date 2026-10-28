@@ -108,4 +108,17 @@ test.describe("progress", () => {
     await page.getByRole("button", { name: "Back to the room" }).click();
     await expect(page.getByRole("timer")).toBeVisible();
   });
+
+  test("shows the weekly leaderboard and lets you hide yourself", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    const board = page.getByRole("region", { name: "Weekly leaderboard" });
+    await expect(board.getByText("By focus minutes · resets Monday")).toBeVisible();
+    const show = board.getByRole("switch", { name: "Show me on the leaderboard" });
+    await expect(show).toHaveAttribute("aria-checked", "true");
+    await show.click();
+    await expect(show).toHaveAttribute("aria-checked", "false");
+    await expect(board.getByText("You're hidden.")).toBeVisible();
+    await expect(board.getByRole("listitem", { name: /, You,/ })).toHaveCount(0);
+  });
 });

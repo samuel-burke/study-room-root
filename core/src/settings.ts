@@ -21,6 +21,7 @@ export const SETTINGS = {
     postChannel: "postChannel",
     recapEnabled: "recapEnabled",
     recapTime: "recapTime",
+    recapLeaderboard: "recapLeaderboard",
     timeZone: "timeZone",
     goalsPublic: "goalsPublicByDefault",
     busyPosts: "busyPosts",
@@ -48,6 +49,8 @@ export interface AppConfig {
   /** Display name of that channel, resolved by the server. Empty if unknown. */
   postChannelName: string;
   recap: { enabled: boolean; hours: number; minutes: number };
+  /** List the week's top focusers in the daily recap. */
+  recapLeaderboardEnabled: boolean;
   goalsPublicByDefault: boolean;
   busyPosts: { enabled: boolean; threshold: number };
   xp: { enabled: boolean; dailyCap: number };
@@ -64,6 +67,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   postChannelId: null,
   postChannelName: "",
   recap: { enabled: true, hours: 21, minutes: 0 },
+  recapLeaderboardEnabled: true,
   goalsPublicByDefault: true,
   busyPosts: { enabled: true, threshold: 5 },
   xp: { enabled: true, dailyCap: 300 },
@@ -139,6 +143,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
       enabled: bool(room[r.recapEnabled], d.recap.enabled),
       ...timeOfDay(room[r.recapTime], d.recap),
     },
+    recapLeaderboardEnabled: bool(room[r.recapLeaderboard], d.recapLeaderboardEnabled),
     goalsPublicByDefault: bool(room[r.goalsPublic], d.goalsPublicByDefault),
     busyPosts: {
       enabled: bool(room[r.busyPosts], d.busyPosts.enabled),

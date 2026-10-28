@@ -1,4 +1,5 @@
 import type {
+  LeaderboardDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -55,6 +56,8 @@ export interface StudyRoomGateway {
   deleteGoal(goalId: string): Promise<MyStatusDto>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<MyStatusDto>;
   getProgress(): Promise<ProgressDto>;
+  getLeaderboard(): Promise<LeaderboardDto>;
+  setLeaderboardHidden(hidden: boolean): Promise<LeaderboardDto>;
   /** Erases everything stored about the current member. */
   deleteMyData(): Promise<MyStatusDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;

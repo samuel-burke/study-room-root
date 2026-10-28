@@ -139,6 +139,26 @@ message Progress {
   double total_focus_minutes = 3;
 }
 
+message LeaderboardEntry {
+  string user_id = 1;
+  // Whole focus minutes this week.
+  double focus_minutes = 2;
+  // 1-based. Equal minutes share a rank.
+  int32 rank = 3;
+}
+
+// This week's focus-minute standings. Members who opted out are never listed.
+message Leaderboard {
+  // Monday of this week in the community time zone, "YYYY-MM-DD".
+  string week_start = 1;
+  double ends_at_ms = 2;
+  repeated LeaderboardEntry entries = 3;
+  // 0 when the caller is hidden or hasn't focused this week.
+  int32 my_rank = 4;
+  double my_focus_minutes = 5;
+  bool hidden = 6;
+}
+
 // ---------------------------------------------------------------- requests
 
 message GetRoomRequest {}
@@ -177,6 +197,12 @@ message SetGoalsPrivateRequest {
 }
 
 message GetProgressRequest {}
+
+message GetLeaderboardRequest {}
+
+message SetLeaderboardHiddenRequest {
+  bool hidden = 1;
+}
 
 // Erases everything the app stores about the caller. Cannot be undone.
 message DeleteMyDataRequest {}
@@ -233,6 +259,8 @@ service StudyRoomService {
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
   rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (Leaderboard);
+  rpc SetLeaderboardHidden(SetLeaderboardHiddenRequest) returns (Leaderboard);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);

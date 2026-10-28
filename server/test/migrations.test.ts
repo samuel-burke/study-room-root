@@ -21,6 +21,7 @@ describe("migrations", () => {
         "daily_stats",
         "goals",
         "kv",
+        "leaderboard_opt_outs",
         "members",
         "room_cycle",
         "room_participants",

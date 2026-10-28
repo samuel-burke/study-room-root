@@ -1319,6 +1319,29 @@ h3 {
   color: var(--teal);
 }
 
+/* ---------------------------------------------------------------- leaderboard */
+
+.leaderboard .member-row {
+  background: var(--bg);
+  border: 1px solid transparent;
+}
+
+.leaderboard .member-row[data-you="true"] {
+  border-color: var(--amber-you);
+}
+
+.leaderboard .rank {
+  width: 20px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.leaderboard .member-row:nth-child(1) .rank {
+  color: var(--amber);
+}
+
 .bottom-bar {
   position: fixed;
   left: 0;
