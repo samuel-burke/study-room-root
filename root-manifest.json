@@ -1,0 +1,473 @@
+{
+  "id": "your-app-id",
+  "version": "0.1.0",
+  "package": {
+    "client": {
+      "deploy": "client/dist"
+    },
+    "server": {
+      "launch": "server/dist/main.js",
+      "deploy": [
+        "server/dist",
+        "networking/gen/server",
+        "core/dist",
+        "core/package.json",
+        "contract/dist",
+        "contract/package.json"
+      ],
+      "nodeModules": ["node_modules"]
+    }
+  },
+  "permissions": {
+    "channel": {
+      "channelView": true,
+      "channelCreateMessage": true
+    }
+  },
+  "settings": {
+    "groups": [
+      {
+        "key": "room",
+        "title": "Timer and room",
+        "items": [
+          {
+            "key": "timerPreset",
+            "title": "Default room timer",
+            "description": "Focus minutes / break minutes. Rounds of 4, then a long break. Changes apply from the next cycle.",
+            "select": {
+              "multiSelect": false,
+              "values": ["25-5"],
+              "options": [
+                {
+                  "key": "25-5",
+                  "value": "25 / 5"
+                },
+                {
+                  "key": "50-10",
+                  "value": "50 / 10"
+                },
+                {
+                  "key": "custom",
+                  "value": "Custom"
+                }
+              ]
+            }
+          },
+          {
+            "key": "customFocusMinutes",
+            "title": "Custom focus minutes",
+            "description": "Used when the room timer is set to Custom.",
+            "select": {
+              "multiSelect": false,
+              "values": ["25"],
+              "options": [
+                {
+                  "key": "15",
+                  "value": "15 min"
+                },
+                {
+                  "key": "20",
+                  "value": "20 min"
+                },
+                {
+                  "key": "25",
+                  "value": "25 min"
+                },
+                {
+                  "key": "30",
+                  "value": "30 min"
+                },
+                {
+                  "key": "40",
+                  "value": "40 min"
+                },
+                {
+                  "key": "45",
+                  "value": "45 min"
+                },
+                {
+                  "key": "50",
+                  "value": "50 min"
+                },
+                {
+                  "key": "60",
+                  "value": "60 min"
+                },
+                {
+                  "key": "75",
+                  "value": "75 min"
+                },
+                {
+                  "key": "90",
+                  "value": "90 min"
+                },
+                {
+                  "key": "120",
+                  "value": "120 min"
+                }
+              ]
+            }
+          },
+          {
+            "key": "customBreakMinutes",
+            "title": "Custom break minutes",
+            "description": "Used when the room timer is set to Custom.",
+            "select": {
+              "multiSelect": false,
+              "values": ["5"],
+              "options": [
+                {
+                  "key": "3",
+                  "value": "3 min"
+                },
+                {
+                  "key": "5",
+                  "value": "5 min"
+                },
+                {
+                  "key": "10",
+                  "value": "10 min"
+                },
+                {
+                  "key": "15",
+                  "value": "15 min"
+                },
+                {
+                  "key": "20",
+                  "value": "20 min"
+                },
+                {
+                  "key": "30",
+                  "value": "30 min"
+                }
+              ]
+            }
+          },
+          {
+            "key": "postChannel",
+            "title": "Post updates in",
+            "description": "Daily recaps, busy-room and milestone posts go here. Leave empty to turn posts off.",
+            "channel": {
+              "multiSelect": false
+            }
+          },
+          {
+            "key": "recapEnabled",
+            "title": "Daily recap",
+            "description": "Post community hours, goals finished and top streaks once a day.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "recapTime",
+            "title": "Recap time",
+            "description": "In the community time zone below.",
+            "time": {
+              "defaultValue": {
+                "hours": 21,
+                "minutes": 0,
+                "seconds": 0
+              }
+            }
+          },
+          {
+            "key": "timeZone",
+            "title": "Community time zone",
+            "description": "Decides when a day starts for streaks, recaps and the weekly boss.",
+            "select": {
+              "multiSelect": false,
+              "values": ["America/New_York"],
+              "options": [
+                {
+                  "key": "America/New_York",
+                  "value": "America/New York"
+                },
+                {
+                  "key": "America/Chicago",
+                  "value": "America/Chicago"
+                },
+                {
+                  "key": "America/Denver",
+                  "value": "America/Denver"
+                },
+                {
+                  "key": "America/Los_Angeles",
+                  "value": "America/Los Angeles"
+                },
+                {
+                  "key": "America/Anchorage",
+                  "value": "America/Anchorage"
+                },
+                {
+                  "key": "Pacific/Honolulu",
+                  "value": "Pacific/Honolulu"
+                },
+                {
+                  "key": "America/Toronto",
+                  "value": "America/Toronto"
+                },
+                {
+                  "key": "America/Sao_Paulo",
+                  "value": "America/Sao Paulo"
+                },
+                {
+                  "key": "Europe/London",
+                  "value": "Europe/London"
+                },
+                {
+                  "key": "Europe/Berlin",
+                  "value": "Europe/Berlin"
+                },
+                {
+                  "key": "Europe/Paris",
+                  "value": "Europe/Paris"
+                },
+                {
+                  "key": "Europe/Madrid",
+                  "value": "Europe/Madrid"
+                },
+                {
+                  "key": "Africa/Lagos",
+                  "value": "Africa/Lagos"
+                },
+                {
+                  "key": "Africa/Johannesburg",
+                  "value": "Africa/Johannesburg"
+                },
+                {
+                  "key": "Asia/Kolkata",
+                  "value": "Asia/Kolkata"
+                },
+                {
+                  "key": "Asia/Singapore",
+                  "value": "Asia/Singapore"
+                },
+                {
+                  "key": "Asia/Tokyo",
+                  "value": "Asia/Tokyo"
+                },
+                {
+                  "key": "Asia/Seoul",
+                  "value": "Asia/Seoul"
+                },
+                {
+                  "key": "Australia/Sydney",
+                  "value": "Australia/Sydney"
+                },
+                {
+                  "key": "Pacific/Auckland",
+                  "value": "Pacific/Auckland"
+                },
+                {
+                  "key": "UTC",
+                  "value": "UTC"
+                }
+              ]
+            }
+          },
+          {
+            "key": "goalsPublicByDefault",
+            "title": "Show goals by default",
+            "description": "Members can always switch theirs to private.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "busyPosts",
+            "title": "\"Room is busy\" posts",
+            "description": "Post once when enough people are focusing at the same time.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "busyThreshold",
+            "title": "Busy room threshold",
+            "description": "How many people focusing counts as busy.",
+            "select": {
+              "multiSelect": false,
+              "values": ["5"],
+              "options": [
+                {
+                  "key": "3",
+                  "value": "3 people"
+                },
+                {
+                  "key": "4",
+                  "value": "4 people"
+                },
+                {
+                  "key": "5",
+                  "value": "5 people"
+                },
+                {
+                  "key": "6",
+                  "value": "6 people"
+                },
+                {
+                  "key": "8",
+                  "value": "8 people"
+                },
+                {
+                  "key": "10",
+                  "value": "10 people"
+                },
+                {
+                  "key": "15",
+                  "value": "15 people"
+                },
+                {
+                  "key": "20",
+                  "value": "20 people"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "key": "game",
+        "title": "Game layer",
+        "items": [
+          {
+            "key": "xpEnabled",
+            "title": "XP and levels",
+            "description": "2 XP per focus minute, +25 per finished goal.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "dailyXpCap",
+            "title": "Daily XP cap",
+            "description": "So nobody burns out chasing XP.",
+            "select": {
+              "multiSelect": false,
+              "values": ["300"],
+              "options": [
+                {
+                  "key": "150",
+                  "value": "150 XP"
+                },
+                {
+                  "key": "200",
+                  "value": "200 XP"
+                },
+                {
+                  "key": "300",
+                  "value": "300 XP"
+                },
+                {
+                  "key": "400",
+                  "value": "400 XP"
+                },
+                {
+                  "key": "500",
+                  "value": "500 XP"
+                },
+                {
+                  "key": "1000",
+                  "value": "1000 XP"
+                }
+              ]
+            }
+          },
+          {
+            "key": "comboEnabled",
+            "title": "Combo multiplier",
+            "description": "More people on the room timer means more XP for all.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "bossEnabled",
+            "title": "Weekly boss",
+            "description": "A community goal with an HP bar. Every focus minute deals damage. A new boss spawns every Monday.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "bossName",
+            "title": "Boss name",
+            "description": "Shown on the boss card and in posts.",
+            "text": {
+              "defaultValue": "Midterms",
+              "regex": "^.{1,40}$"
+            }
+          },
+          {
+            "key": "bossHpHours",
+            "title": "Boss HP (focus hours)",
+            "description": "Suggested: 15 hours per active member.",
+            "select": {
+              "multiSelect": false,
+              "values": ["100"],
+              "options": [
+                {
+                  "key": "10",
+                  "value": "10 hours"
+                },
+                {
+                  "key": "25",
+                  "value": "25 hours"
+                },
+                {
+                  "key": "50",
+                  "value": "50 hours"
+                },
+                {
+                  "key": "75",
+                  "value": "75 hours"
+                },
+                {
+                  "key": "100",
+                  "value": "100 hours"
+                },
+                {
+                  "key": "150",
+                  "value": "150 hours"
+                },
+                {
+                  "key": "200",
+                  "value": "200 hours"
+                },
+                {
+                  "key": "300",
+                  "value": "300 hours"
+                },
+                {
+                  "key": "500",
+                  "value": "500 hours"
+                },
+                {
+                  "key": "1000",
+                  "value": "1000 hours"
+                }
+              ]
+            }
+          },
+          {
+            "key": "streakFreezes",
+            "title": "Streak freezes",
+            "description": "One free missed day per week.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "milestonePosts",
+            "title": "Milestone posts",
+            "description": "Celebrate 7, 30, 50, 100 and 365 day streaks in the post channel.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

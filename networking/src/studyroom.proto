@@ -1,0 +1,242 @@
+syntax = "proto3";
+
+import "rootsdk/types.proto";
+
+// Study Squad client/server contract.
+//
+// Conventions:
+// - Timestamps are Unix epoch milliseconds in a `double` (exact up to 2^53),
+//   which avoids int64-as-string handling in the generated TypeScript.
+// - The caller's identity always comes from the Root connection, never from a
+//   request field, so no request carries a user id.
+
+// ---------------------------------------------------------------- shared types
+
+enum Phase {
+  PHASE_UNSPECIFIED = 0;
+  PHASE_IDLE = 1;
+  PHASE_FOCUS = 2;
+  PHASE_BREAK = 3;
+  PHASE_LONG_BREAK = 4;
+}
+
+enum MemberStatus {
+  MEMBER_STATUS_UNSPECIFIED = 0;
+  MEMBER_STATUS_IDLE = 1;
+  MEMBER_STATUS_ROOM_FOCUS = 2;
+  MEMBER_STATUS_ROOM_BREAK = 3;
+  MEMBER_STATUS_SOLO_FOCUS = 4;
+  MEMBER_STATUS_SOLO_BREAK = 5;
+}
+
+enum PresetKey {
+  PRESET_KEY_UNSPECIFIED = 0;
+  PRESET_KEY_STANDARD = 1; // 25 / 5
+  PRESET_KEY_LONG = 2; // 50 / 10
+  PRESET_KEY_CUSTOM = 3;
+}
+
+enum ResultSource {
+  RESULT_SOURCE_UNSPECIFIED = 0;
+  RESULT_SOURCE_ROOM = 1;
+  RESULT_SOURCE_SOLO = 2;
+}
+
+message TimerPreset {
+  double focus_minutes = 1;
+  double break_minutes = 2;
+  double long_break_minutes = 3;
+  int32 rounds = 4;
+}
+
+message RoomTimer {
+  Phase phase = 1;
+  int32 round = 2;
+  int32 rounds = 3;
+  double phase_started_at_ms = 4;
+  double phase_ends_at_ms = 5;
+  TimerPreset preset = 6;
+}
+
+message MemberCard {
+  string user_id = 1;
+  MemberStatus status = 2;
+  double ends_at_ms = 3;
+  // Empty when the member keeps goals private or has none open.
+  string goal_text = 4;
+  bool goal_private = 5;
+  int32 level = 6;
+  int32 streak = 7;
+}
+
+message Boss {
+  bool enabled = 1;
+  string name = 2;
+  double max_hp_minutes = 3;
+  double damage_minutes = 4;
+  double ends_at_ms = 5;
+  bool defeated = 6;
+}
+
+message RoomFeatures {
+  PresetKey preset_key = 1;
+  bool xp_enabled = 2;
+  bool combo_enabled = 3;
+  bool boss_enabled = 4;
+  bool streak_freezes_enabled = 5;
+  bool goals_public_by_default = 6;
+  int32 daily_xp_cap = 7;
+  // Where recaps and break chat happen. Empty when admins haven't picked one.
+  string post_channel_name = 8;
+}
+
+message RoomState {
+  double server_now_ms = 1;
+  RoomTimer timer = 2;
+  repeated MemberCard members = 3;
+  int32 present_count = 4;
+  int32 room_participant_count = 5;
+  double combo = 6;
+  Boss boss = 7;
+  RoomFeatures features = 8;
+}
+
+message Goal {
+  string id = 1;
+  string text = 2;
+  bool done = 3;
+}
+
+message MyStatus {
+  string user_id = 1;
+  MemberStatus status = 2;
+  double ends_at_ms = 3;
+  bool on_room_timer = 4;
+  int32 xp_total = 5;
+  int32 level = 6;
+  int32 xp_into_level = 7;
+  int32 xp_for_next_level = 8;
+  int32 xp_today = 9;
+  int32 streak = 10;
+  bool freeze_available = 11;
+  repeated Goal goals = 12;
+  bool goals_private = 13;
+}
+
+message RoomSnapshot {
+  RoomState room = 1;
+  MyStatus me = 2;
+}
+
+message DayStat {
+  string day = 1;
+  double focus_minutes = 2;
+}
+
+message Progress {
+  MyStatus me = 1;
+  repeated DayStat days = 2;
+  double total_focus_minutes = 3;
+}
+
+// ---------------------------------------------------------------- requests
+
+message GetRoomRequest {}
+
+message JoinRoomTimerRequest {
+  repeated string goals = 1;
+  // Unset means "keep my current choice".
+  optional bool goals_private = 2;
+}
+
+message LeaveRoomTimerRequest {}
+
+message StartSoloRequest {
+  int32 minutes = 1;
+  repeated string goals = 2;
+  optional bool goals_private = 3;
+}
+
+message EndSoloRequest {}
+
+message AddGoalRequest {
+  string text = 1;
+}
+
+message SetGoalDoneRequest {
+  string goal_id = 1;
+  bool done = 2;
+}
+
+message DeleteGoalRequest {
+  string goal_id = 1;
+}
+
+message SetGoalsPrivateRequest {
+  bool goals_private = 1;
+}
+
+message GetProgressRequest {}
+
+// Erases everything the app stores about the caller. Cannot be undone.
+message DeleteMyDataRequest {}
+
+// ---------------------------------------------------------------- broadcasts
+
+message RoomUpdatedEvent {
+  RoomState room = 1;
+}
+
+message PhaseCompletedEvent {
+  Phase kind = 1;
+  int32 round = 2;
+  repeated string finisher_user_ids = 3;
+  double room_damage_minutes = 4;
+  double combo = 5;
+  RoomState room = 6;
+}
+
+message PersonalResultEvent {
+  ResultSource source = 1;
+  int32 round = 2;
+  double focused_minutes = 3;
+  bool finished = 4;
+  int32 base_xp = 5;
+  double combo = 6;
+  int32 xp_earned = 7;
+  bool capped = 8;
+  int32 streak = 9;
+  bool streak_extended = 10;
+  repeated string finisher_user_ids = 11;
+  double room_damage_minutes = 12;
+  // Absent when the member has no open goal.
+  optional Goal goal_prompt = 13;
+  double break_ends_at_ms = 14;
+  MyStatus me = 15;
+}
+
+message MyStatusEvent {
+  MyStatus me = 1;
+}
+
+// ---------------------------------------------------------------- service
+
+service StudyRoomService {
+  rpc GetRoom(GetRoomRequest) returns (RoomSnapshot);
+  rpc JoinRoomTimer(JoinRoomTimerRequest) returns (RoomSnapshot);
+  rpc LeaveRoomTimer(LeaveRoomTimerRequest) returns (RoomSnapshot);
+  rpc StartSolo(StartSoloRequest) returns (RoomSnapshot);
+  rpc EndSolo(EndSoloRequest) returns (RoomSnapshot);
+  rpc AddGoal(AddGoalRequest) returns (MyStatus);
+  rpc SetGoalDone(SetGoalDoneRequest) returns (MyStatus);
+  rpc DeleteGoal(DeleteGoalRequest) returns (MyStatus);
+  rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
+  rpc GetProgress(GetProgressRequest) returns (Progress);
+  rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+
+  // Server-to-client pushes.
+  rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);
+  rpc BroadcastPhaseCompleted(PhaseCompletedEvent) returns (rootsdk.Void);
+  rpc BroadcastPersonalResult(PersonalResultEvent) returns (rootsdk.Void);
+  rpc BroadcastMyStatus(MyStatusEvent) returns (rootsdk.Void);
+}

@@ -1,0 +1,111 @@
+import { expect, isPhone, openStartSheet, test } from "./fixtures";
+
+test.describe("focus room", () => {
+  test("opens mid-round with the room already busy, and the timer counts down", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const timer = page.getByRole("timer");
+    await expect(timer).toHaveText(/^1\d:\d\d$/);
+    const first = await timer.textContent();
+    await expect(timer).not.toHaveText(first ?? "", { timeout: 3_000 });
+    await expect(page.getByRole("heading", { name: /Focusing now · 7/ })).toBeVisible();
+    await expect(page.getByText("Ana R.")).toBeVisible();
+    if (!isPhone(page)) {
+      await expect(page.getByRole("region", { name: "Weekly boss" })).toContainText(
+        "61 of 100 hrs HP left",
+      );
+      await expect(page.getByRole("region", { name: "Combo meter" })).toContainText("1.4x");
+    }
+  });
+
+  test("joining adds your card and raises the combo", async ({ page }) => {
+    await page.goto("/");
+    const sheet = await openStartSheet(page);
+    await expect(sheet.getByRole("radio", { name: /Join the room timer/ })).toContainText(
+      "combo goes to 1.5x",
+    );
+    await sheet.getByLabel("Goals for this session").fill("Make 20 flashcards");
+    await sheet.getByRole("button", { name: "Start focusing" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page.getByRole("listitem", { name: /^You, Room timer/ })).toContainText(
+      "Make 20 flashcards",
+    );
+    await expect(page.getByRole("heading", { name: /Focusing now · 8/ })).toBeVisible();
+    await expect(page.getByText("1.5x").first()).toBeVisible();
+  });
+
+  test("private goals show as Focusing to everyone else", async ({ page }) => {
+    await page.goto("/");
+    const sheet = await openStartSheet(page);
+    await sheet.getByLabel("Goals for this session").fill("Secret plan");
+    await sheet.getByRole("switch", { name: "Keep my goals private" }).click();
+    await sheet.getByRole("button", { name: "Start focusing" }).click();
+    const card = page.getByRole("listitem", { name: /^You, Room timer/ });
+    await expect(card).toContainText("Focusing");
+    await expect(card).not.toContainText("Secret plan");
+  });
+
+  test("a solo timer still shows on the board", async ({ page }) => {
+    await page.goto("/");
+    const sheet = await openStartSheet(page);
+    await sheet.getByRole("radio", { name: /Solo timer/ }).click();
+    await sheet.getByRole("radio", { name: "15 min" }).click();
+    await sheet.getByRole("button", { name: "Start focusing" }).click();
+    await expect(page.getByRole("listitem", { name: /^You, Solo · 1[45]:\d\d/ })).toBeVisible();
+  });
+
+  test("can be used with the keyboard alone", async ({ page }) => {
+    test.skip(isPhone(page), "keyboard flow is a desktop concern");
+    await page.goto("/");
+    await page.getByRole("button", { name: "Join room timer" }).focus();
+    await page.keyboard.press("Enter");
+    const sheet = page.getByRole("dialog", { name: "What are you working on?" });
+    await expect(sheet.getByLabel("Goals for this session")).toBeFocused();
+    await page.keyboard.type("Keyboard only");
+    await page.keyboard.press("Enter");
+    await expect(sheet).toBeHidden();
+    await expect(page.getByRole("listitem", { name: /^You, Room timer/ })).toContainText(
+      "Keyboard only",
+    );
+  });
+});
+
+test.describe("the break moment", () => {
+  test("lands for everyone when the round ends, with XP, streak, boss damage and a goal check", async ({
+    page,
+  }) => {
+    await page.goto("/?focus=0.1&break=0.5");
+    const sheet = await openStartSheet(page);
+    await sheet.getByLabel("Goals for this session").fill("Read ch. 4");
+    await sheet.getByRole("button", { name: "Start focusing" }).click();
+
+    const moment = page.getByRole("dialog", { name: "Nice work, everyone" });
+    await expect(moment).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("status")).toContainText("Round 1 complete");
+    await expect(moment).toContainText("6 days");
+    await expect(moment).toContainText(/finished together/);
+    await expect(moment).toContainText("Midterms");
+    await expect(moment).toContainText("Did you finish Read ch. 4?");
+    // The board flips to Break for everyone at the same moment.
+    await expect(page.locator(".phase-pill")).toHaveAttribute("data-phase", "break");
+
+    await moment.getByRole("button", { name: "Done, +25 XP" }).click();
+    await expect(moment).toBeHidden();
+  });
+});
+
+test.describe("progress", () => {
+  test("shows level, streak, freeze and five weeks of history", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    await expect(page.getByRole("heading", { name: "Your progress" })).toBeVisible();
+    await expect(page.getByText("5 day streak")).toBeVisible();
+    await expect(page.getByText("1 freeze left")).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Focus time, last 5 weeks" }).getByRole("listitem"),
+    ).toHaveCount(35);
+    await page.getByRole("button", { name: "Back to the room" }).click();
+    await expect(page.getByRole("timer")).toBeVisible();
+  });
+});

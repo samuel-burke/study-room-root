@@ -1,0 +1,7 @@
+{
+  "name": "@studyroom/networking",
+  "private": true,
+  "scripts": {
+    "build": "rootsdk build proto"
+  }
+}

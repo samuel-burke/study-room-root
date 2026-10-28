@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-demo
+coverage
+networking/gen
+package-lock.json
+client/test-results
+client/playwright-report
+docs/design/*.html
