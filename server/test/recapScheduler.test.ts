@@ -86,4 +86,17 @@ describe("RecapScheduler", () => {
     expect(logger.error).toHaveBeenCalledWith("daily recap failed", expect.anything());
     expect(scheduled).toHaveLength(1);
   });
+
+  it("still starts, and logs, when Root's job scheduler is unavailable", async () => {
+    const { scheduler, jobs, logger, fire, target } = setup();
+    vi.mocked(jobs.cancelByTag).mockRejectedValueOnce(new Error("jobs offline"));
+    await expect(scheduler.start()).resolves.toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith("recap schedule failed", {
+      error: "Error: jobs offline",
+    });
+    // The job listener is still registered, so a later job still posts.
+    fire({ tag: RECAP_TAG, jobTime: new Date(T0), missed: false });
+    await flush();
+    expect(target.postDailyRecap).toHaveBeenCalledTimes(1);
+  });
 });

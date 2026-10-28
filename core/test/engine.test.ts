@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DomainError, ErrorCode, LIMITS, PRESETS } from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
@@ -467,6 +467,42 @@ describe("channel posts", () => {
     };
     for (const id of ["a", "b", "c"]) await harness.engine.joinRoomTimer(id);
     await expect(harness.engine.idle()).resolves.toBeUndefined();
+  });
+});
+
+describe("failed wake-ups", () => {
+  it("retries a tick that failed instead of letting the timer stall", async () => {
+    const { engine, store, scheduler, clock, advance, notifier } = createHarness();
+    await engine.joinRoomTimer("ana");
+    const original = store.transaction.bind(store);
+    const spy = vi
+      .spyOn(store, "transaction")
+      .mockImplementationOnce(() => Promise.reject(new Error("database is locked")))
+      .mockImplementation(original);
+    const phases = notifier.phases.length;
+    await advance(FOCUS);
+    // The tick at the end of focus failed, so a retry is queued 30s later.
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(scheduler.at).toBe(clock.current + 30_000);
+    await advance(30_000);
+    expect(notifier.phases.length).toBe(phases + 1);
+    expect((await engine.getSnapshot("ana")).room.timer.phase).toBe("break");
+  });
+
+  it("doesn't retry a tick that fails after the engine is stopped", async () => {
+    const { engine, store, scheduler, clock } = createHarness();
+    await engine.joinRoomTimer("ana");
+    let fail: (error: Error) => void = () => undefined;
+    vi.spyOn(store, "transaction").mockImplementation(
+      () => new Promise((_resolve, reject) => (fail = reject)),
+    );
+    clock.advance(FOCUS);
+    scheduler.fireIfDue(clock.current); // the tick is now in flight
+    await vi.waitFor(() => expect(store.transaction).toHaveBeenCalled());
+    engine.stop();
+    fail(new Error("database closed"));
+    await engine.idle();
+    expect(scheduler.at).toBeNull();
   });
 });
 
