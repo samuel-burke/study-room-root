@@ -139,6 +139,22 @@ message DayStat {
   double focus_minutes = 2;
 }
 
+enum QuestUnit {
+  QUEST_UNIT_UNSPECIFIED = 0;
+  QUEST_UNIT_COUNT = 1;
+  QUEST_UNIT_MINUTES = 2;
+}
+
+message Quest {
+  string id = 1;
+  string title = 2;
+  double progress = 3;
+  double target = 4;
+  QuestUnit unit = 5;
+  int32 xp = 6;
+  bool done = 7;
+}
+
 message EarnedBadge {
   string id = 1;
   double earned_at_ms = 2;
@@ -156,6 +172,7 @@ message Progress {
   MyStatus me = 1;
   repeated DayStat days = 2;
   double total_focus_minutes = 3;
+  repeated Quest quests = 4;
   // Field numbers start at 10 so other progress additions can take 4 to 9.
   repeated EarnedBadge badges = 10;
   CardLook card = 11;

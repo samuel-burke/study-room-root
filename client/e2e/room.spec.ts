@@ -107,6 +107,9 @@ test.describe("progress", () => {
     await expect(
       page.getByRole("list", { name: "Focus time, last 5 weeks" }).getByRole("listitem"),
     ).toHaveCount(35);
+    await expect(
+      page.getByRole("region", { name: "Weekly quests" }).getByRole("progressbar"),
+    ).toHaveCount(3);
     await page.getByRole("button", { name: "Back to the room" }).click();
     await expect(page.getByRole("timer")).toBeVisible();
   });

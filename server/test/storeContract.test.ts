@@ -415,6 +415,56 @@ describe.each(implementations)("%s", (_name, open) => {
     expect(await store.bosses.countDefeatedWith("nobody")).toBe(0);
   });
 
+  it("lists a member's sessions by end time, and records quest rewards once", async () => {
+    const log = (userId: string, endedAt: number) => ({
+      userId,
+      kind: "room" as const,
+      startedAt: endedAt - 10,
+      endedAt,
+      focusedMinutes: 25,
+      finished: true,
+      xp: 50,
+      combo: 1.2,
+    });
+    for (const [userId, endedAt] of [
+      ["ana", 300],
+      ["ana", 100],
+      ["ana", 200],
+      ["kai", 150],
+    ] as const) {
+      await store.sessions.insert(log(userId, endedAt));
+    }
+    expect(await store.sessions.listForUser("ana", 100, 300)).toEqual([
+      log("ana", 100),
+      log("ana", 200),
+    ]);
+
+    const reward = {
+      userId: "ana",
+      weekKey: "2026-10-26",
+      questId: "goals",
+      xp: 40,
+      rewardedAt: 5,
+    };
+    await store.quests.markRewarded(reward);
+    await store.quests.markRewarded({ ...reward, rewardedAt: 6 });
+    await store.quests.markRewarded({ ...reward, questId: "roomRounds" });
+    await store.quests.markRewarded({ ...reward, weekKey: "2026-11-02" });
+    expect((await store.quests.listRewarded("ana", "2026-10-26")).sort()).toEqual([
+      "goals",
+      "roomRounds",
+    ]);
+    expect(await store.quests.listRewarded("kai", "2026-10-26")).toEqual([]);
+    expect(await store.quests.countRewarded("ana")).toBe(3);
+    expect(await store.quests.countRewarded("kai")).toBe(0);
+
+    await store.eraseUser("ana");
+    expect(await store.quests.listRewarded("ana", "2026-10-26")).toEqual([]);
+    expect(await store.quests.countRewarded("ana")).toBe(0);
+    expect(await store.sessions.listForUser("ana", 0, 1000)).toEqual([]);
+    expect(await store.sessions.listForUser("kai", 0, 1000)).toHaveLength(1);
+  });
+
   it("erasing someone with no data is harmless", async () => {
     await expect(store.eraseUser("nobody")).resolves.toBeUndefined();
   });

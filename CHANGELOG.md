@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - Weekly leaderboard on the progress screen, ranked by focus minutes and reset every Monday in the community time zone. Members can hide themselves, which also keeps them out of recap rankings.
 - The daily recap lists the week's top 3 by focus minutes (admin setting **Leaderboard in recap**, on by default)
+- Weekly quests on the progress screen: three rotating quests each week that reset on Monday and pay a small XP bonus, plus the three quest badges
 - "Keep going?" at the end of each room cycle (#6): during the final long break, tap to roll straight into the next cycle instead of rejoining. If you don't tap, the cycle ends your session as before, and you keep everything you earned.
 - Badges (#9): 60+ permanent badges for streaks, levels, focus time, room rounds and combos, goals and the weekly boss, including the Early Bird, Night Owl, Marathon, Comeback and First Boss badges from the progress mockup
 - Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them

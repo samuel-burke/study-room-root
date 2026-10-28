@@ -73,6 +73,7 @@ describe("badge catalog", () => {
   it("leaves out badges for features this build doesn't have", () => {
     const ids = availableBadges(new Set()).map((b) => b.id);
     expect(ids).not.toContain("quest-first");
+    expect(availableBadges().map((b) => b.id)).toContain("quest-first");
     expect(ids).not.toContain("pole-position");
     expect(ids).not.toContain("giant-slayer");
     expect(ids).toContain("first-boss");

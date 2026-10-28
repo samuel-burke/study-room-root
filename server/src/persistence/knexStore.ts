@@ -9,6 +9,7 @@ import type {
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
+  QuestRewardRecord,
   RoomCycleRecord,
   SessionLogRecord,
   SoloRecord,
@@ -76,6 +77,17 @@ const toStat = (r: Row): DailyStatRecord => ({
   sessionsFinished: num(r.sessions_finished),
 });
 
+const toSession = (r: Row): SessionLogRecord => ({
+  userId: String(r.user_id),
+  kind: r.kind === "room" ? "room" : "solo",
+  startedAt: num(r.started_at),
+  endedAt: num(r.ended_at),
+  focusedMinutes: num(r.focused_minutes),
+  finished: bool(r.finished),
+  xp: num(r.xp),
+  combo: num(r.combo),
+});
+
 const toBoss = (r: Row): BossState => ({
   weekKey: String(r.week_key),
   name: String(r.name),
@@ -127,6 +139,7 @@ export class KnexStore implements Store {
         "session_log",
         "daily_stats",
         "leaderboard_opt_outs",
+        "quest_rewards",
         "member_badges",
         "member_cards",
       ]) {
@@ -317,9 +330,45 @@ export class KnexStore implements Store {
         combo: log.combo,
       });
     },
+    listForUser: async (userId: string, fromMs: number, toMs: number) =>
+      (
+        await this.db("session_log")
+          .where({ user_id: userId })
+          .andWhere("ended_at", ">=", fromMs)
+          .andWhere("ended_at", "<", toMs)
+          .orderBy("ended_at", "asc")
+      ).map(toSession),
     countFinished: async (userId: string, kind: SessionLogRecord["kind"]) => {
       const row = await this.db("session_log")
         .where({ user_id: userId, kind, finished: true })
+        .count({ n: "*" })
+        .first();
+      return num(row?.n ?? 0);
+    },
+  };
+
+  quests = {
+    listRewarded: async (userId: string, weekKey: DayKey) =>
+      (
+        await this.db("quest_rewards")
+          .where({ user_id: userId, week_key: weekKey })
+          .select("quest_id")
+      ).map((r: Row) => String(r.quest_id)),
+    markRewarded: async (r: QuestRewardRecord) => {
+      await this.db("quest_rewards")
+        .insert({
+          user_id: r.userId,
+          week_key: r.weekKey,
+          quest_id: r.questId,
+          xp: r.xp,
+          rewarded_at: r.rewardedAt,
+        })
+        .onConflict(["user_id", "week_key", "quest_id"])
+        .ignore();
+    },
+    countRewarded: async (userId: string) => {
+      const row = await this.db("quest_rewards")
+        .where({ user_id: userId })
         .count({ n: "*" })
         .first();
       return num(row?.n ?? 0);

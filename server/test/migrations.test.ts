@@ -25,6 +25,7 @@ describe("migrations", () => {
         "member_badges",
         "member_cards",
         "members",
+        "quest_rewards",
         "room_cycle",
         "room_participants",
         "session_log",
