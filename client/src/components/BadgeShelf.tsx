@@ -10,6 +10,7 @@ import {
   type EarnedBadgeDto,
 } from "@studyroom/core";
 import { useState } from "react";
+import { BadgeMedal } from "./BadgeMedal";
 
 const CATEGORY_TITLES: Record<BadgeCategory, string> = {
   streak: "Streaks",
@@ -80,11 +81,17 @@ export function BadgeShelf({
           {card.showcase.length === 0 ? (
             <span className="small dim">Earn a badge to show it here</span>
           ) : (
-            card.showcase.map((id) => (
-              <span key={id} className="badge-pill" title={badgeById(id)?.name}>
-                {badgeById(id)?.icon} {badgeById(id)?.name}
-              </span>
-            ))
+            card.showcase.flatMap((id) => {
+              const badge = badgeById(id);
+              return badge
+                ? [
+                    <span key={id} className="badge-pill">
+                      <BadgeMedal badge={badge} size={22} />
+                      {badge.name}
+                    </span>,
+                  ]
+                : [];
+            })
           )}
         </div>
         {pinned.length > 0 && (
@@ -120,9 +127,7 @@ export function BadgeShelf({
                     aria-label={label}
                     onClick={() => setSelected(selected === badge.id ? null : badge.id)}
                   >
-                    <span className="badge-icon" aria-hidden="true">
-                      {hidden ? "?" : badge.icon}
-                    </span>
+                    <BadgeMedal badge={badge} size={52} locked={!has} />
                     <span className="badge-name">{hidden ? "???" : badge.name}</span>
                   </button>
                 </li>
@@ -140,9 +145,10 @@ export function BadgeShelf({
                 </>
               ) : (
                 <>
-                  <strong>
-                    {detail.icon} {detail.name}
-                  </strong>
+                  <div className="badge-detail-head">
+                    <BadgeMedal badge={detail} size={44} locked={detailEarned === undefined} />
+                    <strong>{detail.name}</strong>
+                  </div>
                   <span className="small muted">{detail.description}</span>
                   {detailEarned !== undefined ? (
                     <div className="row-between small">

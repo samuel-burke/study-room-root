@@ -104,12 +104,66 @@ export interface BadgeFacts {
   leaderboard?: LeaderboardFacts;
 }
 
+export type BadgeTier = "bronze" | "silver" | "gold" | "platinum" | "secret";
+
+export type BadgeGlyph =
+  | "alarm"
+  | "bolt"
+  | "burst"
+  | "calendar"
+  | "cap"
+  | "chart"
+  | "check"
+  | "clover"
+  | "coin"
+  | "columns"
+  | "compass"
+  | "cycle"
+  | "door"
+  | "flag"
+  | "flame"
+  | "gauge"
+  | "hourglass"
+  | "lamp"
+  | "list"
+  | "map"
+  | "moon"
+  | "mountain"
+  | "people"
+  | "person"
+  | "pi"
+  | "planet"
+  | "podium"
+  | "rocket"
+  | "scroll"
+  | "shield"
+  | "snowflake"
+  | "sparkles"
+  | "sprout"
+  | "star"
+  | "summit"
+  | "sun"
+  | "sunrise"
+  | "sword"
+  | "swords"
+  | "target"
+  | "terminal"
+  | "timer"
+  | "trophy"
+  | "bell-off"
+  | "coffee";
+
 export interface BadgeDefinition {
   id: string;
   name: string;
   /** How to earn it. Shown for secret badges only once earned. */
   description: string;
-  icon: string;
+  /** The picture in the middle of the medal. The client draws each one. */
+  glyph: BadgeGlyph;
+  /** The medal's metal: how hard the badge is. Secret badges are all "secret". */
+  tier: BadgeTier;
+  /** A short number or label stamped on the medal, such as a streak length. */
+  stamp?: string;
   category: BadgeCategory;
   secret?: boolean;
   requires?: BadgeFeature;
@@ -121,38 +175,45 @@ const finished = (f: BadgeFacts) => (f.session?.finished ? f.session : undefined
 const monthDay = (day: DayKey) => day.slice(5);
 const dayOfMonth = (day: DayKey) => Number(day.slice(8));
 
-const streakBadge = (id: string, name: string, icon: string, days: number): BadgeDefinition => ({
+const streakBadge = (id: string, name: string, tier: BadgeTier, days: number): BadgeDefinition => ({
   id,
   name,
   description: `Reach a ${days} day streak.`,
-  icon,
+  glyph: "flame",
+  tier,
+  stamp: String(days),
   category: "streak",
   earned: (f) => (f.streak?.length ?? 0) >= days,
 });
 
-const levelBadge = (id: string, name: string, icon: string, level: number): BadgeDefinition => ({
+const levelBadge = (id: string, name: string, tier: BadgeTier, level: number): BadgeDefinition => ({
   id,
   name,
   description: `Reach level ${level}.`,
-  icon,
+  glyph: "star",
+  tier,
+  stamp: String(level),
   category: "level",
   earned: (f) => f.level >= level,
 });
 
-const hoursBadge = (id: string, name: string, icon: string, hours: number): BadgeDefinition => ({
+const hoursBadge = (id: string, name: string, tier: BadgeTier, hours: number): BadgeDefinition => ({
   id,
   name,
   description: `Focus for ${hours} hours in total.`,
-  icon,
+  glyph: "hourglass",
+  tier,
+  stamp: `${hours}h`,
   category: "focus",
   earned: (f) => (f.lifetime?.focusMinutes ?? 0) >= hours * 60,
 });
 
-const bossNamed = (id: string, name: string, boss: string, icon: string): BadgeDefinition => ({
+const bossNamed = (id: string, name: string, boss: string, glyph: BadgeGlyph): BadgeDefinition => ({
   id,
   name,
   description: `Help defeat ${boss}.`,
-  icon,
+  glyph,
+  tier: "secret",
   category: "secret",
   secret: true,
   earned: (f) => f.boss?.name === boss,
@@ -161,19 +222,20 @@ const bossNamed = (id: string, name: string, boss: string, icon: string): BadgeD
 /** The catalog, in the order the progress screen shows it. Ids are stored, so never rename one. */
 export const BADGES: readonly BadgeDefinition[] = [
   // ---------------------------------------------------------------- streaks
-  streakBadge("streak-3", "Warming Up", "🔥", 3),
-  streakBadge("streak-7", "On a Roll", "🎳", 7),
-  streakBadge("streak-14", "Fortnight Focus", "📆", 14),
-  streakBadge("streak-30", "Monthly Regular", "🗓️", 30),
-  streakBadge("streak-50", "Half Century", "🏏", 50),
-  streakBadge("streak-100", "Triple Digits", "💯", 100),
-  streakBadge("streak-200", "Unbreakable", "⛓️", 200),
-  streakBadge("streak-365", "Year of Focus", "🌍", 365),
+  streakBadge("streak-3", "Warming Up", "bronze", 3),
+  streakBadge("streak-7", "On a Roll", "bronze", 7),
+  streakBadge("streak-14", "Fortnight Focus", "silver", 14),
+  streakBadge("streak-30", "Monthly Regular", "silver", 30),
+  streakBadge("streak-50", "Half Century", "gold", 50),
+  streakBadge("streak-100", "Triple Digits", "gold", 100),
+  streakBadge("streak-200", "Unbreakable", "platinum", 200),
+  streakBadge("streak-365", "Year of Focus", "platinum", 365),
   {
     id: "comeback",
     name: "Comeback",
     description: "Start studying again after a streak ends.",
-    icon: "🌱",
+    glyph: "sprout",
+    tier: "bronze",
     category: "streak",
     earned: (f) => (f.streak?.comebackFrom ?? 0) >= 2,
   },
@@ -181,37 +243,40 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "freeze-saved",
     name: "Saved by the Freeze",
     description: "Keep a streak alive with a freeze.",
-    icon: "🧊",
+    glyph: "snowflake",
+    tier: "silver",
     category: "streak",
     earned: (f) => f.streak?.freezeSaved === true,
   },
 
   // ---------------------------------------------------------------- levels
-  levelBadge("level-5", "Rising Star", "⭐", 5),
-  levelBadge("level-10", "Double Digits", "🔟", 10),
-  levelBadge("level-20", "Scholar", "🎓", 20),
-  levelBadge("level-30", "Sage", "🧘", 30),
-  levelBadge("level-50", "Grandmaster", "👑", 50),
+  levelBadge("level-5", "Rising Star", "bronze", 5),
+  levelBadge("level-10", "Double Digits", "silver", 10),
+  levelBadge("level-20", "Scholar", "gold", 20),
+  levelBadge("level-30", "Sage", "gold", 30),
+  levelBadge("level-50", "Grandmaster", "platinum", 50),
 
   // ---------------------------------------------------------------- focus time
   {
     id: "first-session",
     name: "First Steps",
     description: "Finish your first focus session.",
-    icon: "👣",
+    glyph: "flag",
+    tier: "bronze",
     category: "focus",
     earned: (f) => (f.lifetime?.sessionsFinished ?? 0) >= 1,
   },
-  hoursBadge("focus-10h", "Ten Hour Club", "⏱️", 10),
-  hoursBadge("focus-50h", "Fifty and Focused", "📚", 50),
-  hoursBadge("focus-100h", "Centurion", "🏛️", 100),
-  hoursBadge("focus-250h", "Deep Diver", "🤿", 250),
-  hoursBadge("focus-500h", "Five Hundred Club", "🏔️", 500),
+  hoursBadge("focus-10h", "Ten Hour Club", "bronze", 10),
+  hoursBadge("focus-50h", "Fifty and Focused", "silver", 50),
+  hoursBadge("focus-100h", "Centurion", "gold", 100),
+  hoursBadge("focus-250h", "Deep Diver", "gold", 250),
+  hoursBadge("focus-500h", "Five Hundred Club", "platinum", 500),
   {
     id: "early-bird",
     name: "Early Bird",
     description: "Finish a session that starts between 4am and 8am.",
-    icon: "🐦",
+    glyph: "sunrise",
+    tier: "silver",
     category: "focus",
     earned: (f) => {
       const s = finished(f);
@@ -222,7 +287,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "night-owl",
     name: "Night Owl",
     description: "Finish a session that starts between 10pm and 4am.",
-    icon: "🦉",
+    glyph: "moon",
+    tier: "silver",
     category: "focus",
     earned: (f) => {
       const s = finished(f);
@@ -233,7 +299,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "marathon",
     name: "Marathon",
     description: "Finish 4 sessions in one day.",
-    icon: "🏃",
+    glyph: "timer",
+    tier: "silver",
+    stamp: "4",
     category: "focus",
     earned: (f) => (f.today?.sessionsFinished ?? 0) >= 4,
   },
@@ -241,7 +309,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "power-day",
     name: "Power Day",
     description: "Focus for 4 hours in one day.",
-    icon: "⚡",
+    glyph: "bolt",
+    tier: "gold",
     category: "focus",
     earned: (f) => (f.today?.focusMinutes ?? 0) >= 240,
   },
@@ -249,7 +318,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "weekend-warrior",
     name: "Weekend Warrior",
     description: "Finish 3 sessions on a Saturday or Sunday.",
-    icon: "🛡️",
+    glyph: "shield",
+    tier: "silver",
     category: "focus",
     earned: (f) =>
       f.today !== undefined && weekdayIndex(f.today.day) >= 5 && f.today.sessionsFinished >= 3,
@@ -258,7 +328,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "long-haul",
     name: "Long Haul",
     description: "Finish a solo timer of 90 minutes or more.",
-    icon: "🚂",
+    glyph: "mountain",
+    tier: "silver",
     category: "focus",
     earned: (f) => {
       const s = finished(f);
@@ -269,7 +340,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "ultramarathon",
     name: "Ultramarathon",
     description: "Finish a 3 hour solo timer, the longest there is.",
-    icon: "🦾",
+    glyph: "summit",
+    tier: "gold",
     category: "focus",
     earned: (f) => {
       const s = finished(f);
@@ -282,7 +354,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "squad-up",
     name: "Squad Up",
     description: "Finish your first round on the room timer.",
-    icon: "🤝",
+    glyph: "people",
+    tier: "bronze",
     category: "room",
     earned: (f) => (f.lifetime?.roomRoundsFinished ?? 0) >= 1,
   },
@@ -290,7 +363,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "room-25",
     name: "Regular",
     description: "Finish 25 rounds on the room timer.",
-    icon: "🪑",
+    glyph: "door",
+    tier: "silver",
+    stamp: "25",
     category: "room",
     earned: (f) => (f.lifetime?.roomRoundsFinished ?? 0) >= 25,
   },
@@ -298,7 +373,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "room-100",
     name: "Pillar of the Room",
     description: "Finish 100 rounds on the room timer.",
-    icon: "🧱",
+    glyph: "columns",
+    tier: "gold",
+    stamp: "100",
     category: "room",
     earned: (f) => (f.lifetime?.roomRoundsFinished ?? 0) >= 100,
   },
@@ -306,7 +383,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "full-cycle",
     name: "Full Cycle",
     description: "Stay on the room timer for every round of a cycle.",
-    icon: "🔄",
+    glyph: "cycle",
+    tier: "silver",
     category: "room",
     earned: (f) => finished(f)?.fullCycle === true,
   },
@@ -314,7 +392,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "study-group",
     name: "Study Group",
     description: "Finish a room round at a 1.5x combo or better.",
-    icon: "👥",
+    glyph: "people",
+    tier: "silver",
+    stamp: "1.5x",
     category: "room",
     earned: (f) => (finished(f)?.combo ?? 0) >= 1.5,
   },
@@ -322,7 +402,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "full-house",
     name: "Full House",
     description: "Finish a room round at the maximum 2.0x combo.",
-    icon: "🏟️",
+    glyph: "people",
+    tier: "gold",
+    stamp: "2x",
     category: "room",
     earned: (f) => (finished(f)?.combo ?? 0) >= 2,
   },
@@ -332,7 +414,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "first-goal",
     name: "Checked Off",
     description: "Finish your first goal.",
-    icon: "✅",
+    glyph: "check",
+    tier: "bronze",
     category: "goals",
     earned: (f) => (f.lifetime?.goalsDone ?? 0) >= 1,
   },
@@ -340,7 +423,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "goals-25",
     name: "Task Master",
     description: "Finish 25 goals.",
-    icon: "📋",
+    glyph: "list",
+    tier: "silver",
+    stamp: "25",
     category: "goals",
     earned: (f) => (f.lifetime?.goalsDone ?? 0) >= 25,
   },
@@ -348,7 +433,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "goals-100",
     name: "Goal Crusher",
     description: "Finish 100 goals.",
-    icon: "🔨",
+    glyph: "target",
+    tier: "gold",
+    stamp: "100",
     category: "goals",
     earned: (f) => (f.lifetime?.goalsDone ?? 0) >= 100,
   },
@@ -356,7 +443,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "productive-day",
     name: "Productive Day",
     description: "Finish 5 goals in one day.",
-    icon: "🗂️",
+    glyph: "calendar",
+    tier: "silver",
     category: "goals",
     earned: (f) => (f.today?.goalsDone ?? 0) >= 5,
   },
@@ -366,7 +454,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "first-boss",
     name: "First Boss",
     description: "Help defeat a weekly boss.",
-    icon: "⚔️",
+    glyph: "swords",
+    tier: "bronze",
     category: "boss",
     earned: (f) => (f.boss?.defeats ?? 0) >= 1,
   },
@@ -374,7 +463,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "boss-5",
     name: "Boss Hunter",
     description: "Help defeat 5 weekly bosses.",
-    icon: "🏹",
+    glyph: "swords",
+    tier: "silver",
+    stamp: "5",
     category: "boss",
     earned: (f) => (f.boss?.defeats ?? 0) >= 5,
   },
@@ -382,7 +473,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "boss-20",
     name: "Legendary Raider",
     description: "Help defeat 20 weekly bosses.",
-    icon: "🐉",
+    glyph: "swords",
+    tier: "gold",
+    stamp: "20",
     category: "boss",
     earned: (f) => (f.boss?.defeats ?? 0) >= 20,
   },
@@ -390,7 +483,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "final-blow",
     name: "Final Blow",
     description: "Land the hit that defeats the weekly boss.",
-    icon: "💥",
+    glyph: "burst",
+    tier: "gold",
     category: "boss",
     earned: (f) => f.boss?.finalBlow === true,
   },
@@ -398,7 +492,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "giant-slayer",
     name: "Giant Slayer",
     description: "Help defeat a boss at 2x strength.",
-    icon: "🗡️",
+    glyph: "sword",
+    tier: "platinum",
     category: "boss",
     requires: "bossRoster",
     earned: (f) => (f.boss?.strength ?? 0) >= 2,
@@ -407,7 +502,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "survived-finals",
     name: "Survived Finals",
     description: "Help defeat The Final Final Exam.",
-    icon: "📝",
+    glyph: "cap",
+    tier: "platinum",
     category: "boss",
     requires: "bossRoster",
     earned: (f) => f.boss?.name === "The Final Final Exam",
@@ -418,7 +514,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "quest-first",
     name: "Quest Taker",
     description: "Finish a weekly quest.",
-    icon: "🗺️",
+    glyph: "map",
+    tier: "bronze",
     category: "quests",
     requires: "quests",
     earned: (f) => (f.quests?.totalDone ?? 0) >= 1,
@@ -427,7 +524,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "quest-sweep",
     name: "Clean Sweep",
     description: "Finish every quest in one week.",
-    icon: "🧹",
+    glyph: "sparkles",
+    tier: "silver",
     category: "quests",
     requires: "quests",
     earned: (f) => f.quests !== undefined && f.quests.doneThisWeek >= f.quests.perWeek,
@@ -436,7 +534,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "quest-25",
     name: "Adventurer",
     description: "Finish 25 weekly quests.",
-    icon: "🧭",
+    glyph: "compass",
+    tier: "gold",
+    stamp: "25",
     category: "quests",
     requires: "quests",
     earned: (f) => (f.quests?.totalDone ?? 0) >= 25,
@@ -447,7 +547,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "podium",
     name: "Podium",
     description: "Reach the top 3 on the weekly leaderboard.",
-    icon: "🥉",
+    glyph: "podium",
+    tier: "silver",
     category: "leaderboard",
     requires: "leaderboard",
     earned: (f) => (f.leaderboard?.rank ?? 0) >= 1 && (f.leaderboard?.rank ?? 0) <= 3,
@@ -456,7 +557,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "pole-position",
     name: "Pole Position",
     description: "Reach #1 on the weekly leaderboard.",
-    icon: "🥇",
+    glyph: "trophy",
+    tier: "gold",
     category: "leaderboard",
     requires: "leaderboard",
     earned: (f) => f.leaderboard?.rank === 1,
@@ -467,7 +569,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "three-am",
     name: "Three O'Clock Club",
     description: "Finish a session that starts between 3am and 4am.",
-    icon: "🌌",
+    glyph: "moon",
+    tier: "secret",
+    stamp: "3:00",
     category: "secret",
     secret: true,
     earned: (f) => finished(f)?.start.hour === 3,
@@ -476,7 +580,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "midnight-oil",
     name: "Burning the Midnight Oil",
     description: "Be focusing as the clock strikes midnight.",
-    icon: "🕯️",
+    glyph: "lamp",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -488,7 +593,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "leet",
     name: "1337",
     description: "Finish a session at exactly 13:37.",
-    icon: "👾",
+    glyph: "terminal",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -500,7 +606,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "deep-thought",
     name: "Deep Thought",
     description: "Finish a solo timer of exactly 42 minutes.",
-    icon: "🐬",
+    glyph: "planet",
+    tier: "secret",
+    stamp: "42",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -512,7 +620,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "pi-day",
     name: "Easy as Pi",
     description: "Finish a session on March 14.",
-    icon: "🥧",
+    glyph: "pi",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -524,7 +633,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "longest-day",
     name: "Longest Day",
     description: "Finish a session on June 21.",
-    icon: "☀️",
+    glyph: "sun",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -536,7 +646,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "new-year",
     name: "New Year, Same Me",
     description: "Finish a session on January 1.",
-    icon: "🎆",
+    glyph: "sparkles",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -548,7 +659,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "leap-day",
     name: "Leap of Faith",
     description: "Finish a session on February 29.",
-    icon: "🐸",
+    glyph: "calendar",
+    tier: "secret",
+    stamp: "29",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -560,7 +673,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "friday-13",
     name: "Feeling Lucky",
     description: "Finish a session on a Friday the 13th.",
-    icon: "🍀",
+    glyph: "clover",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -572,7 +686,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "unstoppable",
     name: "Unstoppable",
     description: "Finish 8 sessions in one day.",
-    icon: "🚀",
+    glyph: "rocket",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => (f.today?.sessionsFinished ?? 0) >= 8,
@@ -581,7 +696,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "speedrun",
     name: "Speedrun",
     description: "Finish a goal less than a minute after adding it.",
-    icon: "🏎️",
+    glyph: "gauge",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => f.goal !== undefined && f.goal.secondsOpen < 60,
@@ -590,7 +706,9 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "jackpot",
     name: "Jackpot",
     description: "Land on exactly 777 XP.",
-    icon: "🎰",
+    glyph: "coin",
+    tier: "secret",
+    stamp: "777",
     category: "secret",
     secret: true,
     earned: (f) => f.xpTotal === 777,
@@ -599,7 +717,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "over-9000",
     name: "It's Over 9000!",
     description: "Earn more than 9000 XP.",
-    icon: "📈",
+    glyph: "chart",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => f.xpTotal > 9000,
@@ -608,7 +727,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "phoenix",
     name: "Phoenix",
     description: "Come back after losing a streak of 30 days or more.",
-    icon: "🐦‍🔥",
+    glyph: "flame",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => (f.streak?.comebackFrom ?? 0) >= 30,
@@ -617,7 +737,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "one-person-army",
     name: "One-Person Army",
     description: "Defeat a weekly boss all by yourself.",
-    icon: "🦸",
+    glyph: "person",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => f.boss?.contributors === 1,
@@ -626,7 +747,8 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "blitz",
     name: "Blitz",
     description: "Defeat the weekly boss on the Monday it appears.",
-    icon: "🌩️",
+    glyph: "bolt",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) => f.boss !== undefined && weekdayIndex(f.boss.at.day) === 0,
@@ -635,15 +757,16 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "buzzer-beater",
     name: "Buzzer Beater",
     description: "Defeat the weekly boss after 8pm on Sunday.",
-    icon: "⏰",
+    glyph: "alarm",
+    tier: "secret",
     category: "secret",
     secret: true,
     earned: (f) =>
       f.boss !== undefined && weekdayIndex(f.boss.at.day) === 6 && f.boss.at.hour >= 20,
   },
-  bossNamed("thesis-defended", "Thesis Defended", "The Thesis Defense", "📜"),
-  bossNamed("do-not-disturb", "Do Not Disturb", "Notification Hydra", "🔕"),
-  bossNamed("wide-awake", "Wide Awake", "Captain Snooze Button", "☕"),
+  bossNamed("thesis-defended", "Thesis Defended", "The Thesis Defense", "scroll"),
+  bossNamed("do-not-disturb", "Do Not Disturb", "Notification Hydra", "bell-off"),
+  bossNamed("wide-awake", "Wide Awake", "Captain Snooze Button", "coffee"),
 ];
 
 const BY_ID = new Map(BADGES.map((b) => [b.id, b]));

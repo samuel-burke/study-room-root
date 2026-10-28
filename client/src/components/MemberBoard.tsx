@@ -2,6 +2,7 @@ import { badgeById, type MemberCardDto } from "@studyroom/core";
 import type { Profile } from "../api/gateway";
 import { isFocusing, rowTime, statusChip } from "../lib/view";
 import { Avatar } from "./Avatar";
+import { BadgeMedal } from "./BadgeMedal";
 import { FlameIcon, LockIcon } from "./Icons";
 
 interface BoardProps {
@@ -39,7 +40,7 @@ function FeaturedBadge({ ids }: { ids: string[] }) {
       role="img"
       aria-label={`Badge: ${badge.name}`}
     >
-      {badge.icon}
+      <BadgeMedal badge={badge} size={22} />
     </span>
   );
 }

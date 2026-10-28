@@ -39,14 +39,19 @@ function earned(facts: Partial<BadgeFacts>): string[] {
 }
 
 describe("badge catalog", () => {
-  it("has unique ids, names and icons, with text for every badge", () => {
-    for (const key of ["id", "name", "icon"] as const) {
+  it("has unique ids, names and medals, with text for every badge", () => {
+    const medals = BADGES.map((b) => `${b.glyph}/${b.tier}/${b.stamp ?? ""}`);
+    expect(new Set(medals).size).toBe(medals.length);
+    for (const key of ["id", "name"] as const) {
       const values = BADGES.map((b) => b[key]);
       expect(new Set(values).size, key).toBe(values.length);
     }
     for (const badge of BADGES) {
       expect(badge.id).toMatch(/^[a-z0-9-]+$/);
       expect(badge.description.length).toBeGreaterThan(0);
+      // Secret badges, and only those, wear the secret medal.
+      expect(badge.tier === "secret", badge.id).toBe(badge.secret === true);
+      expect((badge.stamp ?? "").length, badge.id).toBeLessThanOrEqual(4);
     }
   });
 

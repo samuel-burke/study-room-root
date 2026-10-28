@@ -78,6 +78,8 @@ Card styles (`core/src/game/cosmetics.ts`) change a member's card border and col
 
 Cards show one badge next to the level: the one the member picked, or their newest. An earlier version showed three, but a row of emoji on every card made the board noisy.
 
+Badges are drawn as medals (`client/src/components/BadgeMedal.tsx`), not emoji. Each badge names a line-drawn glyph, a tier and an optional stamp. The tier is the metal (bronze, silver, gold, platinum) and says how hard the badge is. Secret badges all share a holographic rim. The stamp is the number, such as a streak length, and is hidden on small medals.
+
 ## Channel posts
 
 - **Busy room**: once when the number of people focusing reaches the threshold, then not again until it drops below and three hours have passed.
