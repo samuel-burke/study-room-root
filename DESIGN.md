@@ -35,18 +35,17 @@ The room timer is the default and the brighter button because joining it is what
 | Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x | Rewards focusing together                                                |
 | Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
 | Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
-| Missed AFK check  | Minutes credited at 1.0x, that one round not finished             | Losing is soft: no combo or streak, but the time isn't thrown away       |
 | Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
 ## Anti-AFK guardrails
 
-**AFK check.** The room timer asks for one "Still there?" tap per cycle (about every two hours on 25/5, four on 50/10), at a random moment in a random round after the first one you take part in, and waits two minutes for it. Long study sessions shouldn't be interrupted every round, and the cycle already releases everyone at its end, so one check per cycle is enough to stop a forgotten timer from earning credit. Your first round is never interrupted, and someone who joins in the last round isn't asked. Solo timers of an hour or more get one check, never in the first 25 minutes; shorter solos get none. The server picks the moment when you join (and again when a new cycle starts) and stores it with the participant or solo timer, so it survives restarts and nobody can read it ahead of time: clients only learn about a check once it is open. A check never stops the timer. A missed check keeps the minutes (XP at 1.0x, boss damage), but the round it came up in (or that solo) doesn't count as finished, so it gives no combo, doesn't count toward anyone else's combo, and doesn't extend the streak. The next rounds count as usual. The point is only to stop round-the-clock farming, which the cycle release already caps, so one missed tap never costs more than one round. Admins can turn checks off; turning them off also forgives a check that is already open or missed.
+The room timer never interrupts a focus round and never takes back anything earned. The only check is at the end of a cycle:
 
-The other guardrails:
-
-- participants are released from the room timer when a cycle ends (about two hours with 25/5), so a forgotten timer can't run all night;
+- **"Keep going?"** During the cycle's final long break, everyone who focused that cycle is asked "Keep going?" and has the whole break (15 minutes on 25/5) to tap. Tapping rolls them straight into the next cycle, so a multi-hour session never has to rejoin. Anyone who doesn't tap is released when the cycle ends (about every two hours with 25/5), keeping all their XP, combo and streak credit, and can rejoin at any time. A forgotten timer therefore stops after one cycle, and missing the tap costs nothing.
+  - This replaced a random mid-round "Still there?" check. That one interrupted focus, and couldn't reach people with their screen off, so it ended up penalising people who were genuinely studying. The app has no way to send a phone notification, so the generous window matters.
+  - Solo timers need no check: they end on their own (at most three hours).
 - people who joined during the final long break haven't focused yet, so they roll into a fresh cycle instead of being dropped;
 - the daily XP cap bounds what any idle timer can earn.
 

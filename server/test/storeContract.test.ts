@@ -124,14 +124,10 @@ describe.each(implementations)("%s", (_name, open) => {
       minutes: 25,
       phase: "focus" as const,
       breakEndsAt: 3,
-      afkCheckAt: null,
-      afkCheckAnswered: false,
     };
     await store.solos.save(solo);
-    await store.solos.save({ ...solo, phase: "break", afkCheckAt: 1_793_150_000_000 });
-    expect(await store.solos.list()).toEqual([
-      { ...solo, phase: "break", afkCheckAt: 1_793_150_000_000 },
-    ]);
+    await store.solos.save({ ...solo, phase: "break" });
+    expect(await store.solos.list()).toEqual([{ ...solo, phase: "break" }]);
     await store.solos.delete("priya");
     expect(await store.solos.get("priya")).toBeUndefined();
   });
@@ -146,18 +142,12 @@ describe.each(implementations)("%s", (_name, open) => {
       preset,
       settledCount: 3,
     });
-    const noCheck = { afkCheckAt: null, afkCheckAnswered: false };
-    await store.room.addParticipant({ userId: "b", joinedAt: 20, ...noCheck });
-    await store.room.addParticipant({ userId: "a", joinedAt: 10, ...noCheck });
-    await store.room.addParticipant({
-      userId: "b",
-      joinedAt: 30,
-      afkCheckAt: 1_793_150_000_000,
-      afkCheckAnswered: true,
-    });
+    await store.room.addParticipant({ userId: "b", joinedAt: 20, keepGoing: false });
+    await store.room.addParticipant({ userId: "a", joinedAt: 10, keepGoing: false });
+    await store.room.addParticipant({ userId: "b", joinedAt: 30, keepGoing: true });
     expect(await store.room.listParticipants()).toEqual([
-      { userId: "a", joinedAt: 10, ...noCheck },
-      { userId: "b", joinedAt: 30, afkCheckAt: 1_793_150_000_000, afkCheckAnswered: true },
+      { userId: "a", joinedAt: 10, keepGoing: false },
+      { userId: "b", joinedAt: 30, keepGoing: true },
     ]);
     await store.room.removeParticipant("a");
     await store.room.saveCycle(null);
@@ -265,15 +255,8 @@ describe.each(implementations)("%s", (_name, open) => {
         minutes: 25,
         phase: "focus",
         breakEndsAt: 3,
-        afkCheckAt: null,
-        afkCheckAnswered: false,
       });
-      await store.room.addParticipant({
-        userId: id,
-        joinedAt: 1,
-        afkCheckAt: null,
-        afkCheckAnswered: false,
-      });
+      await store.room.addParticipant({ userId: id, joinedAt: 1, keepGoing: false });
       await store.stats.add(id, "2026-10-28", { focusMinutes: 10, goalsDone: 1 });
       await store.sessions.insert({
         userId: id,

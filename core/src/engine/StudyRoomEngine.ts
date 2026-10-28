@@ -14,15 +14,6 @@ import type {
 } from "../dto";
 import { conflictError, notFoundError, validationError } from "../errors";
 import {
-  AFK_CHECK_WINDOW_MS,
-  afkCheckMissed,
-  afkCheckOpen,
-  NO_AFK_CHECK,
-  planRoomAfkCheck,
-  planSoloAfkCheck,
-  type AfkCheckState,
-} from "../game/afkCheck";
-import {
   applyDamage,
   bossHpLeftMinutes,
   newBoss,
@@ -51,8 +42,13 @@ import {
   weekdayName,
   weekKey,
 } from "../time/calendar";
-import type { TimerPreset } from "../timer/presets";
-import { buildCycle, cycleEndsAt, overlapMs, phaseAt, type CyclePhase } from "../timer/roomCycle";
+import {
+  buildCycle,
+  keepGoingWindow,
+  overlapMs,
+  phaseAt,
+  type CyclePhase,
+} from "../timer/roomCycle";
 import {
   validateGoalText,
   validateId,
@@ -69,6 +65,7 @@ import type {
   MemberRecord,
   Notifier,
   ParticipantRecord,
+  RoomCycleRecord,
   Store,
   WakeScheduler,
 } from "./ports";
@@ -83,8 +80,6 @@ export interface EngineDeps {
   logger: Logger;
   config: AppConfig;
   newId: () => string;
-  /** Picks when AFK checks appear. Defaults to Math.random; tests pass a fixed value. */
-  random?: () => number;
 }
 
 export interface StartOptions {
@@ -125,12 +120,10 @@ export class StudyRoomEngine {
   private readonly pendingPosts = new Set<Promise<void>>();
   private readonly present = new Set<string>();
   private config: AppConfig;
-  private readonly random: () => number;
   private stopped = false;
 
   constructor(private readonly deps: EngineDeps) {
     this.config = deps.config;
-    this.random = deps.random ?? Math.random;
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -271,16 +264,14 @@ export class StudyRoomEngine {
       await this.applyStartOptions(tx, userId, goals, options.goalsPrivate, now);
       const participants = await tx.room.listParticipants();
       if (!participants.some((p) => p.userId === userId)) {
-        let cycle = await tx.room.getCycle();
-        if (!cycle) {
-          cycle = { cycleStartedAt: now, preset: this.config.preset, settledCount: 0 };
-          await tx.room.saveCycle(cycle);
+        if (!(await tx.room.getCycle())) {
+          await tx.room.saveCycle({
+            cycleStartedAt: now,
+            preset: this.config.preset,
+            settledCount: 0,
+          });
         }
-        await tx.room.addParticipant({
-          userId,
-          joinedAt: now,
-          ...this.planRoomCheck(cycle.cycleStartedAt, cycle.preset, now),
-        });
+        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false });
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -346,9 +337,6 @@ export class StudyRoomEngine {
         minutes,
         phase: "focus",
         breakEndsAt: endsAt + this.config.preset.breakMinutes * MINUTE_MS,
-        ...(this.config.afkChecksEnabled
-          ? planSoloAfkCheck(now, minutes, this.random)
-          : NO_AFK_CHECK),
       });
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -382,18 +370,17 @@ export class StudyRoomEngine {
     });
   }
 
-  // ---------------------------------------------------------------- AFK check
-
-  /** Answers the "still there?" check. A late or repeated tap changes nothing. */
-  confirmPresence(userId: string): Promise<MyStatusDto> {
+  /**
+   * Answers "Keep going?" during the cycle's final long break, so the member
+   * rolls into the next cycle instead of being released. A tap at any other
+   * time changes nothing.
+   */
+  keepGoing(userId: string): Promise<MyStatusDto> {
     return this.run(async (tx, now, effects) => {
       const participant = (await tx.room.listParticipants()).find((p) => p.userId === userId);
-      const solo = await tx.solos.get(userId);
-      if (participant && afkCheckOpen(participant, now)) {
-        await tx.room.addParticipant({ ...participant, afkCheckAnswered: true });
-        effects.statusChanged.add(userId);
-      } else if (solo?.phase === "focus" && afkCheckOpen(solo, now)) {
-        await tx.solos.save({ ...solo, afkCheckAnswered: true });
+      const cycle = await tx.room.getCycle();
+      if (participant && cycle && this.keepGoingEndsAt(participant, cycle, now) > 0) {
+        await tx.room.addParticipant({ ...participant, keepGoing: true });
         effects.statusChanged.add(userId);
       }
       return this.buildMyStatus(tx, userId, now);
@@ -591,28 +578,6 @@ export class StudyRoomEngine {
   private async settleDue(tx: Store, now: number, effects: Effects): Promise<void> {
     await this.settleRoomCycle(tx, now, effects);
     await this.settleSolos(tx, now, effects);
-    await this.settleAfkChecks(tx, now, effects);
-  }
-
-  /** Pushes the member's status while their check is open, so the prompt appears. */
-  private async settleAfkChecks(tx: Store, now: number, effects: Effects): Promise<void> {
-    if (!this.config.afkChecksEnabled) return;
-    for (const p of await tx.room.listParticipants()) {
-      if (afkCheckOpen(p, now)) effects.statusChanged.add(p.userId);
-    }
-    for (const s of await tx.solos.list()) {
-      if (s.phase === "focus" && afkCheckOpen(s, now)) effects.statusChanged.add(s.userId);
-    }
-  }
-
-  /** Plans the one check for the rest of this cycle, for someone on the timer from `from`. */
-  private planRoomCheck(cycleStartedAt: number, preset: TimerPreset, from: number): AfkCheckState {
-    if (!this.config.afkChecksEnabled) return NO_AFK_CHECK;
-    return planRoomAfkCheck(buildCycle(cycleStartedAt, preset), from, this.random);
-  }
-
-  private missedAfkCheck(check: AfkCheckState, block: { startsAt: number; endsAt: number }) {
-    return this.config.afkChecksEnabled && afkCheckMissed(check, block);
   }
 
   private async settleRoomCycle(tx: Store, now: number, effects: Effects): Promise<void> {
@@ -623,7 +588,11 @@ export class StudyRoomEngine {
     while (settled < phases.length && phases[settled]!.endsAt <= now) {
       const phase = phases[settled]!;
       if (phase.kind === "focus") {
-        await this.settleFocusPhase(tx, phases, phase, cycle.preset, effects);
+        await this.settleFocusPhase(tx, phases, phase, cycle.preset.focusMinutes, effects);
+      }
+      if (phase.endsAt === keepGoingWindow(phases).opensAt) {
+        // The long break starts: push "Keep going?" to everyone who focused this cycle.
+        for (const p of await tx.room.listParticipants()) effects.statusChanged.add(p.userId);
       }
       settled++;
       effects.roomChanged = true;
@@ -637,15 +606,15 @@ export class StudyRoomEngine {
   }
 
   /**
-   * At the end of a cycle everyone is released, so nobody can leave a timer
-   * running for hours. People who joined during the final long break haven't
-   * focused yet, so they roll straight into a fresh cycle.
+   * At the end of a cycle, only people who tapped "Keep going?" roll into a
+   * fresh cycle, so nobody can leave a timer running for hours. Everyone else
+   * is released and keeps everything they earned. People who joined during
+   * the final long break haven't focused yet, so they roll over too.
    */
   private async finishCycle(tx: Store, phases: CyclePhase[], effects: Effects): Promise<boolean> {
-    const end = cycleEndsAt(phases);
-    const lastFocusEnd = phases.filter((p) => p.kind === "focus").at(-1)?.endsAt ?? end;
+    const { opensAt: lastFocusEnd, closesAt: end } = keepGoingWindow(phases);
     const participants = await tx.room.listParticipants();
-    const carried = participants.filter((p) => p.joinedAt >= lastFocusEnd);
+    const carried = participants.filter((p) => p.keepGoing || p.joinedAt >= lastFocusEnd);
     for (const p of participants) {
       if (!carried.includes(p)) {
         await tx.room.removeParticipant(p.userId);
@@ -658,11 +627,8 @@ export class StudyRoomEngine {
         : null,
     );
     for (const p of carried) {
-      await tx.room.addParticipant({
-        ...p,
-        joinedAt: end,
-        ...this.planRoomCheck(end, this.config.preset, end),
-      });
+      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false });
+      effects.statusChanged.add(p.userId);
     }
     effects.roomChanged = true;
     // Returns true when a new cycle started, which may itself be overdue after downtime.
@@ -673,10 +639,9 @@ export class StudyRoomEngine {
     tx: Store,
     phases: readonly CyclePhase[],
     phase: CyclePhase,
-    preset: TimerPreset,
+    focusMinutes: number,
     effects: Effects,
   ): Promise<void> {
-    const focusMinutes = preset.focusMinutes;
     const participants = await tx.room.listParticipants();
     const minuteShares = participants
       .map((p) => ({
@@ -685,21 +650,11 @@ export class StudyRoomEngine {
       }))
       .filter((s) => s.minutes > 0);
     const finishThreshold = Math.min(GAME.minRoundMinutesToFinish, focusMinutes / 2);
-    // A missed AFK check keeps the minutes but not this round's finish, so no combo or streak.
-    const missedIds = new Set(
-      minuteShares
-        .filter((s) => this.missedAfkCheck(s.participant, phase))
-        .map((s) => s.participant.userId),
-    );
     const finisherIds = minuteShares
-      .filter((s) => s.minutes >= finishThreshold && !missedIds.has(s.participant.userId))
+      .filter((s) => s.minutes >= finishThreshold)
       .map((s) => s.participant.userId);
     const combo = comboFor(finisherIds.length, this.config.comboEnabled);
-    const paidCombo = (userId: string) => (missedIds.has(userId) ? 1 : combo);
-    const roomDamageMinutes = minuteShares.reduce(
-      (sum, s) => sum + s.minutes * paidCombo(s.participant.userId),
-      0,
-    );
+    const roomDamageMinutes = minuteShares.reduce((sum, s) => sum + s.minutes * combo, 0);
     // Stayed for the whole cycle: this is its last round and they finished round 1 too.
     const focusPhases = phases.filter((p) => p.kind === "focus");
     const lastRound = focusPhases.at(-1)?.index === phase.index;
@@ -717,11 +672,10 @@ export class StudyRoomEngine {
           startedAt: Math.max(share.participant.joinedAt, phase.startsAt),
           endedAt: phase.endsAt,
           minutes: share.minutes,
-          combo: paidCombo(share.participant.userId),
+          combo,
           finished: finisherIds.includes(share.participant.userId),
           plannedMinutes: focusMinutes,
-          fullCycle:
-            fullCycle(share.participant.joinedAt) && !missedIds.has(share.participant.userId),
+          fullCycle: fullCycle(share.participant.joinedAt),
           now: phase.endsAt,
         }),
       });
@@ -754,7 +708,7 @@ export class StudyRoomEngine {
         focusedMinutes: share.minutes,
         finished: finisherIds.includes(userId),
         baseXp: credit.baseXp,
-        combo: paidCombo(userId),
+        combo,
         xpEarned: credit.xpEarned,
         capped: credit.capped,
         streak: credit.streak,
@@ -763,7 +717,6 @@ export class StudyRoomEngine {
         roomDamageMinutes,
         goalPrompt: await this.goalPrompt(tx, userId),
         breakEndsAt,
-        afkCheckMissed: missedIds.has(userId),
         me: await this.buildMyStatus(tx, userId, phase.endsAt),
       };
       effects.notifications.push((n) => n.personalResult(userId, result));
@@ -773,7 +726,6 @@ export class StudyRoomEngine {
   private async settleSolos(tx: Store, now: number, effects: Effects): Promise<void> {
     for (const solo of await tx.solos.list()) {
       if (solo.phase === "focus" && solo.endsAt <= now) {
-        const missed = this.missedAfkCheck(solo, { startsAt: solo.startedAt, endsAt: solo.endsAt });
         const credit = await this.creditFocus(tx, effects, {
           userId: solo.userId,
           kind: "solo",
@@ -781,7 +733,7 @@ export class StudyRoomEngine {
           endedAt: solo.endsAt,
           minutes: solo.minutes,
           combo: 1,
-          finished: !missed,
+          finished: true,
           plannedMinutes: solo.minutes,
           now: solo.endsAt,
         });
@@ -793,18 +745,17 @@ export class StudyRoomEngine {
           source: "solo",
           round: 0,
           focusedMinutes: solo.minutes,
-          finished: !missed,
+          finished: true,
           baseXp: credit.baseXp,
           combo: 1,
           xpEarned: credit.xpEarned,
           capped: credit.capped,
           streak: credit.streak,
           streakExtended: credit.streakExtended,
-          finisherIds: missed ? [] : [solo.userId],
+          finisherIds: [solo.userId],
           roomDamageMinutes: solo.minutes,
           goalPrompt: await this.goalPrompt(tx, solo.userId),
           breakEndsAt: solo.breakEndsAt,
-          afkCheckMissed: missed,
           me: await this.buildMyStatus(tx, solo.userId, now),
         };
         effects.notifications.push((n) => n.personalResult(solo.userId, result));
@@ -825,17 +776,6 @@ export class StudyRoomEngine {
     }
     for (const solo of await tx.solos.list()) {
       candidates.push(solo.phase === "focus" ? solo.endsAt : solo.breakEndsAt);
-    }
-    // Wake when an AFK check opens so the prompt is pushed on time.
-    if (this.config.afkChecksEnabled) {
-      const checks: AfkCheckState[] = [
-        ...(await tx.room.listParticipants()),
-        ...(await tx.solos.list()).filter((s) => s.phase === "focus"),
-      ];
-      for (const c of checks) {
-        if (c.afkCheckAt !== null && !c.afkCheckAnswered && c.afkCheckAt > now)
-          candidates.push(c.afkCheckAt);
-      }
     }
     // Wake when the week rolls over so everyone sees the new boss.
     if (this.config.boss.enabled && candidates.length > 0) {
@@ -1302,13 +1242,10 @@ export class StudyRoomEngine {
 
     let status: MyStatusDto["status"] = "idle";
     let endsAt = 0;
-    const check = participant ?? (solo?.phase === "focus" ? solo : undefined);
-    const afkCheckEndsAt =
-      this.config.afkChecksEnabled && check && afkCheckOpen(check, now)
-        ? check.afkCheckAt! + AFK_CHECK_WINDOW_MS
-        : 0;
-    if (onRoomTimer) {
+    let keepGoingEndsAt = 0;
+    if (participant) {
       const cycle = await tx.room.getCycle();
+      if (cycle) keepGoingEndsAt = this.keepGoingEndsAt(participant, cycle, now);
       const phase = cycle
         ? phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now)
         : undefined;
@@ -1334,8 +1271,19 @@ export class StudyRoomEngine {
       freezeAvailable: freezeAvailable(streakState, today, this.config.streakFreezesEnabled),
       goals: goals.map((g) => ({ id: g.id, text: g.text, done: g.done })),
       goalsPrivate: this.goalsArePrivate(member),
-      afkCheckEndsAt,
+      keepGoingEndsAt,
     };
+  }
+
+  /** When the member's "Keep going?" prompt closes, or 0 when it isn't showing for them. */
+  private keepGoingEndsAt(
+    participant: ParticipantRecord,
+    cycle: RoomCycleRecord,
+    now: number,
+  ): number {
+    const { opensAt, closesAt } = keepGoingWindow(buildCycle(cycle.cycleStartedAt, cycle.preset));
+    const asked = !participant.keepGoing && participant.joinedAt < opensAt;
+    return asked && now >= opensAt && now < closesAt ? closesAt : 0;
   }
 
   private async recapFor(tx: Store, at: number, now: number): Promise<RecapDto> {

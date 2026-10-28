@@ -148,9 +148,9 @@ export class StudyRoomHandlers {
     );
   }
 
-  confirmPresence(userId: string): Promise<MyStatus> {
-    return this.handle("confirmPresence", userId, "write", async () =>
-      myStatusToProto(await this.engine.confirmPresence(userId)),
+  keepGoing(userId: string): Promise<MyStatus> {
+    return this.handle("keepGoing", userId, "write", async () =>
+      myStatusToProto(await this.engine.keepGoing(userId)),
     );
   }
 

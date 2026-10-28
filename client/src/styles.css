@@ -2268,9 +2268,9 @@ h3 {
   }
 }
 
-/* ---------------------------------------------------------------- AFK check */
+/* ---------------------------------------------------------------- keep going */
 
-.afk-check {
+.keep-going {
   position: fixed;
   left: 50%;
   top: 16px;
@@ -2289,7 +2289,7 @@ h3 {
   animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
-.afk-title {
+.keep-going-title {
   font-family: var(--font-display);
   font-weight: 700;
   color: var(--amber);

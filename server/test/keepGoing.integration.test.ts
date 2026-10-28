@@ -15,11 +15,9 @@ import {
 import { freshDatabase } from "./sqlite";
 
 const MINUTE = 60_000;
-/** With random() = 0 the cycle's check opens one minute into round 2 (25/5 rounds). */
-const ROUND_2 = T0 + 30 * MINUTE;
-const ROUND_2_ENDS = ROUND_2 + 25 * MINUTE;
-const CHECK_AT = ROUND_2 + MINUTE;
-const CHECK_ENDS = CHECK_AT + 2 * MINUTE;
+/** 25/5 rounds of 4: the long break runs from T0 + 115 min to T0 + 130 min. */
+const LONG_BREAK = T0 + 115 * MINUTE;
+const CYCLE_END = T0 + 130 * MINUTE;
 
 const mockLogger = () => ({
   info: vi.fn<Logger["info"]>(),
@@ -38,7 +36,7 @@ async function failure(promise: Promise<unknown>): Promise<RequestFailure> {
   return error as RequestFailure;
 }
 
-describe("AFK check through the handlers on SQLite", () => {
+describe('"Keep going?" through the handlers on SQLite', () => {
   let db: Knex;
   let clock: FakeClock;
   let scheduler: ManualScheduler;
@@ -57,9 +55,8 @@ describe("AFK check through the handlers on SQLite", () => {
       notifier,
       announcer: new RecordingAnnouncer(),
       logger: silentLogger,
-      config: configWith({ afkChecksEnabled: true }),
+      config: configWith(),
       newId: () => "unused",
-      random: () => 0,
     });
     logger = mockLogger();
     handlers = new StudyRoomHandlers(engine, logger, options);
@@ -85,87 +82,69 @@ describe("AFK check through the handlers on SQLite", () => {
     await db.destroy();
   });
 
-  it("opens the check, takes the tap, and finishes the round only for who answered", async () => {
+  it("asks in the long break and carries only whoever tapped into the next cycle", async () => {
     await handlers.joinRoomTimer("ana", { goals: [] });
     await handlers.joinRoomTimer("kai", { goals: [] });
-    expect((await handlers.getRoom("ana")).me?.afkCheckEndsAtMs).toBe(0);
+    expect((await handlers.getRoom("ana")).me?.keepGoingEndsAtMs).toBe(0);
 
-    await advanceTo(CHECK_AT);
-    const pushed = notifier.statuses.filter((s) => s.me.afkCheckEndsAt > 0);
-    expect(pushed.map((s) => [s.userId, s.me.afkCheckEndsAt]).sort()).toEqual([
-      ["ana", CHECK_ENDS],
-      ["kai", CHECK_ENDS],
-    ]);
-    expect((await handlers.getRoom("ana")).me?.afkCheckEndsAtMs).toBe(CHECK_ENDS);
+    await advanceTo(LONG_BREAK);
+    expect((await handlers.getRoom("ana")).me?.keepGoingEndsAtMs).toBe(CYCLE_END);
+    clock.current = LONG_BREAK + 3 * MINUTE;
+    const me = await handlers.keepGoing("ana");
+    expect(me).toMatchObject({ userId: "ana", keepGoingEndsAtMs: 0, onRoomTimer: true });
 
-    clock.current = CHECK_AT + 30_000;
-    const me = await handlers.confirmPresence("ana");
-    expect(me.afkCheckEndsAtMs).toBe(0);
-    expect(me.userId).toBe("ana");
-
-    await advanceTo(ROUND_2_ENDS);
-    const result = (userId: string) =>
-      notifier.personal.find((p) => p.userId === userId && p.event.round === 2)!.event;
-    expect(result("ana")).toMatchObject({ finished: true, afkCheckMissed: false });
-    expect(result("kai")).toMatchObject({ finished: false, afkCheckMissed: true, xpEarned: 50 });
-    // Round 1 had no check, so it counted for both.
-    expect(notifier.phases.find((p) => p.round === 1)!.finisherIds.sort()).toEqual(["ana", "kai"]);
+    await advanceTo(CYCLE_END);
+    expect((await handlers.getRoom("ana")).me?.onRoomTimer).toBe(true);
+    expect((await handlers.getRoom("kai")).me?.onRoomTimer).toBe(false);
+    // Kai keeps all four finished rounds.
+    expect(
+      notifier.personal
+        .filter((p) => p.userId === "kai" && p.event.finished)
+        .map((p) => p.event.round),
+    ).toEqual([1, 2, 3, 4]);
   });
 
-  it("keeps the planned check across a server restart", async () => {
+  it("remembers a tap across a server restart", async () => {
     await handlers.joinRoomTimer("ana", { goals: [] });
-    await advanceTo(ROUND_2);
-    expect(scheduler.at).toBe(CHECK_AT);
+    await advanceTo(LONG_BREAK);
+    await handlers.keepGoing("ana");
     engine.stop();
 
     boot();
     await engine.start();
-    expect(scheduler.at).toBe(CHECK_AT);
-    await advanceTo(CHECK_AT);
-    await handlers.confirmPresence("ana");
-    await advanceTo(ROUND_2_ENDS);
-    expect(
-      notifier.personal.find((p) => p.userId === "ana" && p.event.round === 2)!.event.finished,
-    ).toBe(true);
+    await advanceTo(CYCLE_END);
+    expect((await handlers.getRoom("ana")).me?.onRoomTimer).toBe(true);
   });
 
-  it("treats a tap with no open check as a harmless no-op", async () => {
-    // Not on any timer.
-    expect((await handlers.confirmPresence("ana")).afkCheckEndsAtMs).toBe(0);
-    // On the timer, before the check opens, then after it closes.
+  it("treats a tap outside the long break as a harmless no-op", async () => {
+    expect((await handlers.keepGoing("ana")).onRoomTimer).toBe(false);
     await handlers.joinRoomTimer("ana", { goals: [] });
-    await handlers.confirmPresence("ana");
-    await advanceTo(CHECK_ENDS);
-    await handlers.confirmPresence("ana");
-    await advanceTo(ROUND_2_ENDS);
-    expect(
-      notifier.personal.find((p) => p.userId === "ana" && p.event.round === 2)!.event
-        .afkCheckMissed,
-    ).toBe(true);
+    await handlers.keepGoing("ana");
+    await advanceTo(CYCLE_END);
+    expect((await handlers.getRoom("ana")).me?.onRoomTimer).toBe(false);
     expect(logger.error).not.toHaveBeenCalled();
   });
 
   it("refuses a tap without a caller identity", async () => {
-    const error = await failure(handlers.confirmPresence(""));
+    const error = await failure(handlers.keepGoing(""));
     expect(error.code).toBe(ErrorCode.Validation);
   });
 
   it("rate limits taps like any other write", async () => {
     boot({ writeLimit: { capacity: 1, perSecond: 0.001 }, now: () => 0 });
-    await handlers.confirmPresence("ana");
-    const error = await failure(handlers.confirmPresence("ana"));
+    await handlers.keepGoing("ana");
+    const error = await failure(handlers.keepGoing("ana"));
     expect(error.code).toBe(ErrorCode.RateLimited);
     expect(logger.warn).toHaveBeenCalledWith("rate limited", {
-      operation: "confirmPresence",
+      operation: "keepGoing",
       userId: "ana",
     });
   });
 
-  it("hides storage failures behind a generic message, logs them and keeps the check open", async () => {
+  it("hides storage failures behind a generic message, logs them and lets the tap be retried", async () => {
     await handlers.joinRoomTimer("ana", { goals: [] });
-    await advanceTo(CHECK_AT);
-    const store = new KnexStore(db);
-    // Fail the write of the answer inside the engine's transaction, so it must roll back.
+    await advanceTo(LONG_BREAK);
+    // Fail the write inside the engine's transaction, so it must roll back.
     const transaction = KnexStore.prototype.transaction;
     const spy = vi.spyOn(KnexStore.prototype, "transaction").mockImplementationOnce(function (
       this: KnexStore,
@@ -178,19 +157,23 @@ describe("AFK check through the handlers on SQLite", () => {
         return work(tx);
       });
     });
-    const error = await failure(handlers.confirmPresence("ana"));
+    const error = await failure(handlers.keepGoing("ana"));
     spy.mockRestore();
     expect(error.code).toBe(ErrorCode.Internal);
     expect(error.message).not.toContain("SQLITE");
     expect(logger.error).toHaveBeenCalledWith(
       "request failed",
       expect.objectContaining({
-        operation: "confirmPresence",
+        operation: "keepGoing",
         error: expect.stringContaining("SQLITE_BUSY"),
       }),
     );
-    // Nothing was saved, so the check is still open and a retry works.
-    expect((await store.room.listParticipants())[0]).toMatchObject({ afkCheckAnswered: false });
-    expect((await handlers.confirmPresence("ana")).afkCheckEndsAtMs).toBe(0);
+    // Nothing was saved, so the prompt is still up and a retry works.
+    expect((await new KnexStore(db).room.listParticipants())[0]).toMatchObject({
+      keepGoing: false,
+    });
+    expect((await handlers.keepGoing("ana")).keepGoingEndsAtMs).toBe(0);
+    await advanceTo(CYCLE_END);
+    expect((await handlers.getRoom("ana")).me?.onRoomTimer).toBe(true);
   });
 });

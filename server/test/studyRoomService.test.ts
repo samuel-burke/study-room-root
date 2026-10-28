@@ -33,7 +33,7 @@ function bound(overrides: Partial<Record<keyof Handlers, () => Promise<unknown>>
     setGoalsPrivate: ok("setGoalsPrivate"),
     getProgress: ok("getProgress"),
     deleteMyData: ok("deleteMyData"),
-    confirmPresence: ok("confirmPresence"),
+    keepGoing: ok("keepGoing"),
     ...overrides,
   };
   const service = new StudyRoomService();
@@ -64,7 +64,7 @@ describe("StudyRoomService", () => {
       ],
       ["getProgress", () => service.getProgress({}, client)],
       ["deleteMyData", () => service.deleteMyData({}, client)],
-      ["confirmPresence", () => service.confirmPresence({}, client)],
+      ["keepGoing", () => service.keepGoing({}, client)],
     ];
     for (const [name, call, request] of calls) {
       await expect(call()).resolves.toEqual({ from: name });

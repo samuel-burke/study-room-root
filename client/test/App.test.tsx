@@ -142,24 +142,24 @@ describe("Study Squad app", () => {
     expect(screen.getByRole("timer")).toBeInTheDocument();
   });
 
-  it("asks 'Still there?' during a check and hides it once answered", async () => {
+  it("asks 'Keep going?' in the long break and hides it once tapped", async () => {
     const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
     const snapshot = await gateway.getSnapshot();
-    const endsAt = gateway.now() + 90_000;
+    const endsAt = gateway.now() + 10 * 60_000;
     vi.spyOn(gateway, "getSnapshot").mockResolvedValueOnce({
       ...snapshot,
-      me: { ...snapshot.me, afkCheckEndsAt: endsAt },
+      me: { ...snapshot.me, keepGoingEndsAt: endsAt },
     });
-    const confirm = vi
-      .spyOn(gateway, "confirmPresence")
-      .mockResolvedValueOnce({ ...snapshot.me, afkCheckEndsAt: 0 });
+    const keepGoing = vi
+      .spyOn(gateway, "keepGoing")
+      .mockResolvedValueOnce({ ...snapshot.me, keepGoingEndsAt: 0 });
     const user = userEvent.setup();
     render(<App gateway={gateway} />);
 
-    const prompt = await screen.findByRole("alertdialog", { name: "Still there?" });
-    expect(prompt).toHaveTextContent(/Tap within 1:(29|30)/);
-    await user.click(within(prompt).getByRole("button", { name: "I'm here" }));
-    expect(confirm).toHaveBeenCalledOnce();
+    const prompt = await screen.findByRole("alertdialog", { name: "Keep going?" });
+    expect(prompt).toHaveTextContent(/Tap within (9:59|10:00)/);
+    await user.click(within(prompt).getByRole("button", { name: "Keep going" }));
+    expect(keepGoing).toHaveBeenCalledOnce();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 

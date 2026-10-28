@@ -165,7 +165,7 @@ export function myStatusToProto(me: MyStatusDto): MyStatus {
     freezeAvailable: me.freezeAvailable,
     goals: me.goals.map(goalToProto),
     goalsPrivate: me.goalsPrivate,
-    afkCheckEndsAtMs: me.afkCheckEndsAt,
+    keepGoingEndsAtMs: me.keepGoingEndsAt,
   };
 }
 
@@ -218,7 +218,6 @@ export function personalResultToProto(event: PersonalResultDto): PersonalResultE
     ...(event.goalPrompt ? { goalPrompt: goalToProto(event.goalPrompt) } : {}),
     breakEndsAtMs: event.breakEndsAt,
     me: myStatusToProto(event.me),
-    afkCheckMissed: event.afkCheckMissed,
   };
 }
 
@@ -310,7 +309,7 @@ export function myStatusFromProto(me: MyStatus | undefined): MyStatusDto {
     freezeAvailable: me?.freezeAvailable ?? false,
     goals: (me?.goals ?? []).map(goalFromProto),
     goalsPrivate: me?.goalsPrivate ?? false,
-    afkCheckEndsAt: me?.afkCheckEndsAtMs ?? 0,
+    keepGoingEndsAt: me?.keepGoingEndsAtMs ?? 0,
   };
 }
 
@@ -362,7 +361,6 @@ export function personalResultFromProto(event: PersonalResultEvent): PersonalRes
     roomDamageMinutes: event.roomDamageMinutes,
     goalPrompt: event.goalPrompt ? goalFromProto(event.goalPrompt) : null,
     breakEndsAt: event.breakEndsAtMs,
-    afkCheckMissed: event.afkCheckMissed,
     me: myStatusFromProto(event.me),
   };
 }

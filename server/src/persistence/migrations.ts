@@ -122,22 +122,16 @@ const migrations: Migration[] = [
     },
   },
   {
-    name: "005_afk_checks",
+    name: "005_keep_going",
     async up(db) {
-      for (const table of ["room_participants", "solo_sessions"]) {
-        await db.schema.alterTable(table, (t) => {
-          t.bigInteger("afk_check_at").nullable();
-          t.boolean("afk_check_answered").notNullable().defaultTo(false);
-        });
-      }
+      await db.schema.alterTable("room_participants", (t) => {
+        t.boolean("keep_going").notNullable().defaultTo(false);
+      });
     },
     async down(db) {
-      for (const table of ["room_participants", "solo_sessions"]) {
-        await db.schema.alterTable(table, (t) => {
-          t.dropColumn("afk_check_at");
-          t.dropColumn("afk_check_answered");
-        });
-      }
+      await db.schema.alterTable("room_participants", (t) => {
+        t.dropColumn("keep_going");
+      });
     },
   },
 ];

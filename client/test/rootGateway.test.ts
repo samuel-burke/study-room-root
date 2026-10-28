@@ -34,7 +34,7 @@ const service = vi.hoisted(() => {
       deleteGoal: vi.fn(),
       setGoalsPrivate: vi.fn(),
       deleteMyData: vi.fn(),
-      confirmPresence: vi.fn(),
+      keepGoing: vi.fn(),
       getProgress: vi.fn(),
     },
   };
@@ -108,7 +108,7 @@ describe("RootGateway", () => {
       "deleteGoal",
       "setGoalsPrivate",
       "deleteMyData",
-      "confirmPresence",
+      "keepGoing",
     ])
       vi.mocked(service.client[rpc as "addGoal"]).mockResolvedValue(proto);
     const gateway = new RootGateway();
@@ -117,8 +117,8 @@ describe("RootGateway", () => {
     await expect(gateway.deleteGoal("g")).resolves.toEqual(me);
     await expect(gateway.setGoalsPrivate(false)).resolves.toEqual(me);
     await expect(gateway.deleteMyData()).resolves.toEqual(me);
-    await expect(gateway.confirmPresence()).resolves.toEqual(me);
-    expect(service.client.confirmPresence).toHaveBeenCalledWith({});
+    await expect(gateway.keepGoing()).resolves.toEqual(me);
+    expect(service.client.keepGoing).toHaveBeenCalledWith({});
     expect(service.client.setGoalDone).toHaveBeenCalledWith({ goalId: "g", done: true });
   });
 

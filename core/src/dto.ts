@@ -91,8 +91,8 @@ export interface MyStatusDto {
   freezeAvailable: boolean;
   goals: GoalDto[];
   goalsPrivate: boolean;
-  /** When the open "still there?" check closes (server time). 0 when none is open. */
-  afkCheckEndsAt: number;
+  /** When the "Keep going?" prompt closes (server time). 0 when it isn't showing. */
+  keepGoingEndsAt: number;
 }
 
 export interface SnapshotDto {
@@ -127,8 +127,6 @@ export interface PersonalResultDto {
   roomDamageMinutes: number;
   goalPrompt: GoalDto | null;
   breakEndsAt: number;
-  /** The "still there?" check went unanswered, so the block doesn't count as finished. */
-  afkCheckMissed: boolean;
   me: MyStatusDto;
 }
 

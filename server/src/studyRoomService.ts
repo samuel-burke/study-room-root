@@ -2,12 +2,12 @@ import { RootServerException, type Client } from "@rootsdk/server-app";
 import { StudyRoomServiceBase } from "@studyroom/gen-server";
 import type {
   AddGoalRequest,
-  ConfirmPresenceRequest,
   DeleteGoalRequest,
   DeleteMyDataRequest,
   EndSoloRequest,
   GetProgressRequest,
   GetRoomRequest,
+  KeepGoingRequest,
   JoinRoomTimerRequest,
   LeaveRoomTimerRequest,
   MyStatus,
@@ -85,8 +85,8 @@ export class StudyRoomService extends StudyRoomServiceBase {
     return this.call((h) => h.deleteMyData(client.userId));
   }
 
-  confirmPresence(_request: ConfirmPresenceRequest, client: Client): Promise<MyStatus> {
-    return this.call((h) => h.confirmPresence(client.userId));
+  keepGoing(_request: KeepGoingRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.keepGoing(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

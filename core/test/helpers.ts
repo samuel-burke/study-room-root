@@ -100,12 +100,10 @@ export class RecordingAnnouncer implements Announcer {
 export const silentLogger = { info() {}, warn() {}, error() {} };
 
 export function configWith(overrides: Partial<AppConfig> = {}): AppConfig {
-  // AFK checks are off unless a test turns them on, so other rules can be tested without tapping.
-  return { ...DEFAULT_CONFIG, postChannelId: "channel-1", afkChecksEnabled: false, ...overrides };
+  return { ...DEFAULT_CONFIG, postChannelId: "channel-1", ...overrides };
 }
 
-/** `random` places AFK checks: 0 = as early as allowed, 1 = as late as allowed. */
-export function createHarness(config: AppConfig = configWith(), start = T0, random = 0.5) {
+export function createHarness(config: AppConfig = configWith(), start = T0) {
   const clock = new FakeClock(start);
   const scheduler = new ManualScheduler();
   const notifier = new RecordingNotifier();
@@ -121,7 +119,6 @@ export function createHarness(config: AppConfig = configWith(), start = T0, rand
     logger: silentLogger,
     config,
     newId: () => `id-${nextId++}`,
-    random: () => random,
   });
 
   /** Moves time forward, firing scheduled wake-ups along the way like a real timer would. */

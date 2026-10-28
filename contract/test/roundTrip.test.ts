@@ -122,7 +122,7 @@ const me: MyStatusDto = {
     { id: "g2", text: "Make 20 flashcards", done: false },
   ],
   goalsPrivate: false,
-  afkCheckEndsAt: 1_793_150_200_000,
+  keepGoingEndsAt: 1_793_150_200_000,
 };
 
 describe("contract round trip", () => {
@@ -180,13 +180,9 @@ describe("contract round trip", () => {
       roomDamageMinutes: 30,
       goalPrompt: { id: "g2", text: "Make 20 flashcards", done: false },
       breakEndsAt: 123,
-      afkCheckMissed: false,
       me,
     };
-    for (const event of [
-      base,
-      { ...base, source: "room" as const, goalPrompt: null, afkCheckMissed: true },
-    ]) {
+    for (const event of [base, { ...base, source: "room" as const, goalPrompt: null }]) {
       const bytes = PersonalResultEvent.toBinary(personalResultToProto(event));
       expect(personalResultFromProto(PersonalResultEvent.fromBinary(bytes))).toEqual(event);
     }

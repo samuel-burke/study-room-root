@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { StudyRoomGateway } from "./api/gateway";
-import { AfkCheck } from "./components/AfkCheck";
 import { BadgeUnlocked } from "./components/BadgeUnlocked";
+import { KeepGoing } from "./components/KeepGoing";
 import { BreakMoment } from "./components/BreakMoment";
 import { Celebration } from "./components/Celebration";
 import { GoalsSheet } from "./components/GoalsSheet";
@@ -149,20 +149,20 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
           onClose={actions.dismissBreak}
         />
       )}
-      {me.afkCheckEndsAt > now && (
-        <AfkCheck
-          endsAt={me.afkCheckEndsAt}
-          now={now}
-          busy={busy}
-          onConfirm={() => void actions.confirmPresence()}
-        />
-      )}
       {state.newBadges[0] && (
         <BadgeUnlocked
           key={state.newBadges[0]}
           badgeId={state.newBadges[0]}
           muted={sounds.muted}
           onDismiss={actions.dismissBadge}
+        />
+      )}
+      {me.keepGoingEndsAt > now && (
+        <KeepGoing
+          endsAt={me.keepGoingEndsAt}
+          now={now}
+          busy={busy}
+          onKeepGoing={() => void actions.keepGoing()}
         />
       )}
       {state.error && <Toast message={state.error} onDismiss={actions.dismissError} />}

@@ -54,6 +54,18 @@ export function cycleEndsAt(phases: readonly CyclePhase[]): number {
   return phases[phases.length - 1]?.endsAt ?? 0;
 }
 
+/**
+ * The cycle's final long break. That's when people who focused this cycle are
+ * asked "Keep going?", and the cycle releases anyone who didn't tap at its end.
+ */
+export function keepGoingWindow(phases: readonly CyclePhase[]): {
+  opensAt: number;
+  closesAt: number;
+} {
+  const closesAt = cycleEndsAt(phases);
+  return { opensAt: phases.filter((p) => p.kind === "focus").at(-1)?.endsAt ?? closesAt, closesAt };
+}
+
 /** Milliseconds of overlap between [aStart, aEnd) and [bStart, bEnd). */
 export function overlapMs(aStart: number, aEnd: number, bStart: number, bEnd: number): number {
   return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));

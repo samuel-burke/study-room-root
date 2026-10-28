@@ -63,8 +63,8 @@ export interface StudyRoomGateway {
   setBadgeShowcase(badgeIds: string[]): Promise<ProgressDto>;
   /** Erases everything stored about the current member. */
   deleteMyData(): Promise<MyStatusDto>;
-  /** Answers the "still there?" check. */
-  confirmPresence(): Promise<MyStatusDto>;
+  /** Answers "Keep going?" so the member rolls into the next cycle. */
+  keepGoing(): Promise<MyStatusDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;
   subscribe(handlers: GatewayHandlers): () => void;
 }

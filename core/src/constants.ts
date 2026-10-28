@@ -11,14 +11,6 @@ export const GAME = {
   comboMax: 2,
   /** Minimum focused minutes in a room round to count as "finished together". */
   minRoundMinutesToFinish: 5,
-  /** Solo timers at least this long get one "still there?" check. The room timer gets one per cycle. */
-  afkCheckSoloMinMinutes: 60,
-  /** No solo check before this many minutes. */
-  afkCheckSoloQuietMinutes: 25,
-  /** How long the check waits for a tap. */
-  afkCheckAnswerMinutes: 2,
-  /** No check in the first minute after someone starts. */
-  afkCheckQuietStartMinutes: 1,
   /** Streak lengths that trigger a channel post. */
   streakMilestones: [7, 30, 50, 100, 200, 365] as readonly number[],
 } as const;
