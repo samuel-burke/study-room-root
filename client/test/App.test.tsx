@@ -130,6 +130,27 @@ describe("Study Squad app", () => {
     expect(screen.getByRole("timer")).toBeInTheDocument();
   });
 
+  it("asks 'Still there?' during a check and hides it once answered", async () => {
+    const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
+    const snapshot = await gateway.getSnapshot();
+    const endsAt = gateway.now() + 90_000;
+    vi.spyOn(gateway, "getSnapshot").mockResolvedValueOnce({
+      ...snapshot,
+      me: { ...snapshot.me, afkCheckEndsAt: endsAt },
+    });
+    const confirm = vi
+      .spyOn(gateway, "confirmPresence")
+      .mockResolvedValueOnce({ ...snapshot.me, afkCheckEndsAt: 0 });
+    const user = userEvent.setup();
+    render(<App gateway={gateway} />);
+
+    const prompt = await screen.findByRole("alertdialog", { name: "Still there?" });
+    expect(prompt).toHaveTextContent(/Tap within 1:(29|30)/);
+    await user.click(within(prompt).getByRole("button", { name: "I'm here" }));
+    expect(confirm).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
   it("offers a retry when the room can't load", async () => {
     const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
     const spy = vi.spyOn(gateway, "getSnapshot").mockRejectedValueOnce(new Error("offline"));

@@ -14,6 +14,7 @@ export * from "./game/combo";
 export * from "./game/xp";
 export * from "./game/streak";
 export * from "./game/boss";
+export * from "./game/afkCheck";
 export * from "./engine/ports";
 export * from "./engine/serialQueue";
 export * from "./engine/memoryStore";

@@ -220,9 +220,16 @@ export class DemoGateway implements StudyRoomGateway {
     else await this.engine.joinRoomTimer(bot.userId, start);
   }
 
-  /** When a bot's session ends it starts another a few seconds later, so the room never empties. */
+  /**
+   * When a bot's session ends it starts another a few seconds later, so the
+   * room never empties. Bots also answer their AFK checks.
+   */
   private keepBotBusy(userId: string, me: MyStatusDto) {
     const bot = BOTS.find((b) => b.userId === userId);
+    if (bot && me.afkCheckEndsAt > 0) {
+      setTimeout(() => void this.engine.confirmPresence(userId).catch(() => undefined), 5_000);
+      return;
+    }
     if (!bot || me.status !== "idle" || this.pendingBots.has(userId)) return;
     this.pendingBots.add(userId);
     setTimeout(() => {
@@ -307,6 +314,10 @@ export class DemoGateway implements StudyRoomGateway {
 
   deleteMyData() {
     return this.call(() => this.engine.deleteMyData(DEMO_USER_ID));
+  }
+
+  confirmPresence() {
+    return this.call(() => this.engine.confirmPresence(DEMO_USER_ID));
   }
 
   getProgress() {

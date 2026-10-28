@@ -96,7 +96,11 @@ export function BreakMoment({
             {result.streak} {result.streak === 1 ? "day" : "days"}
           </div>
           <div className="stat-sub">
-            {result.finished ? "Today counts" : "Finish a full round to count today"}
+            {result.afkCheckMissed
+              ? "Missed the AFK check, so this one doesn't count"
+              : result.finished
+                ? "Today counts"
+                : "Finish a full round to count today"}
           </div>
         </div>
       </div>

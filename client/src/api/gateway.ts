@@ -57,6 +57,8 @@ export interface StudyRoomGateway {
   getProgress(): Promise<ProgressDto>;
   /** Erases everything stored about the current member. */
   deleteMyData(): Promise<MyStatusDto>;
+  /** Answers the "still there?" check. */
+  confirmPresence(): Promise<MyStatusDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;
   subscribe(handlers: GatewayHandlers): () => void;
 }

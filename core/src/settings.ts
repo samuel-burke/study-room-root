@@ -36,6 +36,7 @@ export const SETTINGS = {
     bossHp: "bossHpHours",
     streakFreezes: "streakFreezes",
     milestonePosts: "milestonePosts",
+    afkChecks: "afkChecks",
   },
 } as const;
 
@@ -55,6 +56,8 @@ export interface AppConfig {
   boss: { enabled: boolean; name: string; hpHours: number };
   streakFreezesEnabled: boolean;
   milestonePostsEnabled: boolean;
+  /** One "still there?" tap per long focus block. */
+  afkChecksEnabled: boolean;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -71,6 +74,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   boss: { enabled: true, name: "Midterms", hpHours: 100 },
   streakFreezesEnabled: true,
   milestonePostsEnabled: true,
+  afkChecksEnabled: true,
 };
 
 /** The loosely typed shape Root hands us: groups of items, each a primitive or array. */
@@ -156,5 +160,6 @@ export function parseSettings(raw: RawSettings): AppConfig {
     },
     streakFreezesEnabled: bool(game[g.streakFreezes], d.streakFreezesEnabled),
     milestonePostsEnabled: bool(game[g.milestonePosts], d.milestonePostsEnabled),
+    afkChecksEnabled: bool(game[g.afkChecks], d.afkChecksEnabled),
   };
 }

@@ -2,6 +2,7 @@ import { RootServerException, type Client } from "@rootsdk/server-app";
 import { StudyRoomServiceBase } from "@studyroom/gen-server";
 import type {
   AddGoalRequest,
+  ConfirmPresenceRequest,
   DeleteGoalRequest,
   DeleteMyDataRequest,
   EndSoloRequest,
@@ -72,6 +73,10 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
     return this.call((h) => h.deleteMyData(client.userId));
+  }
+
+  confirmPresence(_request: ConfirmPresenceRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.confirmPresence(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

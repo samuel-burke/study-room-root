@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- AFK check: one "Still there?" tap at a random moment in focus blocks of 25 minutes or more, on the room timer and on solo timers. A missed tap still counts the minutes, but the block isn't finished, so it earns no combo and doesn't count toward the streak. Admins can turn it off under **Game layer → AFK checks**.
+
 ## [0.1.0] - 2026-10-28
 
 First release of **Study Squad: Group Study Timer**, covering the v1 scope.

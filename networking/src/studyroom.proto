@@ -121,6 +121,8 @@ message MyStatus {
   bool freeze_available = 11;
   repeated Goal goals = 12;
   bool goals_private = 13;
+  // When the open "still there?" check closes. 0 when none is open.
+  double afk_check_ends_at_ms = 14;
 }
 
 message RoomSnapshot {
@@ -181,6 +183,9 @@ message GetProgressRequest {}
 // Erases everything the app stores about the caller. Cannot be undone.
 message DeleteMyDataRequest {}
 
+// Answers the "still there?" check. A late or repeated tap changes nothing.
+message ConfirmPresenceRequest {}
+
 // ---------------------------------------------------------------- broadcasts
 
 message RoomUpdatedEvent {
@@ -213,6 +218,8 @@ message PersonalResultEvent {
   optional Goal goal_prompt = 13;
   double break_ends_at_ms = 14;
   MyStatus me = 15;
+  // The "still there?" check went unanswered, so the block didn't count as finished.
+  bool afk_check_missed = 16;
 }
 
 message MyStatusEvent {
@@ -233,6 +240,7 @@ service StudyRoomService {
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
   rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+  rpc ConfirmPresence(ConfirmPresenceRequest) returns (MyStatus);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);

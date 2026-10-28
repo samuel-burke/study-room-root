@@ -1,3 +1,4 @@
+import type { AfkCheckState } from "../game/afkCheck";
 import type { BossState } from "../game/boss";
 import type { StreakState } from "../game/streak";
 import type { DayKey } from "../time/calendar";
@@ -31,7 +32,7 @@ export interface GoalRecord {
   completedAt: number | null;
 }
 
-export interface SoloRecord {
+export interface SoloRecord extends AfkCheckState {
   userId: string;
   startedAt: number;
   endsAt: number;
@@ -48,7 +49,8 @@ export interface RoomCycleRecord {
   settledCount: number;
 }
 
-export interface ParticipantRecord {
+/** The AFK check covers the participant's current or next focus round. */
+export interface ParticipantRecord extends AfkCheckState {
   userId: string;
   joinedAt: number;
 }

@@ -99,6 +99,25 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    name: "002_afk_checks",
+    async up(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.bigInteger("afk_check_at").nullable();
+          t.boolean("afk_check_answered").notNullable().defaultTo(false);
+        });
+      }
+    },
+    async down(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.dropColumn("afk_check_at");
+          t.dropColumn("afk_check_answered");
+        });
+      }
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {

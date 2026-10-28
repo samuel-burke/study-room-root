@@ -62,6 +62,12 @@ const toSolo = (r: Row): SoloRecord => ({
   minutes: num(r.minutes),
   phase: r.phase === "break" ? "break" : "focus",
   breakEndsAt: num(r.break_ends_at),
+  ...afkCheckFromRow(r),
+});
+
+const afkCheckFromRow = (r: Row) => ({
+  afkCheckAt: numOrNull(r.afk_check_at),
+  afkCheckAnswered: bool(r.afk_check_answered),
 });
 
 const toStat = (r: Row): DailyStatRecord => ({
@@ -229,6 +235,8 @@ export class KnexStore implements Store {
           minutes: s.minutes,
           phase: s.phase,
           break_ends_at: s.breakEndsAt,
+          afk_check_at: s.afkCheckAt,
+          afk_check_answered: s.afkCheckAnswered,
         })
         .onConflict("user_id")
         .merge();
@@ -272,10 +280,16 @@ export class KnexStore implements Store {
       (await this.db("room_participants").orderBy("joined_at", "asc")).map((r: Row) => ({
         userId: String(r.user_id),
         joinedAt: num(r.joined_at),
+        ...afkCheckFromRow(r),
       })),
     addParticipant: async (p: ParticipantRecord) => {
       await this.db("room_participants")
-        .insert({ user_id: p.userId, joined_at: p.joinedAt })
+        .insert({
+          user_id: p.userId,
+          joined_at: p.joinedAt,
+          afk_check_at: p.afkCheckAt,
+          afk_check_answered: p.afkCheckAnswered,
+        })
         .onConflict("user_id")
         .merge();
     },

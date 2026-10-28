@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { StudyRoomGateway } from "./api/gateway";
+import { AfkCheck } from "./components/AfkCheck";
 import { BreakMoment } from "./components/BreakMoment";
 import { Celebration } from "./components/Celebration";
 import { GoalsSheet } from "./components/GoalsSheet";
@@ -141,6 +142,14 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             void actions.setGoalDone(id, true).then((ok) => ok && actions.dismissBreak());
           }}
           onClose={actions.dismissBreak}
+        />
+      )}
+      {me.afkCheckEndsAt > now && (
+        <AfkCheck
+          endsAt={me.afkCheckEndsAt}
+          now={now}
+          busy={busy}
+          onConfirm={() => void actions.confirmPresence()}
         />
       )}
       {state.error && <Toast message={state.error} onDismiss={actions.dismissError} />}

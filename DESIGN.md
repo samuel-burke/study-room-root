@@ -35,13 +35,16 @@ The room timer is the default and the brighter button because joining it is what
 | Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x | Rewards focusing together                                                |
 | Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
 | Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
+| Missed AFK check  | Minutes are credited at 1.0x, round not finished                  | Losing is soft: no combo or streak, but the time isn't thrown away       |
 | Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
 ## Anti-AFK guardrails
 
-A random "are you there?" tap is planned for v2. For v1:
+**AFK check.** Every focus block of 25 minutes or more (a room round or a solo timer) asks for one "Still there?" tap at a random moment, and waits two minutes for it. The server picks the moment when the block is planned (on joining, and for the next round when a round ends) and stores it with the participant or solo timer, so it survives restarts and nobody can read it ahead of time: clients only learn about a check once it is open. Nobody is asked in their first minute, and someone who joins too late for a full two-minute window isn't asked at all. A missed check keeps the minutes (XP at 1.0x, boss damage), but the block doesn't count as finished, so it gives no combo, doesn't count toward anyone else's combo, and doesn't extend the streak. Admins can turn checks off; turning them off mid-block also forgives a check that is already open or missed.
+
+The other guardrails:
 
 - participants are released from the room timer when a cycle ends (about two hours with 25/5), so a forgotten timer can't run all night;
 - people who joined during the final long break haven't focused yet, so they roll into a fresh cycle instead of being dropped;

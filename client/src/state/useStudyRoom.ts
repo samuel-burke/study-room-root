@@ -15,6 +15,7 @@ export interface StudyRoomActions {
   deleteGoal(goalId: string): Promise<boolean>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<boolean>;
   deleteMyData(): Promise<boolean>;
+  confirmPresence(): Promise<boolean>;
   reload(): Promise<void>;
   dismissBreak(): void;
   dismissError(): void;
@@ -79,6 +80,7 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
         if (ok) await reload();
         return ok;
       },
+      confirmPresence: () => run(() => gateway.confirmPresence()),
       reload,
       dismissBreak: () => dispatch({ type: "dismissBreak" }),
       dismissError: () => dispatch({ type: "dismissError" }),
