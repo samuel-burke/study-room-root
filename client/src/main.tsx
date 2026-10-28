@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { StudyRoomGateway } from "./api/gateway";
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles.css";
 
 // The mode is fixed at build time, so the production bundle never contains
@@ -15,10 +16,23 @@ async function createGateway(): Promise<StudyRoomGateway> {
   return new RootGateway();
 }
 
-void createGateway().then((gateway) => {
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <App gateway={gateway} />
-    </StrictMode>,
-  );
-});
+const root = createRoot(document.getElementById("root")!);
+createGateway().then(
+  (gateway) =>
+    root.render(
+      <StrictMode>
+        <ErrorBoundary>
+          <App gateway={gateway} />
+        </ErrorBoundary>
+      </StrictMode>,
+    ),
+  // A failed chunk load would otherwise leave a blank screen.
+  (error: unknown) => {
+    console.error("Study Squad failed to load", error);
+    root.render(
+      <div className="status-screen" role="alert">
+        Study Squad couldn&apos;t load. Close and reopen the app.
+      </div>,
+    );
+  },
+);
