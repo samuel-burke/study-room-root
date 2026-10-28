@@ -26,6 +26,7 @@ export type BadgeFeature = "quests" | "leaderboard" | "bossRoster";
 export const LIVE_BADGE_FEATURES: ReadonlySet<BadgeFeature> = new Set<BadgeFeature>([
   "quests",
   "leaderboard",
+  "bossRoster",
 ]);
 
 /** One focus block, finished or cut short. Times are in the community time zone. */

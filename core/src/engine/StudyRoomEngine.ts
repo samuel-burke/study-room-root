@@ -18,6 +18,7 @@ import { conflictError, notFoundError, validationError } from "../errors";
 import {
   applyDamage,
   bossHpLeftMinutes,
+  bossNameFor,
   newBoss,
   reconfigureBoss,
   type BossState,
@@ -162,7 +163,8 @@ export class StudyRoomEngine {
       this.config = config;
       if (config.boss.enabled) {
         const boss = await this.loadBoss(tx, now);
-        const result = reconfigureBoss(boss, config.boss.name, config.boss.hpHours, now);
+        const name = bossNameFor(boss.weekKey, config.boss.name);
+        const result = reconfigureBoss(boss, name, config.boss.hpHours, now);
         await tx.bosses.save(result.boss);
         if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects);
       }
@@ -1113,7 +1115,8 @@ export class StudyRoomEngine {
   private async loadBoss(tx: Store, now: number): Promise<BossState> {
     const week = weekKey(dayKey(now, this.config.timeZone));
     return (
-      (await tx.bosses.get(week)) ?? newBoss(week, this.config.boss.name, this.config.boss.hpHours)
+      (await tx.bosses.get(week)) ??
+      newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.hpHours)
     );
   }
 

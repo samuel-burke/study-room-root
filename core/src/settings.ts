@@ -55,6 +55,7 @@ export interface AppConfig {
   busyPosts: { enabled: boolean; threshold: number };
   xp: { enabled: boolean; dailyCap: number };
   comboEnabled: boolean;
+  /** name is the admin's custom boss name, or "" for a new built-in name each week. */
   boss: { enabled: boolean; name: string; hpHours: number };
   streakFreezesEnabled: boolean;
   milestonePostsEnabled: boolean;
@@ -72,7 +73,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   busyPosts: { enabled: true, threshold: 5 },
   xp: { enabled: true, dailyCap: 300 },
   comboEnabled: true,
-  boss: { enabled: true, name: "Midterms", hpHours: 100 },
+  boss: { enabled: true, name: "", hpHours: 100 },
   streakFreezesEnabled: true,
   milestonePostsEnabled: true,
 };
@@ -156,7 +157,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
     comboEnabled: bool(game[g.comboEnabled], d.comboEnabled),
     boss: {
       enabled: bool(game[g.bossEnabled], d.boss.enabled),
-      name: text(game[g.bossName], d.boss.name, 40),
+      name: text(game[g.bossName], "", 40),
       hpHours: int(game[g.bossHp], d.boss.hpHours, 1, 10_000),
     },
     streakFreezesEnabled: bool(game[g.streakFreezes], d.streakFreezesEnabled),
