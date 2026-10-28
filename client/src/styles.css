@@ -1729,6 +1729,21 @@ h3 {
   font-size: 16px;
 }
 
+.medal-sheen {
+  transform-origin: 32px 32px;
+  animation: medal-sheen 4.5s ease-in-out infinite;
+}
+
+@keyframes medal-sheen {
+  0%,
+  60% {
+    transform: rotate(20deg) translateX(0);
+  }
+  100% {
+    transform: rotate(20deg) translateX(130px);
+  }
+}
+
 .medal-pop {
   animation: medal-pop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));

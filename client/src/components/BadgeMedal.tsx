@@ -1,4 +1,4 @@
-import type { BadgeDefinition, BadgeGlyph, BadgeTier } from "@studyroom/core";
+import type { BadgeCategory, BadgeDefinition, BadgeGlyph, BadgeTier } from "@studyroom/core";
 import { useId, type ReactNode } from "react";
 
 /**
@@ -188,10 +188,83 @@ const METALS: Record<MedalLook, { rim: string[]; face: string; ink: string; stam
   },
 };
 
+/** Points of a star polygon centred on the medal, as an SVG path. */
+function starPath(points: number, outer: number, inner: number, cy = 32): string {
+  const steps = points * 2;
+  const corners = Array.from({ length: steps }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / steps - Math.PI / 2;
+    const r = i % 2 === 0 ? outer : inner;
+    return `${(32 + r * Math.cos(angle)).toFixed(2)} ${(cy + r * Math.sin(angle)).toFixed(2)}`;
+  });
+  return `M${corners.join("L")}Z`;
+}
+
+/** A rosette: a circle of round bumps. */
+function rosettePath(bumps: number, radius: number, bump: number): string {
+  const corners = Array.from({ length: bumps }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / bumps - Math.PI / 2;
+    return `${(32 + radius * Math.cos(angle)).toFixed(2)} ${(32 + radius * Math.sin(angle)).toFixed(2)}`;
+  });
+  return `M${corners[0]}${corners
+    .slice(1)
+    .concat(corners[0]!)
+    .map((c) => `A${bump} ${bump} 0 0 1 ${c}`)
+    .join("")}Z`;
+}
+
 /**
- * A badge drawn as a minted medal: a metal rim for its tier, a line drawing
- * in the middle and, at larger sizes, its number stamped on a tab. Locked
- * badges are plain grey; secret ones you haven't found show a question mark.
+ * Each family of badges has its own silhouette, so a streak badge never
+ * looks like a boss badge even at a glance. All fit a 64 by 64 box.
+ */
+const FRAMES: Record<BadgeCategory, string> = {
+  // A heater shield.
+  streak: "M32 3 54 10v20c0 15-10 24-22 31C20 54 10 45 10 30V10z",
+  // A tall hexagon, like a rank insignia.
+  level: "M32 2 58 17v30L32 62 6 47V17z",
+  // A sunburst, like a clock face with ticks.
+  focus: starPath(20, 30, 26),
+  // A rounded tile.
+  room: "M18 6h28a12 12 0 0 1 12 12v28a12 12 0 0 1-12 12H18A12 12 0 0 1 6 46V18A12 12 0 0 1 18 6z",
+  // A rosette.
+  goals: rosettePath(14, 25, 6.2),
+  // A spiked war shield.
+  boss: "M32 2 44 9l14-3-4 15 6 12-12 13-16 16-16-16L4 33l6-12-4-15 14 3z",
+  // A hanging banner.
+  quests: "M10 4h44v44L32 61 10 48z",
+  // A crest with a crown on top.
+  leaderboard: "M8 20 17 7l8 9 7-12 7 12 8-9 9 13v18c0 12-11 20-24 23C19 58 8 50 8 38z",
+  // A cut gem.
+  secret: "M18 5h28l15 18-29 38L3 23z",
+};
+
+/** Facet lines for the gem, drawn over its face. */
+const GEM_FACETS = "M3 23h58M18 5l7 18 7-18 7 18 7-18M25 23l7 38 7-38";
+
+/** The leaves of a laurel wreath along one side. Mirrored for the other side. */
+const LAUREL = Array.from({ length: 6 }, (_, i) => {
+  const angle = ((118 + i * 22) * Math.PI) / 180;
+  const x = 32 + 29 * Math.cos(angle);
+  const y = 34 + 27 * Math.sin(angle);
+  const tilt = (angle * 180) / Math.PI + 90 + 35;
+  return { x, y, tilt };
+});
+
+/** Ribbon colours for the gold and platinum tails. */
+const RIBBONS: Partial<Record<MedalLook, [string, string]>> = {
+  gold: ["#3d63dd", "#22398a"],
+  platinum: ["#8f5bff", "#4b2aa6"],
+  secret: ["#ff7ad9", "#8a3fd1"],
+};
+
+/** A four-pointed glint. */
+const GLINT = "M0 -4 1 -1 4 0 1 1 0 4-1 1-4 0-1-1z";
+
+/**
+ * A badge drawn as a minted piece in its family's shape. The metal shows the
+ * tier, and harder tiers get more dressing: silver adds a bevel, gold hangs
+ * ribbon tails, and platinum adds a laurel wreath, glints and a passing shine.
+ * Secret badges are holographic gems. Locked badges keep their shape in plain
+ * grey; secret ones you haven't found show a question mark.
  */
 export function BadgeMedal({
   badge,
@@ -206,21 +279,32 @@ export function BadgeMedal({
 }) {
   const id = useId().replace(/:/g, "");
   const hidden = locked && badge.secret === true;
-  const metal = METALS[locked ? "locked" : badge.tier];
+  const look: MedalLook = locked ? "locked" : badge.tier;
+  const metal = METALS[look];
+  const frame = FRAMES[badge.category];
   const glyph = GLYPHS[hidden ? "question" : badge.glyph];
-  const stamp = !hidden && size >= 36 ? badge.stamp : undefined;
+  const small = size < 36;
+  const stamp = !hidden && !small ? badge.stamp : undefined;
   const stampWidth = stamp ? 12 + stamp.length * 6.4 : 0;
   // Small medals lose the stamp, so the glyph fills more of the face.
-  const glyphScale = stamp ? 1 : size < 36 ? 1.3 : 1.15;
-  const glyphY = stamp ? 29 : 32;
+  const glyphScale = stamp ? 0.95 : small ? 1.25 : 1.1;
+  const glyphY = stamp ? 28 : 31;
+  const tier = badge.tier;
+  const dressed = !locked && !small;
+  const ribbon = dressed ? RIBBONS[tier] : undefined;
+  const wreath = dressed && tier === "platinum";
+  const shine = !locked && (tier === "platinum" || tier === "secret");
+  const bevel = !locked && tier !== "bronze";
+  const inset = "translate(32 32) scale(0.8) translate(-32 -32)";
 
   return (
     <svg
       className={className ? `badge-medal ${className}` : "badge-medal"}
-      data-tier={locked ? "locked" : badge.tier}
+      data-tier={look}
       width={size}
       height={size}
       viewBox="0 0 64 64"
+      overflow="visible"
       aria-hidden="true"
       focusable="false"
     >
@@ -231,49 +315,111 @@ export function BadgeMedal({
           ))}
         </linearGradient>
         <radialGradient id={`${id}-face`} cx="0.35" cy="0.3" r="0.8">
-          <stop offset="0" stopColor={metal.rim[1]} stopOpacity={locked ? 0.08 : 0.28} />
-          <stop offset="0.6" stopColor={metal.face} />
+          <stop offset="0" stopColor={metal.rim[1]} stopOpacity={locked ? 0.08 : 0.3} />
+          <stop offset="0.65" stopColor={metal.face} />
         </radialGradient>
+        <linearGradient id={`${id}-sheen`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <clipPath id={`${id}-clip`}>
+          <path d={frame} />
+        </clipPath>
       </defs>
-      <circle cx="32" cy="32" r="30" fill={`url(#${id}-rim)`} />
-      <circle
-        cx="32"
-        cy="32"
-        r="27"
-        fill="none"
+
+      {ribbon && (
+        <g>
+          <path d="M20 40 13 63l7-4 5 5 5-22z" fill={ribbon[1]} />
+          <path d="M44 40l7 23-7-4-5 5-5-22z" fill={ribbon[1]} />
+          <path d="M20 40 13 63l7-4 2-17z" fill={ribbon[0]} />
+          <path d="M44 40l7 23-7-4-2-17z" fill={ribbon[0]} />
+        </g>
+      )}
+
+      {wreath && (
+        <g fill={metal.rim[1]} stroke={metal.rim[2]} strokeWidth="0.6">
+          {LAUREL.map((leaf, i) => (
+            <g key={i}>
+              <ellipse
+                cx={leaf.x}
+                cy={leaf.y}
+                rx="2.2"
+                ry="4.6"
+                transform={`rotate(${leaf.tilt} ${leaf.x} ${leaf.y})`}
+              />
+              <ellipse
+                cx={64 - leaf.x}
+                cy={leaf.y}
+                rx="2.2"
+                ry="4.6"
+                transform={`rotate(${-leaf.tilt} ${64 - leaf.x} ${leaf.y})`}
+              />
+            </g>
+          ))}
+        </g>
+      )}
+
+      <path d={frame} fill={`url(#${id}-rim)`} />
+      <path
+        d={frame}
+        transform={inset}
+        fill={metal.face}
         stroke="#000"
-        strokeOpacity="0.22"
-        strokeWidth="1.6"
-        strokeDasharray="1.4 2.2"
+        strokeOpacity="0.35"
+        strokeWidth="2"
       />
-      <circle cx="32" cy="32" r="23.5" fill={metal.face} />
-      <circle cx="32" cy="32" r="23.5" fill={`url(#${id}-face)`} />
-      <circle cx="32" cy="32" r="23.5" fill="none" stroke={metal.rim[0]} strokeOpacity="0.45" />
-      {!locked && (
+      <path d={frame} transform={inset} fill={`url(#${id}-face)`} />
+      {bevel && (
         <path
-          d="M9.5 25A23 23 0 0 1 25 9.5"
+          d={frame}
+          transform="translate(32 32) scale(0.72) translate(-32 -32)"
           fill="none"
-          stroke="#fff"
-          strokeOpacity="0.55"
-          strokeWidth="2"
-          strokeLinecap="round"
+          stroke={metal.rim[0]}
+          strokeOpacity="0.4"
+          strokeWidth="1.2"
         />
       )}
+      {badge.category === "secret" && (
+        <path
+          d={GEM_FACETS}
+          transform={inset}
+          fill="none"
+          stroke={metal.rim[0]}
+          strokeOpacity={locked ? 0.12 : 0.22}
+          strokeWidth="1.2"
+        />
+      )}
+      {shine && (
+        <g clipPath={`url(#${id}-clip)`}>
+          <rect
+            className="medal-sheen"
+            x="-40"
+            y="-10"
+            width="24"
+            height="90"
+            fill={`url(#${id}-sheen)`}
+            transform="rotate(20 32 32)"
+          />
+        </g>
+      )}
+
       <g
         transform={`translate(32 ${glyphY}) scale(${glyphScale}) translate(-12 -12)`}
         fill="none"
         stroke={metal.ink}
-        strokeWidth={size < 36 ? 2.4 : 2}
+        strokeWidth={small ? 2.4 : 2}
         strokeLinecap="round"
         strokeLinejoin="round"
       >
         {glyph}
       </g>
+
       {stamp && (
         <g>
           <rect
             x={32 - stampWidth / 2}
-            y="45"
+            y="44"
             width={stampWidth}
             height="14"
             rx="7"
@@ -283,7 +429,7 @@ export function BadgeMedal({
           />
           <text
             x="32"
-            y="55.2"
+            y="54.2"
             textAnchor="middle"
             fontSize="10"
             fontWeight="800"
@@ -292,6 +438,13 @@ export function BadgeMedal({
           >
             {stamp}
           </text>
+        </g>
+      )}
+
+      {dressed && (tier === "platinum" || tier === "secret") && (
+        <g fill="#fff">
+          <path d={GLINT} transform="translate(52 9) scale(1.1)" opacity="0.9" />
+          <path d={GLINT} transform="translate(11 50) scale(0.7)" opacity="0.7" />
         </g>
       )}
     </svg>
