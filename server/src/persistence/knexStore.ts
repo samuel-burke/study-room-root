@@ -76,8 +76,8 @@ const toStat = (r: Row): DailyStatRecord => ({
 const toBoss = (r: Row): BossState => ({
   weekKey: String(r.week_key),
   name: String(r.name),
-  maxHpMinutes: num(r.max_hp_minutes),
-  damageMinutes: num(r.damage_minutes),
+  maxHpXp: num(r.max_hp_xp),
+  damageXp: num(r.damage_xp),
   defeatedAt: numOrNull(r.defeated_at),
   contributorIds: parseJson<string[]>(r.contributor_ids, []),
 });
@@ -360,8 +360,8 @@ export class KnexStore implements Store {
         .insert({
           week_key: b.weekKey,
           name: b.name,
-          max_hp_minutes: b.maxHpMinutes,
-          damage_minutes: b.damageMinutes,
+          max_hp_xp: b.maxHpXp,
+          damage_xp: b.damageXp,
           defeated_at: b.defeatedAt,
           contributor_ids: JSON.stringify(b.contributorIds),
         })

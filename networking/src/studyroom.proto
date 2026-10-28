@@ -72,10 +72,15 @@ message MemberCard {
 message Boss {
   bool enabled = 1;
   string name = 2;
-  double max_hp_minutes = 3;
-  double damage_minutes = 4;
+  // HP and damage are in XP.
+  double max_hp_xp = 3;
+  double damage_xp = 4;
   double ends_at_ms = 5;
   bool defeated = 6;
+  // 0.5 to 2: how much tougher than the admin's base HP this boss is.
+  double strength = 7;
+  // XP each contributor gets when it's defeated.
+  int32 loot_xp = 8;
 }
 
 message RoomFeatures {
@@ -191,7 +196,7 @@ message PhaseCompletedEvent {
   Phase kind = 1;
   int32 round = 2;
   repeated string finisher_user_ids = 3;
-  double room_damage_minutes = 4;
+  double room_damage_xp = 4;
   double combo = 5;
   RoomState room = 6;
 }
@@ -208,7 +213,7 @@ message PersonalResultEvent {
   int32 streak = 9;
   bool streak_extended = 10;
   repeated string finisher_user_ids = 11;
-  double room_damage_minutes = 12;
+  double room_damage_xp = 12;
   // Absent when the member has no open goal.
   optional Goal goal_prompt = 13;
   double break_ends_at_ms = 14;

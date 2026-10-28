@@ -101,8 +101,10 @@ const goalToProto = (g: GoalDto): Goal => ({ id: g.id, text: g.text, done: g.don
 const bossToProto = (b: BossDto): Boss => ({
   enabled: b.enabled,
   name: b.name,
-  maxHpMinutes: b.maxHpMinutes,
-  damageMinutes: b.damageMinutes,
+  maxHpXp: b.maxHpXp,
+  damageXp: b.damageXp,
+  strength: b.strength,
+  lootXp: b.lootXp,
   endsAtMs: b.endsAt,
   defeated: b.defeated,
 });
@@ -181,7 +183,7 @@ export function phaseCompletedToProto(event: PhaseCompletedDto): PhaseCompletedE
     kind: PHASE_TO_PROTO[event.kind],
     round: event.round,
     finisherUserIds: event.finisherIds,
-    roomDamageMinutes: event.roomDamageMinutes,
+    roomDamageXp: event.roomDamageXp,
     combo: event.combo,
     room: roomToProto(event.room),
   };
@@ -200,7 +202,7 @@ export function personalResultToProto(event: PersonalResultDto): PersonalResultE
     streak: event.streak,
     streakExtended: event.streakExtended,
     finisherUserIds: event.finisherIds,
-    roomDamageMinutes: event.roomDamageMinutes,
+    roomDamageXp: event.roomDamageXp,
     ...(event.goalPrompt ? { goalPrompt: goalToProto(event.goalPrompt) } : {}),
     breakEndsAtMs: event.breakEndsAt,
     me: myStatusToProto(event.me),
@@ -231,8 +233,10 @@ const goalFromProto = (g: Goal): GoalDto => ({ id: g.id, text: g.text, done: g.d
 const bossFromProto = (b: Boss | undefined): BossDto => ({
   enabled: b?.enabled ?? false,
   name: b?.name ?? "",
-  maxHpMinutes: b?.maxHpMinutes ?? 0,
-  damageMinutes: b?.damageMinutes ?? 0,
+  maxHpXp: b?.maxHpXp ?? 0,
+  damageXp: b?.damageXp ?? 0,
+  strength: b?.strength ?? 1,
+  lootXp: b?.lootXp ?? 0,
   endsAt: b?.endsAtMs ?? 0,
   defeated: b?.defeated ?? false,
 });
@@ -313,7 +317,7 @@ export function phaseCompletedFromProto(event: PhaseCompletedEvent): PhaseComple
     kind: phaseKindFromProto(event.kind),
     round: event.round,
     finisherIds: event.finisherUserIds,
-    roomDamageMinutes: event.roomDamageMinutes,
+    roomDamageXp: event.roomDamageXp,
     combo: event.combo,
     room: roomFromProto(event.room),
   };
@@ -332,7 +336,7 @@ export function personalResultFromProto(event: PersonalResultEvent): PersonalRes
     streak: event.streak,
     streakExtended: event.streakExtended,
     finisherIds: event.finisherUserIds,
-    roomDamageMinutes: event.roomDamageMinutes,
+    roomDamageXp: event.roomDamageXp,
     goalPrompt: event.goalPrompt ? goalFromProto(event.goalPrompt) : null,
     breakEndsAt: event.breakEndsAtMs,
     me: myStatusFromProto(event.me),

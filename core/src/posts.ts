@@ -1,5 +1,5 @@
 import { formatCombo } from "./game/combo";
-import { formatHours, pluralize } from "./format";
+import { formatHours, formatXp, pluralize } from "./format";
 import type { RecapDto } from "./dto";
 
 /**
@@ -33,7 +33,7 @@ export function dailyRecapPost(recap: RecapDto, names: ReadonlyMap<string, strin
     lines.push(
       recap.boss.defeated
         ? `${recap.boss.name}: defeated 🎉`
-        : `${recap.boss.name}: down to ${formatHours(recap.boss.hpLeftMinutes)} HP · ${pluralize(recap.boss.daysLeft, "day")} left`,
+        : `${recap.boss.name}: down to ${formatXp(recap.boss.hpLeftXp)} HP · ${pluralize(recap.boss.daysLeft, "day")} left`,
     );
   }
   if (recap.topStreaks.length > 0) {

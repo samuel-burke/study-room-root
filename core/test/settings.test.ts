@@ -21,7 +21,7 @@ describe("parseSettings", () => {
       },
       [game.group]: {
         [game.bossName]: "  The Final Boss: Calc II  ",
-        [game.bossHp]: 40,
+        [game.bossBaseHp]: 4000,
         [game.comboEnabled]: false,
       },
     });
@@ -30,7 +30,11 @@ describe("parseSettings", () => {
     expect(config.recap).toEqual({ enabled: true, hours: 20, minutes: 30 });
     expect(config.timeZone).toBe("Europe/Berlin");
     expect(config.busyPosts.enabled).toBe(false);
-    expect(config.boss).toEqual({ enabled: true, name: "The Final Boss: Calc II", hpHours: 40 });
+    expect(config.boss).toEqual({
+      enabled: true,
+      name: "The Final Boss: Calc II",
+      baseHpXp: 4000,
+    });
     expect(config.comboEnabled).toBe(false);
   });
 
@@ -46,11 +50,11 @@ describe("parseSettings", () => {
   it("reads numbers from select keys, the way the manifest declares them", () => {
     const config = parseSettings({
       [room.group]: { [room.busyThreshold]: ["8"] },
-      [game.group]: { [game.dailyXpCap]: ["500"], [game.bossHp]: ["25"] },
+      [game.group]: { [game.dailyXpCap]: ["500"], [game.bossBaseHp]: ["2500"] },
     });
     expect(config.busyPosts.threshold).toBe(8);
     expect(config.xp.dailyCap).toBe(500);
-    expect(config.boss.hpHours).toBe(25);
+    expect(config.boss.baseHpXp).toBe(2500);
   });
 
   it("rejects bad values instead of trusting them", () => {
@@ -66,7 +70,7 @@ describe("parseSettings", () => {
         [game.xpEnabled]: "yes",
         [game.dailyXpCap]: -5,
         [game.bossName]: "   ",
-        [game.bossHp]: ["lots"],
+        [game.bossBaseHp]: ["lots"],
       },
     });
     expect(config.preset).toEqual(DEFAULT_CONFIG.preset);

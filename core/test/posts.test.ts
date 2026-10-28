@@ -25,7 +25,7 @@ describe("channel posts", () => {
         focusMinutes: 41.5 * 60,
         goalsDone: 23,
         activeMembers: 14,
-        boss: { name: "Midterms", hpLeftMinutes: 57 * 60, daysLeft: 4, defeated: false },
+        boss: { name: "Midterms", hpLeftXp: 6840, daysLeft: 4, defeated: false },
         topStreaks: [
           { userId: "p", streak: 54 },
           { userId: "a", streak: 31 },
@@ -41,7 +41,7 @@ describe("channel posts", () => {
       [
         "Tuesday recap",
         "41.5 hrs focused as a community · 23 goals finished · 14 members showed up",
-        "Midterms: down to 57 hrs HP · 4 days left",
+        "Midterms: down to 6,840 HP · 4 days left",
         "Top streaks: Priya 54 · Ana R. 31 · Someone 17",
       ].join("\n"),
     );

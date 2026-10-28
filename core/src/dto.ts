@@ -37,8 +37,13 @@ export interface MemberCardDto {
 export interface BossDto {
   enabled: boolean;
   name: string;
-  maxHpMinutes: number;
-  damageMinutes: number;
+  /** HP and damage are in XP. */
+  maxHpXp: number;
+  damageXp: number;
+  /** 0.5 to 2: how much tougher than the admin's base HP this boss is. */
+  strength: number;
+  /** XP each contributor gets when it's defeated. */
+  lootXp: number;
   endsAt: number;
   defeated: boolean;
 }
@@ -99,7 +104,8 @@ export interface PhaseCompletedDto {
   kind: PhaseKind;
   round: number;
   finisherIds: string[];
-  roomDamageMinutes: number;
+  /** Boss damage, in XP. */
+  roomDamageXp: number;
   combo: number;
   room: RoomStateDto;
 }
@@ -118,7 +124,8 @@ export interface PersonalResultDto {
   streak: number;
   streakExtended: boolean;
   finisherIds: string[];
-  roomDamageMinutes: number;
+  /** Boss damage, in XP. */
+  roomDamageXp: number;
   goalPrompt: GoalDto | null;
   breakEndsAt: number;
   me: MyStatusDto;
@@ -141,6 +148,6 @@ export interface RecapDto {
   focusMinutes: number;
   goalsDone: number;
   activeMembers: number;
-  boss: { name: string; hpLeftMinutes: number; daysLeft: number; defeated: boolean } | null;
+  boss: { name: string; hpLeftXp: number; daysLeft: number; defeated: boolean } | null;
   topStreaks: { userId: string; streak: number }[];
 }

@@ -14,8 +14,10 @@ import type {
 import { conflictError, notFoundError, validationError } from "../errors";
 import {
   applyDamage,
-  bossHpLeftMinutes,
+  bossHpLeft,
+  bossLootXp,
   bossNameFor,
+  bossStrength,
   newBoss,
   reconfigureBoss,
   type BossState,
@@ -130,7 +132,7 @@ export class StudyRoomEngine {
       if (config.boss.enabled) {
         const boss = await this.loadBoss(tx, now);
         const name = bossNameFor(boss.weekKey, config.boss.name);
-        const result = reconfigureBoss(boss, name, config.boss.hpHours, now);
+        const result = reconfigureBoss(boss, name, config.boss.baseHpXp, now);
         await tx.bosses.save(result.boss);
         if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects);
       }
@@ -242,7 +244,7 @@ export class StudyRoomEngine {
             finished: false,
             now,
           });
-          await this.damageBoss(tx, effects, minutes * combo, [userId], now);
+          await this.damageBoss(tx, effects, focusXp(minutes, combo), [userId], now);
         }
         await tx.room.removeParticipant(userId);
         if (participants.length === 1) await tx.room.saveCycle(null);
@@ -302,7 +304,7 @@ export class StudyRoomEngine {
           finished: false,
           now,
         });
-        await this.damageBoss(tx, effects, minutes, [userId], now);
+        await this.damageBoss(tx, effects, focusXp(minutes, 1), [userId], now);
       }
       if (solo) await tx.solos.delete(userId);
       this.touch(effects, userId);
@@ -556,7 +558,8 @@ export class StudyRoomEngine {
       .filter((s) => s.minutes >= finishThreshold)
       .map((s) => s.participant.userId);
     const combo = comboFor(finisherIds.length, this.config.comboEnabled);
-    const roomDamageMinutes = minuteShares.reduce((sum, s) => sum + s.minutes * combo, 0);
+    // Damage is the XP the round earns before the daily cap, so capped members still hit the boss.
+    const roomDamageXp = minuteShares.reduce((sum, s) => sum + focusXp(s.minutes, combo), 0);
 
     const credits = [];
     for (const share of minuteShares) {
@@ -577,7 +580,7 @@ export class StudyRoomEngine {
     await this.damageBoss(
       tx,
       effects,
-      roomDamageMinutes,
+      roomDamageXp,
       minuteShares.map((s) => s.participant.userId),
       phase.endsAt,
     );
@@ -589,7 +592,7 @@ export class StudyRoomEngine {
         kind: phase.kind,
         round: phase.round,
         finisherIds,
-        roomDamageMinutes,
+        roomDamageXp,
         combo,
         room,
       }),
@@ -608,7 +611,7 @@ export class StudyRoomEngine {
         streak: credit.streak,
         streakExtended: credit.streakExtended,
         finisherIds,
-        roomDamageMinutes,
+        roomDamageXp,
         goalPrompt: await this.goalPrompt(tx, userId),
         breakEndsAt,
         me: await this.buildMyStatus(tx, userId, phase.endsAt),
@@ -630,7 +633,8 @@ export class StudyRoomEngine {
           finished: true,
           now: solo.endsAt,
         });
-        await this.damageBoss(tx, effects, solo.minutes, [solo.userId], solo.endsAt);
+        const damageXp = focusXp(solo.minutes, 1);
+        await this.damageBoss(tx, effects, damageXp, [solo.userId], solo.endsAt);
         const stillOnBreak = solo.breakEndsAt > now;
         if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break" });
         else await tx.solos.delete(solo.userId);
@@ -646,7 +650,7 @@ export class StudyRoomEngine {
           streak: credit.streak,
           streakExtended: credit.streakExtended,
           finisherIds: [solo.userId],
-          roomDamageMinutes: solo.minutes,
+          roomDamageXp: damageXp,
           goalPrompt: await this.goalPrompt(tx, solo.userId),
           breakEndsAt: solo.breakEndsAt,
           me: await this.buildMyStatus(tx, solo.userId, now),
@@ -747,20 +751,23 @@ export class StudyRoomEngine {
   private async damageBoss(
     tx: Store,
     effects: Effects,
-    minutes: number,
+    xp: number,
     contributorIds: readonly string[],
     now: number,
   ): Promise<void> {
-    if (!this.config.boss.enabled || minutes <= 0) return;
+    if (!this.config.boss.enabled || xp <= 0) return;
     const boss = await this.loadBoss(tx, now);
-    const result = applyDamage(boss, minutes, contributorIds, now);
+    const result = applyDamage(boss, xp, contributorIds, now);
     await tx.bosses.save(result.boss);
     if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects);
   }
 
-  /** Loot: every contributor gets bonus XP, outside the daily cap because it happens once a week. */
+  /**
+   * Loot: every contributor gets bonus XP scaled by the boss's strength,
+   * outside the daily cap because it happens once a week.
+   */
   private async onBossDefeated(tx: Store, boss: BossState, effects: Effects): Promise<void> {
-    const lootXp = this.config.xp.enabled ? GAME.bossLootXp : 0;
+    const lootXp = this.config.xp.enabled ? bossLootXp(boss.name) : 0;
     if (lootXp > 0) {
       for (const member of await tx.members.list(boss.contributorIds)) {
         await tx.members.save({ ...member, xpTotal: member.xpTotal + lootXp });
@@ -812,7 +819,7 @@ export class StudyRoomEngine {
     const week = weekKey(dayKey(now, this.config.timeZone));
     return (
       (await tx.bosses.get(week)) ??
-      newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.hpHours)
+      newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.baseHpXp)
     );
   }
 
@@ -955,8 +962,10 @@ export class StudyRoomEngine {
       return {
         enabled: false,
         name: "",
-        maxHpMinutes: 0,
-        damageMinutes: 0,
+        maxHpXp: 0,
+        damageXp: 0,
+        strength: 1,
+        lootXp: 0,
         endsAt,
         defeated: false,
       };
@@ -965,8 +974,10 @@ export class StudyRoomEngine {
     return {
       enabled: true,
       name: boss.name,
-      maxHpMinutes: boss.maxHpMinutes,
-      damageMinutes: boss.damageMinutes,
+      maxHpXp: boss.maxHpXp,
+      damageXp: boss.damageXp,
+      strength: bossStrength(boss.name),
+      lootXp: this.config.xp.enabled ? bossLootXp(boss.name) : 0,
       endsAt,
       defeated: boss.defeatedAt !== null,
     };
@@ -1032,7 +1043,7 @@ export class StudyRoomEngine {
       const weekEnd = addDays(state.weekKey, 7);
       boss = {
         name: state.name,
-        hpLeftMinutes: bossHpLeftMinutes(state),
+        hpLeftXp: bossHpLeft(state),
         daysLeft: Math.max(0, daysBetween(dayKey(now, tz), weekEnd)),
         defeated: state.defeatedAt !== null,
       };

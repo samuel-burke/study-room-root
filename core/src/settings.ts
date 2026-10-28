@@ -33,7 +33,7 @@ export const SETTINGS = {
     comboEnabled: "comboEnabled",
     bossEnabled: "bossEnabled",
     bossName: "bossName",
-    bossHp: "bossHpHours",
+    bossBaseHp: "bossBaseHpXp",
     streakFreezes: "streakFreezes",
     milestonePosts: "milestonePosts",
   },
@@ -52,8 +52,11 @@ export interface AppConfig {
   busyPosts: { enabled: boolean; threshold: number };
   xp: { enabled: boolean; dailyCap: number };
   comboEnabled: boolean;
-  /** name is the admin's custom boss name, or "" for a new built-in name each week. */
-  boss: { enabled: boolean; name: string; hpHours: number };
+  /**
+   * name is the admin's custom boss name, or "" for a new built-in name each week.
+   * baseHpXp is a 1x boss's HP in XP; each boss multiplies it by its strength.
+   */
+  boss: { enabled: boolean; name: string; baseHpXp: number };
   streakFreezesEnabled: boolean;
   milestonePostsEnabled: boolean;
 }
@@ -69,7 +72,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   busyPosts: { enabled: true, threshold: 5 },
   xp: { enabled: true, dailyCap: 300 },
   comboEnabled: true,
-  boss: { enabled: true, name: "", hpHours: 100 },
+  boss: { enabled: true, name: "", baseHpXp: 10_000 },
   streakFreezesEnabled: true,
   milestonePostsEnabled: true,
 };
@@ -153,7 +156,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
     boss: {
       enabled: bool(game[g.bossEnabled], d.boss.enabled),
       name: text(game[g.bossName], "", 40),
-      hpHours: int(game[g.bossHp], d.boss.hpHours, 1, 10_000),
+      baseHpXp: int(game[g.bossBaseHp], d.boss.baseHpXp, 100, 1_000_000),
     },
     streakFreezesEnabled: bool(game[g.streakFreezes], d.streakFreezesEnabled),
     milestonePostsEnabled: bool(game[g.milestonePosts], d.milestonePostsEnabled),

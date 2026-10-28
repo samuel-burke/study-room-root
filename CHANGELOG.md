@@ -7,6 +7,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
+- Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength.
+
+### Changed
+
+- Boss HP and damage are measured in XP instead of focus minutes. Every XP earned focusing (combo included, before the daily cap) is damage. The "Boss HP (focus hours)" setting is replaced by "Boss base HP (XP)", default 10,000. Bosses already in the database convert at 2 XP per minute.
+- Boss loot is 100 XP times the boss's strength (50 to 200 XP), up from a flat 50.
 
 ## [0.1.0] - 2026-10-28
 
