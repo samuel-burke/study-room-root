@@ -161,7 +161,7 @@ describe("Study Squad app", () => {
     expect(
       within(shelf).getAllByRole("button", { name: "Secret badge, not found yet" }).length,
     ).toBeGreaterThan(10);
-    expect(within(shelf).queryByText("Witching Hour")).not.toBeInTheDocument();
+    expect(within(shelf).queryByText("Three O'Clock Club")).not.toBeInTheDocument();
 
     await user.click(within(shelf).getByRole("button", { name: "Squad Up, earned" }));
     const detail = within(shelf).getByRole("region", { name: "Badge details" });

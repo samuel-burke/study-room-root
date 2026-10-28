@@ -98,7 +98,7 @@ describe("badge rules", () => {
     );
     expect(earned({ session: session({ start: at("2026-10-28", 22, 0) }) })).toContain("night-owl");
     const late = earned({ session: session({ start: at("2026-10-28", 3, 10) }) });
-    expect(late).toEqual(expect.arrayContaining(["night-owl", "witching-hour"]));
+    expect(late).toEqual(expect.arrayContaining(["night-owl", "three-am"]));
     expect(late).not.toContain("early-bird");
   });
 
@@ -163,7 +163,8 @@ describe("badge rules", () => {
     const on = (day: string, hour = 14, minute = 0) =>
       earned({ session: session({ start: at(day, hour, minute), end: at(day, hour, minute) }) });
     expect(on("2027-03-14")).toEqual(["pi-day"]);
-    expect(on("2026-10-31")).toEqual(["spooky"]);
+    expect(on("2027-06-21")).toEqual(["longest-day"]);
+    expect(on("2026-10-31")).toEqual([]);
     expect(on("2027-01-01")).toEqual(["new-year"]);
     expect(on("2028-02-29")).toEqual(["leap-day"]);
     expect(on("2026-11-13")).toEqual(["friday-13"]);

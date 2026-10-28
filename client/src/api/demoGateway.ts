@@ -68,7 +68,7 @@ const BOTS: Bot[] = [
     goal: "Thesis lit review",
     xp: 8200,
     streak: 54,
-    badges: ["focus-100h", "streak-50", "witching-hour"],
+    badges: ["focus-100h", "streak-50", "three-am"],
     private: true,
     solo: 45,
   },

@@ -464,10 +464,10 @@ export const BADGES: readonly BadgeDefinition[] = [
 
   // ---------------------------------------------------------------- secrets
   {
-    id: "witching-hour",
-    name: "Witching Hour",
+    id: "three-am",
+    name: "Three O'Clock Club",
     description: "Finish a session that starts between 3am and 4am.",
-    icon: "🧙",
+    icon: "🌌",
     category: "secret",
     secret: true,
     earned: (f) => finished(f)?.start.hour === 3,
@@ -521,15 +521,15 @@ export const BADGES: readonly BadgeDefinition[] = [
     },
   },
   {
-    id: "spooky",
-    name: "Spooky Scholar",
-    description: "Finish a session on Halloween.",
-    icon: "🎃",
+    id: "longest-day",
+    name: "Longest Day",
+    description: "Finish a session on June 21.",
+    icon: "☀️",
     category: "secret",
     secret: true,
     earned: (f) => {
       const s = finished(f);
-      return s !== undefined && monthDay(s.end.day) === "10-31";
+      return s !== undefined && monthDay(s.end.day) === "06-21";
     },
   },
   {
@@ -560,7 +560,7 @@ export const BADGES: readonly BadgeDefinition[] = [
     id: "friday-13",
     name: "Feeling Lucky",
     description: "Finish a session on a Friday the 13th.",
-    icon: "🐈‍⬛",
+    icon: "🍀",
     category: "secret",
     secret: true,
     earned: (f) => {
@@ -642,7 +642,7 @@ export const BADGES: readonly BadgeDefinition[] = [
       f.boss !== undefined && weekdayIndex(f.boss.at.day) === 6 && f.boss.at.hour >= 20,
   },
   bossNamed("thesis-defended", "Thesis Defended", "The Thesis Defense", "📜"),
-  bossNamed("lich-slayer", "Lich Slayer", "The Last-Minute Lich", "💀"),
+  bossNamed("do-not-disturb", "Do Not Disturb", "Notification Hydra", "🔕"),
   bossNamed("wide-awake", "Wide Awake", "Captain Snooze Button", "☕"),
 ];
 

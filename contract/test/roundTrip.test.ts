@@ -45,7 +45,7 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 12,
       streak: 31,
-      badges: ["night-owl", "first-boss", "spooky"],
+      badges: ["night-owl", "first-boss", "longest-day"],
       cardStyle: "gold",
     },
     {

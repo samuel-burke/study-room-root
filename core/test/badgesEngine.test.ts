@@ -180,11 +180,11 @@ describe("card looks", () => {
 
   it("lets members pin up to three earned badges", async () => {
     const { engine, store } = createHarness();
-    for (const [i, badgeId] of ["first-session", "leet", "night-owl", "spooky"].entries()) {
+    for (const [i, badgeId] of ["first-session", "leet", "night-owl", "longest-day"].entries()) {
       await store.badges.award({ userId: "ana", badgeId, earnedAt: T0 + i });
     }
     expect((await engine.getProgress("ana")).card.showcase).toEqual([
-      "spooky",
+      "longest-day",
       "night-owl",
       "leet",
     ]);
@@ -195,7 +195,7 @@ describe("card looks", () => {
     });
     await expectError(engine.setBadgeShowcase("ana", ["marathon"]), ErrorCode.Validation);
     await expectError(
-      engine.setBadgeShowcase("ana", ["first-session", "leet", "night-owl", "spooky"]),
+      engine.setBadgeShowcase("ana", ["first-session", "leet", "night-owl", "longest-day"]),
       ErrorCode.Validation,
     );
     await expectError(engine.setBadgeShowcase("ana", "leet"), ErrorCode.Validation);

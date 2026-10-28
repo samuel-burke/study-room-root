@@ -25,7 +25,7 @@ export const CARD_STYLES: readonly CardStyleDefinition[] = [
   { id: "sunrise", name: "Sunrise", unlock: { badge: "early-bird" } },
   { id: "midnight", name: "Midnight", unlock: { badge: "night-owl" } },
   { id: "boss-slayer", name: "Boss Slayer", unlock: { badge: "first-boss" } },
-  { id: "pumpkin", name: "Pumpkin", unlock: { badge: "spooky" } },
+  { id: "solstice", name: "Solstice", unlock: { badge: "longest-day" } },
 ];
 
 /** How many badges a member card shows. */

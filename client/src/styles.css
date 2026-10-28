@@ -1474,10 +1474,10 @@ h3 {
   --card-bg: linear-gradient(160deg, var(--boss-bg), var(--surface) 70%);
 }
 
-[data-style="pumpkin"] {
-  --card-border: #ff8a1f;
-  --card-bg: linear-gradient(160deg, #2b1806, var(--surface) 70%);
-  --card-glow: 0 0 14px rgba(255, 138, 31, 0.18);
+[data-style="solstice"] {
+  --card-border: #ffd84d;
+  --card-bg: linear-gradient(160deg, #2b2508, var(--surface) 70%);
+  --card-glow: 0 0 14px rgba(255, 216, 77, 0.2);
 }
 
 .member-card[data-style],
