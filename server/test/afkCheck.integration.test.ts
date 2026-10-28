@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ErrorCode, StudyRoomEngine } from "@studyroom/core";
+import { ErrorCode, StudyRoomEngine, type Logger } from "@studyroom/core";
 import type { Knex } from "knex";
 import { RequestFailure, StudyRoomHandlers } from "../src/handlers";
 import { KnexStore } from "../src/persistence/knexStore";
@@ -20,6 +20,12 @@ const FOCUS = 25 * MINUTE;
 const CHECK_AT = T0 + MINUTE;
 const CHECK_ENDS = CHECK_AT + 2 * MINUTE;
 
+const mockLogger = () => ({
+  info: vi.fn<Logger["info"]>(),
+  warn: vi.fn<Logger["warn"]>(),
+  error: vi.fn<Logger["error"]>(),
+});
+
 async function failure(promise: Promise<unknown>): Promise<RequestFailure> {
   const error = await promise.then(
     () => {
@@ -38,11 +44,7 @@ describe("AFK check through the handlers on SQLite", () => {
   let notifier: RecordingNotifier;
   let engine: StudyRoomEngine;
   let handlers: StudyRoomHandlers;
-  let logger: {
-    info: ReturnType<typeof vi.fn>;
-    warn: ReturnType<typeof vi.fn>;
-    error: ReturnType<typeof vi.fn>;
-  };
+  let logger: ReturnType<typeof mockLogger>;
 
   function boot(options: ConstructorParameters<typeof StudyRoomHandlers>[2] = {}) {
     scheduler = new ManualScheduler();
@@ -58,7 +60,7 @@ describe("AFK check through the handlers on SQLite", () => {
       newId: () => "unused",
       random: () => 0,
     });
-    logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    logger = mockLogger();
     handlers = new StudyRoomHandlers(engine, logger, options);
   }
 
