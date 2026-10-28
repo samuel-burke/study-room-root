@@ -1,0 +1,18 @@
+name: Dependency review
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Blocks pull requests that add a dependency with a known high-severity advisory.
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
