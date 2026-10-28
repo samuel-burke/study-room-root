@@ -96,6 +96,14 @@ export class RootGateway implements StudyRoomGateway {
     return progressFromProto(await call(() => client.getProgress({})));
   }
 
+  async setCardStyle(style: string) {
+    return progressFromProto(await call(() => client.setCardStyle({ style })));
+  }
+
+  async setBadgeShowcase(badgeIds: string[]) {
+    return progressFromProto(await call(() => client.setBadgeShowcase({ badgeIds })));
+  }
+
   async getProfiles(userIds: string[]): Promise<Profile[]> {
     if (userIds.length === 0) return [];
     const profiles = await rootClient.users.getUserProfiles(userIds);
@@ -120,15 +128,18 @@ export class RootGateway implements StudyRoomGateway {
       handlers.personalResult(personalResultFromProto(e));
     const onStatus = (e: { me?: Parameters<typeof myStatusFromProto>[0] }) =>
       handlers.myStatus(myStatusFromProto(e.me));
+    const onBadges = (e: { badgeIds: string[] }) => handlers.badgesEarned(e.badgeIds);
     client.on(StudyRoomServiceClientEvent.RoomUpdated, onRoom);
     client.on(StudyRoomServiceClientEvent.PhaseCompleted, onPhase);
     client.on(StudyRoomServiceClientEvent.PersonalResult, onPersonal);
     client.on(StudyRoomServiceClientEvent.MyStatus, onStatus);
+    client.on(StudyRoomServiceClientEvent.BadgesEarned, onBadges);
     return () => {
       client.off(StudyRoomServiceClientEvent.RoomUpdated, onRoom);
       client.off(StudyRoomServiceClientEvent.PhaseCompleted, onPhase);
       client.off(StudyRoomServiceClientEvent.PersonalResult, onPersonal);
       client.off(StudyRoomServiceClientEvent.MyStatus, onStatus);
+      client.off(StudyRoomServiceClientEvent.BadgesEarned, onBadges);
     };
   }
 }

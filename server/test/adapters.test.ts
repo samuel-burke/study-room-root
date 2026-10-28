@@ -13,6 +13,7 @@ describe("PushNotifier", () => {
     broadcastPhaseCompleted: vi.fn(),
     broadcastPersonalResult: vi.fn(),
     broadcastMyStatus: vi.fn(),
+    broadcastBadgesEarned: vi.fn(),
   });
 
   it("sends room events to everyone and personal events to one member", async () => {
@@ -28,6 +29,19 @@ describe("PushNotifier", () => {
     expect(b.broadcastRoomUpdated).toHaveBeenCalledWith({ room: expect.any(Object) }, "all");
     expect(b.broadcastMyStatus).toHaveBeenCalledTimes(1);
     expect(b.broadcastMyStatus).toHaveBeenCalledWith({ me: expect.any(Object) }, [
+      { id: "ana-client" },
+    ]);
+  });
+
+  it("sends earned badges only to the member who earned them", () => {
+    const b = broadcaster();
+    const notifier = new PushNotifier(b, (userId) =>
+      userId === "ana" ? { id: "ana-client" } : undefined,
+    );
+    notifier.badgesEarned("ana", ["night-owl"]);
+    notifier.badgesEarned("offline", ["leet"]);
+    expect(b.broadcastBadgesEarned).toHaveBeenCalledTimes(1);
+    expect(b.broadcastBadgesEarned).toHaveBeenCalledWith({ badgeIds: ["night-owl"] }, [
       { id: "ana-client" },
     ]);
   });

@@ -67,6 +67,10 @@ message MemberCard {
   bool goal_private = 5;
   int32 level = 6;
   int32 streak = 7;
+  // At most one badge id for now (the catalog is in @studyroom/core).
+  repeated string badges = 8;
+  // A card style id, such as "gold".
+  string card_style = 9;
 }
 
 message Boss {
@@ -138,10 +142,26 @@ message DayStat {
   double focus_minutes = 2;
 }
 
+message EarnedBadge {
+  string id = 1;
+  double earned_at_ms = 2;
+}
+
+message CardLook {
+  // Empty means automatic.
+  string chosen_style = 1;
+  repeated string chosen_showcase = 2;
+  string style = 3;
+  repeated string showcase = 4;
+}
+
 message Progress {
   MyStatus me = 1;
   repeated DayStat days = 2;
   double total_focus_minutes = 3;
+  // Field numbers start at 10 so other progress additions can take 4 to 9.
+  repeated EarnedBadge badges = 10;
+  CardLook card = 11;
 }
 
 // ---------------------------------------------------------------- requests
@@ -182,6 +202,16 @@ message SetGoalsPrivateRequest {
 }
 
 message GetProgressRequest {}
+
+// Empty style means automatic (the best style the caller's level unlocks).
+message SetCardStyleRequest {
+  string style = 1;
+}
+
+// At most one earned badge id for now. Empty means "show my most recent".
+message SetBadgeShowcaseRequest {
+  repeated string badge_ids = 1;
+}
 
 // Erases everything the app stores about the caller. Cannot be undone.
 message DeleteMyDataRequest {}
@@ -224,6 +254,10 @@ message MyStatusEvent {
   MyStatus me = 1;
 }
 
+message BadgesEarnedEvent {
+  repeated string badge_ids = 1;
+}
+
 // ---------------------------------------------------------------- service
 
 service StudyRoomService {
@@ -238,10 +272,13 @@ service StudyRoomService {
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
   rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+  rpc SetCardStyle(SetCardStyleRequest) returns (Progress);
+  rpc SetBadgeShowcase(SetBadgeShowcaseRequest) returns (Progress);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);
   rpc BroadcastPhaseCompleted(PhaseCompletedEvent) returns (rootsdk.Void);
   rpc BroadcastPersonalResult(PersonalResultEvent) returns (rootsdk.Void);
   rpc BroadcastMyStatus(MyStatusEvent) returns (rootsdk.Void);
+  rpc BroadcastBadgesEarned(BadgesEarnedEvent) returns (rootsdk.Void);
 }

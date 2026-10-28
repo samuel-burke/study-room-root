@@ -68,6 +68,24 @@ Damage is the focus XP a session earns, combo included, counted **before** the d
 
 Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
+## Badges and card styles
+
+Badges are permanent and come in two kinds: visible ones that say how to earn them, and secret ones (Easter eggs) that show as "?" until someone finds them. The catalog is `BADGES` in `core/src/game/badges.ts`. Each badge is a pure check over facts the engine gathers when something happens: a focus block ends, a goal is checked off for the first time, or a boss falls. That keeps the rules unit-tested without a store, and makes adding a badge one entry in a list.
+
+- **Nothing new is tracked for badges.** Progress comes from what's already stored (daily stats, the session log, boss contributors); only the earned badges and the card look are new tables. Lifetime badges (hours focused, goals, rounds) therefore also reach members who earned them before badges existed, the next time they finish something.
+- **Badges never repeat** and keep the time they were first earned. The member's devices get one push per operation listing what it earned, which shows the unlock banner. A member with the app closed misses the banner but still finds the badge on the progress screen.
+- **Times of day** (Early Bird before 8am, Night Owl after 10pm, the 3am Three O'Clock Club) use when the session started, in the community time zone, and need a finished session so a timer left running doesn't count.
+- **Secret badges are only secret in the UI.** The catalog ships in the client bundle so cards can render badge names offline; anyone reading the code can find them, which is fine for Easter eggs.
+- **Badges that need another feature** declare it (`requires`): weekly quests, the weekly leaderboard, and the built-in boss roster with strengths. They stay out of the catalog until that feature adds itself to `LIVE_BADGE_FEATURES` and passes its facts to `awardBadges`.
+
+Card styles (`core/src/game/cosmetics.ts`) change a member's card border and colour on the board. Most unlock with level (Lagoon at 3, Ember at 5, Gold at 8, Aurora at 12, Nebula at 16, Legend at 25), a few with a badge. A member who hasn't picked one gets the best style their level unlocks, so the room notices a level 8 member's gold border without anyone opening a menu. A pick that's no longer unlocked falls back to automatic rather than failing.
+
+Cards show one badge next to the level: the one the member picked, or their newest. An earlier version showed three, but a row of emoji on every card made the board noisy.
+
+Badges are drawn as medals (`client/src/components/BadgeMedal.tsx`), not emoji. Each family has its own silhouette (a shield for streaks, a hexagon for levels, a sunburst for focus, a rosette for goals, a spiked shield for bosses, a crowned crest for the leaderboard and a gem for secrets). Each badge names a line-drawn glyph, a tier and an optional stamp. The tier is the metal (bronze, silver, gold, platinum), and harder tiers get more dressing: a bevel at silver, ribbon tails at gold, and a laurel wreath and a passing shine at platinum. Secret badges are holographic.
+
+Earning a badge opens a full-screen moment (`BadgeUnlocked.tsx`) that grows with the tier: bronze pops in, silver adds light rays, gold spins in with a shockwave and confetti, platinum rises down a beam of light with a double shockwave and twinkling stars, and a secret badge shakes as a mystery gem before it bursts open. Each tier has a matching synthesised fanfare (`lib/badgeSounds.ts`) that follows the sound mute button from #26. The moment closes itself after a few seconds, or with a tap, the button or Escape. The stamp is the number, such as a streak length, and is hidden on small medals.
+
 ## Channel posts
 
 - **Busy room**: once when the number of people focusing reaches the threshold, then not again until it drops below and three hours have passed.
@@ -86,7 +104,7 @@ Numeric settings are `select` items, not `number` items: in `@rootsdk/dev-tools`
 
 - **Name**: the mockups say "Study Room"; the app is now called Study Squad. Internal code names (`StudyRoomEngine`, the `StudyRoomService` Protobuf service, `@studyroom/*` packages) keep the old name, because renaming the service would change the wire paths for no user benefit.
 - **Admin setup** is Root's App settings screen (see above). The room shows a read-only summary behind the settings button.
-- **Weekly quests and badges** on the progress screen are not in v1. They were in the gamification ideas but outside the v1 scope (XP, combo, boss).
+- **Weekly quests** on the progress screen are not in v1. They were in the gamification ideas but outside the v1 scope (XP, combo, boss). Badges came after v1.
 - **"Chat in #study-hall"** on the break screen is a hint, not a link, because the SDK has no supported way to deep-link to a channel.
 - **Avatars** use Root profile pictures when a member has one, and the design's initials and colors otherwise.
 - Fonts (DM Sans, Space Grotesk) are bundled with the client instead of loaded from Google Fonts, to avoid third-party requests from inside Root.

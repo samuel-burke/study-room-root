@@ -7,7 +7,13 @@ async function snapshot(): Promise<SnapshotDto> {
     store: new MemoryStore(),
     clock: { now: () => 1_000 },
     scheduler: { wakeAt() {}, cancel() {} },
-    notifier: { roomUpdated() {}, phaseCompleted() {}, personalResult() {}, myStatusUpdated() {} },
+    notifier: {
+      roomUpdated() {},
+      phaseCompleted() {},
+      personalResult() {},
+      myStatusUpdated() {},
+      badgesEarned() {},
+    },
     announcer: {
       async busyRoom() {},
       async streakMilestone() {},

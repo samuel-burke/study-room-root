@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 
-/** XP per focus minute when 002_boss_xp shipped. Frozen here so the migration never changes. */
-const XP_PER_MINUTE_AT_002 = 2;
+/** XP per focus minute when 006_boss_xp shipped. Frozen here so the migration never changes. */
+const XP_PER_MINUTE_AT_006 = 2;
 
 /**
  * Schema migrations, defined in code so they ship inside server/dist with no
@@ -103,24 +103,46 @@ const migrations: Migration[] = [
     },
   },
   {
+    // Progress toward badges is read from daily_stats, session_log and bosses;
+    // these only record which badges were earned and how each card looks.
+    name: "002_badges",
+    async up(db) {
+      await db.schema.createTable("member_badges", (t) => {
+        t.string("user_id").notNullable();
+        t.string("badge_id").notNullable();
+        t.bigInteger("earned_at").notNullable();
+        t.primary(["user_id", "badge_id"]);
+      });
+      await db.schema.createTable("member_cards", (t) => {
+        t.string("user_id").primary();
+        t.string("style").nullable();
+        t.text("showcase").nullable();
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("member_cards");
+      await db.schema.dropTableIfExists("member_badges");
+    },
+  },
+  {
     // Boss HP and damage moved from focus minutes to XP. Existing rows convert
     // at the XP rate of a minute, rounded to whole XP, so a boss mid-week keeps
     // its percent defeated.
-    name: "002_boss_xp",
+    name: "006_boss_xp",
     async up(db) {
       await db.schema.alterTable("bosses", (t) => {
         t.renameColumn("max_hp_minutes", "max_hp_xp");
         t.renameColumn("damage_minutes", "damage_xp");
       });
       await db("bosses").update({
-        max_hp_xp: db.raw("ROUND(max_hp_xp * ?)", [XP_PER_MINUTE_AT_002]),
-        damage_xp: db.raw("ROUND(damage_xp * ?)", [XP_PER_MINUTE_AT_002]),
+        max_hp_xp: db.raw("ROUND(max_hp_xp * ?)", [XP_PER_MINUTE_AT_006]),
+        damage_xp: db.raw("ROUND(damage_xp * ?)", [XP_PER_MINUTE_AT_006]),
       });
     },
     async down(db) {
       await db("bosses").update({
-        max_hp_xp: db.raw("max_hp_xp / ?", [XP_PER_MINUTE_AT_002]),
-        damage_xp: db.raw("damage_xp / ?", [XP_PER_MINUTE_AT_002]),
+        max_hp_xp: db.raw("max_hp_xp / ?", [XP_PER_MINUTE_AT_006]),
+        damage_xp: db.raw("damage_xp / ?", [XP_PER_MINUTE_AT_006]),
       });
       await db.schema.alterTable("bosses", (t) => {
         t.renameColumn("max_hp_xp", "max_hp_minutes");
