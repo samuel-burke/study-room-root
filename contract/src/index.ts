@@ -167,6 +167,7 @@ export function myStatusToProto(me: MyStatusDto): MyStatus {
     freezeAvailable: me.freezeAvailable,
     goals: me.goals.map(goalToProto),
     goalsPrivate: me.goalsPrivate,
+    keepGoingEndsAtMs: me.keepGoingEndsAt,
   };
 }
 
@@ -312,6 +313,7 @@ export function myStatusFromProto(me: MyStatus | undefined): MyStatusDto {
     freezeAvailable: me?.freezeAvailable ?? false,
     goals: (me?.goals ?? []).map(goalFromProto),
     goalsPrivate: me?.goalsPrivate ?? false,
+    keepGoingEndsAt: me?.keepGoingEndsAtMs ?? 0,
   };
 }
 

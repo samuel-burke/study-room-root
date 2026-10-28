@@ -2267,3 +2267,30 @@ h3 {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------- keep going */
+
+.keep-going {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-you);
+  border-radius: var(--radius);
+  padding: 10px 10px 10px 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.keep-going-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--amber);
+}

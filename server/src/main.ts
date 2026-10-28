@@ -11,7 +11,7 @@ import {
   type RootAppStartState,
   type UserGuid,
 } from "@rootsdk/server-app";
-import { parseSettings, StudyRoomEngine, type AppConfig, type RawSettings } from "@studyroom/core";
+import { StudyRoomEngine, type AppConfig } from "@studyroom/core";
 import { ChannelAnnouncer } from "./adapters/channelAnnouncer";
 import { createLogger } from "./adapters/logger";
 import { PushNotifier } from "./adapters/pushNotifier";
@@ -22,23 +22,17 @@ import { openDatabase } from "./persistence/database";
 import { KnexStore } from "./persistence/knexStore";
 import { migrateToLatest } from "./persistence/migrations";
 import { studyRoomService } from "./studyRoomService";
+import { createShutdown, loadConfig, presenceHandlers } from "./wiring";
 
 const logger = createLogger();
 let shutdown: (() => Promise<void>) | null = null;
 
-/** Reads Root's settings and resolves the post channel's display name. */
-async function loadConfig(settings: GlobalSettings | undefined): Promise<AppConfig> {
-  const config = parseSettings(settings as unknown as RawSettings);
-  if (!config.postChannelId) return config;
-  try {
-    const channel = await rootServer.community.channels.get({
-      id: config.postChannelId as ChannelGuid,
-    });
-    return { ...config, postChannelName: channel.name };
-  } catch (error) {
-    logger.warn("could not read post channel", { error: String(error) });
-    return config;
-  }
+function loadRootConfig(settings: GlobalSettings | undefined): Promise<AppConfig> {
+  return loadConfig(
+    settings,
+    async (id) => (await rootServer.community.channels.get({ id: id as ChannelGuid })).name,
+    logger,
+  );
 }
 
 async function onStarting(state: RootAppStartState): Promise<void> {
@@ -65,7 +59,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
         (await rootServer.community.communityMembers.get({ userId: userId as UserGuid })).nickname,
     }),
     logger,
-    config: await loadConfig(state.globalSettings ?? rootServer.globalSettings),
+    config: await loadRootConfig(state.globalSettings ?? rootServer.globalSettings),
     newId: randomUUID,
   });
   studyRoomService.bind(new StudyRoomHandlers(engine, logger));
@@ -74,13 +68,14 @@ async function onStarting(state: RootAppStartState): Promise<void> {
 
   // Presence: who has Study Squad open right now.
   await engine.setPresence(rootServer.clients.getClients().map((c) => c.userId));
+  const presence = presenceHandlers(engine, logger);
   rootServer.clients.on(
     ClientEvent.UserAttached,
-    (client) => void engine.userAttached(client.userId),
+    (client) => void presence.attached(client.userId),
   );
   rootServer.clients.on(
     ClientEvent.UserDetached,
-    (client) => void engine.userDetached(client.userId),
+    (client) => void presence.detached(client.userId),
   );
 
   const recap = new RecapScheduler(
@@ -109,7 +104,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
   // Admins edit settings in Root's App settings; apply them live.
   rootServer.globalSettings?.on(GlobalSettingsEvent.Update, (event) => {
     void (async () => {
-      await engine.setConfig(await loadConfig(event.current));
+      await engine.setConfig(await loadRootConfig(event.current));
       await recap.reschedule();
       logger.info("settings updated");
     })().catch((error: unknown) =>
@@ -117,11 +112,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
     );
   });
 
-  shutdown = async () => {
-    engine.stop();
-    await engine.idle();
-    await db.destroy();
-  };
+  shutdown = createShutdown(engine, () => db.destroy(), logger);
   logger.info("study squad started");
 }
 

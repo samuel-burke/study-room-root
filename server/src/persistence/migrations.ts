@@ -125,6 +125,19 @@ const migrations: Migration[] = [
     },
   },
   {
+    name: "005_keep_going",
+    async up(db) {
+      await db.schema.alterTable("room_participants", (t) => {
+        t.boolean("keep_going").notNullable().defaultTo(false);
+      });
+    },
+    async down(db) {
+      await db.schema.alterTable("room_participants", (t) => {
+        t.dropColumn("keep_going");
+      });
+    },
+  },
+  {
     // Boss HP and damage moved from focus minutes to XP. Existing rows convert
     // at the XP rate of a minute, rounded to whole XP, so a boss mid-week keeps
     // its percent defeated.

@@ -102,6 +102,19 @@ describe("RateLimiter", () => {
     expect(limiter.tryTake("u")).toBe(true);
     expect(limiter.tryTake("u")).toBe(false);
   });
+
+  it("forgets refilled buckets once it tracks many keys, but keeps limiting busy ones", () => {
+    let now = 0;
+    const limiter = new RateLimiter(2, 1, () => now);
+    limiter.tryTake("busy");
+    limiter.tryTake("busy");
+    for (let i = 0; i < 10_000; i++) limiter.tryTake(`idle-${i}`);
+    now = 500; // idle buckets (1 token used) aren't full yet, "busy" is empty
+    expect(limiter.tryTake("busy")).toBe(false);
+    now = 5_000; // everyone has refilled; the next take triggers eviction
+    expect(limiter.tryTake("new")).toBe(true);
+    expect(limiter.tryTake("busy")).toBe(true);
+  });
 });
 
 describe("SerialQueue", () => {

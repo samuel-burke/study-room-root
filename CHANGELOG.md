@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
 - Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength. This turns on the Giant Slayer and Survived Finals badges.
+- "Keep going?" at the end of each room cycle (#6): during the final long break, tap to roll straight into the next cycle instead of rejoining. If you don't tap, the cycle ends your session as before, and you keep everything you earned.
 - Badges (#9): 60+ permanent badges for streaks, levels, focus time, room rounds and combos, goals and the weekly boss, including the Early Bird, Night Owl, Marathon, Comeback and First Boss badges from the progress mockup
 - Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them
 - Earned badges show on member cards (one per card: your newest, or the one you pick), with a full-screen unlock animation and fanfare that get more epic with each tier
@@ -17,7 +18,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - Boss HP and damage are measured in XP instead of focus minutes. Every XP earned focusing (combo included, before the daily cap) is damage. The "Boss HP (focus hours)" setting is replaced by "Boss base HP (XP)", default 10,000. Bosses already in the database convert at 2 XP per minute.
 - Boss loot is 100 XP times the boss's strength (50 to 200 XP), up from a flat 50.
-- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), AFK checks and the on-device sound mute.
+- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), "Keep going?" taps and the on-device sound mute.
+
+### Fixed
+
+- The room timer retries a wake-up that failed (for example on a locked database) instead of stalling until someone acts
+- A failed presence update when a member opens or closes the app is logged instead of crashing the server
+- The app still starts when Root's job scheduler is unavailable; only the daily recap is skipped
+- Shutdown always closes the database
+- The client shows a message with a retry instead of a blank screen if it fails to load or hits a rendering bug
 
 ## [0.1.0] - 2026-10-28
 
