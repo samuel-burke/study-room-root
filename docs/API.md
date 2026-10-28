@@ -11,19 +11,21 @@ The contract is `networking/src/studyroom.proto`. `npm run generate` turns it in
 
 ## Requests
 
-| RPC               | Request                                        | Returns        | Notes                                                                                         |
-| ----------------- | ---------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------- |
-| `GetRoom`         | —                                              | `RoomSnapshot` | Room state plus your status. Also used to sample the clock offset.                            |
-| `JoinRoomTimer`   | `goals[]` (≤ 3), `goals_private?`              | `RoomSnapshot` | Starts a cycle if the room is idle. Idempotent. Fails if your solo timer is running.          |
-| `LeaveRoomTimer`  | —                                              | `RoomSnapshot` | Credits minutes so far if mid-round.                                                          |
-| `StartSolo`       | `minutes` (5–180), `goals[]`, `goals_private?` | `RoomSnapshot` | Fails if you're on the room timer.                                                            |
-| `EndSolo`         | —                                              | `RoomSnapshot` | Ends a solo focus early (minutes credited) or skips the solo break.                           |
-| `AddGoal`         | `text` (1–140 chars)                           | `MyStatus`     | Up to 8 open goals. Text is whitespace-collapsed and stripped of control and bidi characters. |
-| `SetGoalDone`     | `goal_id`, `done`                              | `MyStatus`     | +25 XP the first time a goal is done.                                                         |
-| `DeleteGoal`      | `goal_id`                                      | `MyStatus`     |                                                                                               |
-| `SetGoalsPrivate` | `goals_private`                                | `MyStatus`     |                                                                                               |
-| `DeleteMyData`    | —                                              | `MyStatus`     | Erases everything stored about the caller in this community. Cannot be undone.                |
-| `GetProgress`     | —                                              | `Progress`     | Your status and the last 35 days of focus minutes.                                            |
+| RPC                | Request                                        | Returns        | Notes                                                                                         |
+| ------------------ | ---------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------- |
+| `GetRoom`          | —                                              | `RoomSnapshot` | Room state plus your status. Also used to sample the clock offset.                            |
+| `JoinRoomTimer`    | `goals[]` (≤ 3), `goals_private?`              | `RoomSnapshot` | Starts a cycle if the room is idle. Idempotent. Fails if your solo timer is running.          |
+| `LeaveRoomTimer`   | —                                              | `RoomSnapshot` | Credits minutes so far if mid-round.                                                          |
+| `StartSolo`        | `minutes` (5–180), `goals[]`, `goals_private?` | `RoomSnapshot` | Fails if you're on the room timer.                                                            |
+| `EndSolo`          | —                                              | `RoomSnapshot` | Ends a solo focus early (minutes credited) or skips the solo break.                           |
+| `AddGoal`          | `text` (1–140 chars)                           | `MyStatus`     | Up to 8 open goals. Text is whitespace-collapsed and stripped of control and bidi characters. |
+| `SetGoalDone`      | `goal_id`, `done`                              | `MyStatus`     | +25 XP the first time a goal is done.                                                         |
+| `DeleteGoal`       | `goal_id`                                      | `MyStatus`     |                                                                                               |
+| `SetGoalsPrivate`  | `goals_private`                                | `MyStatus`     |                                                                                               |
+| `DeleteMyData`     | —                                              | `MyStatus`     | Erases everything stored about the caller in this community. Cannot be undone.                |
+| `GetProgress`      | —                                              | `Progress`     | Your status, the last 35 days of focus minutes, your badges and your card look.               |
+| `SetCardStyle`     | `style` (a card style id, or empty)            | `Progress`     | Empty goes back to automatic. Fails if the style is still locked.                             |
+| `SetBadgeShowcase` | `badge_ids[]` (≤ 3, earned)                    | `Progress`     | Badges for your card. Empty shows your three newest.                                          |
 
 ## Broadcasts (server → client)
 
@@ -33,6 +35,7 @@ The contract is `networking/src/studyroom.proto`. `npm run generate` turns it in
 | `PhaseCompleted`            | everyone              | A room phase ended: round, finisher ids, combo, damage, new room state        |
 | `PersonalResult`            | that member's devices | After a focus block you took part in: XP math, streak, goal prompt, break end |
 | `MyStatus`                  | that member's devices | After a change to your status, goals or XP (keeps your other devices in sync) |
+| `BadgesEarned`              | that member's devices | Badge ids you just earned (the catalog lives in `@studyroom/core`)            |
 
 `RoomState` never contains another member's private goal text, XP total or goal list.
 

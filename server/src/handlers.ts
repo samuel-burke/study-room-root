@@ -14,6 +14,8 @@ import type {
   Progress,
   RoomSnapshot,
   SetGoalDoneRequest,
+  SetBadgeShowcaseRequest,
+  SetCardStyleRequest,
   SetGoalsPrivateRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
@@ -125,6 +127,18 @@ export class StudyRoomHandlers {
   setGoalsPrivate(userId: string, request: SetGoalsPrivateRequest): Promise<MyStatus> {
     return this.handle("setGoalsPrivate", userId, "write", async () =>
       myStatusToProto(await this.engine.setGoalsPrivate(userId, request.goalsPrivate)),
+    );
+  }
+
+  setCardStyle(userId: string, request: SetCardStyleRequest): Promise<Progress> {
+    return this.handle("setCardStyle", userId, "write", async () =>
+      progressToProto(await this.engine.setCardStyle(userId, request.style)),
+    );
+  }
+
+  setBadgeShowcase(userId: string, request: SetBadgeShowcaseRequest): Promise<Progress> {
+    return this.handle("setBadgeShowcase", userId, "write", async () =>
+      progressToProto(await this.engine.setBadgeShowcase(userId, request.badgeIds)),
     );
   }
 

@@ -7,6 +7,7 @@ import {
 import { StudyRoomEngine } from "@studyroom/core";
 import type { Knex } from "knex";
 import {
+  BadgesEarnedEvent,
   MyStatusEvent,
   PersonalResultEvent,
   PhaseCompletedEvent,
@@ -77,6 +78,14 @@ class FanOut implements Broadcaster<FakeClient> {
   }
   broadcastMyStatus(m: MyStatusEvent, t: BroadcastTarget<FakeClient>) {
     this.deliver("status", MyStatusEvent.toBinary(m), (b) => MyStatusEvent.fromBinary(b).me, t);
+  }
+  broadcastBadgesEarned(m: BadgesEarnedEvent, t: BroadcastTarget<FakeClient>) {
+    this.deliver(
+      "badges",
+      BadgesEarnedEvent.toBinary(m),
+      (b) => BadgesEarnedEvent.fromBinary(b).badgeIds,
+      t,
+    );
   }
 
   of(userId: string, type?: string) {

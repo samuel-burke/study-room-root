@@ -4,6 +4,7 @@ import { toGatewayError, type StartRequest, type StudyRoomGateway } from "../api
 import { initialRoomViewState, roomReducer } from "./roomState";
 
 const CELEBRATION_MS = 4_000;
+const BADGE_MS = 5_000;
 
 export interface StudyRoomActions {
   joinRoomTimer(request: StartRequest): Promise<boolean>;
@@ -17,6 +18,7 @@ export interface StudyRoomActions {
   deleteMyData(): Promise<boolean>;
   reload(): Promise<void>;
   dismissBreak(): void;
+  dismissBadge(): void;
   dismissError(): void;
 }
 
@@ -38,6 +40,7 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
       phaseCompleted: (event) => dispatch({ type: "phaseCompleted", event, at: Date.now() }),
       personalResult: (event) => dispatch({ type: "personalResult", event }),
       myStatus: (me) => dispatch({ type: "myStatus", me }),
+      badgesEarned: (badgeIds) => dispatch({ type: "badgesEarned", badgeIds }),
     });
     void reload();
     return unsubscribe;
@@ -48,6 +51,14 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
     const timer = setTimeout(() => dispatch({ type: "dismissCelebration" }), CELEBRATION_MS);
     return () => clearTimeout(timer);
   }, [state.celebration]);
+
+  // Each new badge shows for a few seconds, then the next one takes its place.
+  const currentBadge = state.newBadges[0];
+  useEffect(() => {
+    if (!currentBadge) return;
+    const timer = setTimeout(() => dispatch({ type: "dismissBadge" }), BADGE_MS);
+    return () => clearTimeout(timer);
+  }, [currentBadge]);
 
   const actions = useMemo<StudyRoomActions>(() => {
     async function run<T extends SnapshotDto | MyStatusDto>(
@@ -81,6 +92,7 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
       },
       reload,
       dismissBreak: () => dispatch({ type: "dismissBreak" }),
+      dismissBadge: () => dispatch({ type: "dismissBadge" }),
       dismissError: () => dispatch({ type: "dismissError" }),
     };
   }, [gateway, reload]);

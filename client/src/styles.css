@@ -1413,6 +1413,324 @@ h3 {
   }
 }
 
+/* ---------------------------------------------------------------- card styles */
+
+/*
+ * Each style sets a border, an optional background (gradients draw the border
+ * through a padding-box/border-box pair) and an optional glow. Member cards,
+ * mobile rows and the style picker's swatches all read the same variables.
+ */
+[data-style="lagoon"] {
+  --card-border: var(--teal);
+}
+
+[data-style="ember"] {
+  --card-border: var(--flame);
+  --card-bg: linear-gradient(160deg, #2a1c18, var(--surface) 60%);
+}
+
+[data-style="gold"] {
+  --card-border: var(--amber);
+  --card-glow: 0 0 0 1px rgba(245, 184, 61, 0.35), 0 0 18px rgba(245, 184, 61, 0.14);
+}
+
+[data-style="aurora"] {
+  --card-border: transparent;
+  --card-bg:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, #46c7ae, #9db7ff, #e48bf0) border-box;
+}
+
+[data-style="nebula"] {
+  --card-border: transparent;
+  --card-bg:
+    linear-gradient(160deg, #1f1a38, var(--surface) 70%) padding-box,
+    linear-gradient(135deg, #7b5cff, #e48bf0, #9db7ff) border-box;
+  --card-glow: 0 0 20px rgba(123, 92, 255, 0.18);
+}
+
+[data-style="legend"] {
+  --card-border: transparent;
+  --card-bg:
+    linear-gradient(160deg, #2a2414, var(--surface) 65%) padding-box,
+    linear-gradient(120deg, #f5b83d, #fff1c4, #f5b83d, #c98a1c) border-box;
+  --card-glow: 0 0 0 1px rgba(245, 184, 61, 0.4), 0 0 26px rgba(245, 184, 61, 0.25);
+}
+
+[data-style="sunrise"] {
+  --card-border: transparent;
+  --card-bg:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, #ffb35c, #ff6b8b) border-box;
+}
+
+[data-style="midnight"] {
+  --card-border: #4a5fa8;
+  --card-bg: linear-gradient(160deg, #10183a, #0b1020);
+}
+
+[data-style="boss-slayer"] {
+  --card-border: var(--coral);
+  --card-bg: linear-gradient(160deg, var(--boss-bg), var(--surface) 70%);
+}
+
+[data-style="pumpkin"] {
+  --card-border: #ff8a1f;
+  --card-bg: linear-gradient(160deg, #2b1806, var(--surface) 70%);
+  --card-glow: 0 0 14px rgba(255, 138, 31, 0.18);
+}
+
+.member-card[data-style],
+.member-row[data-style],
+.style-swatch[data-style] {
+  border: 1px solid var(--card-border, var(--border));
+  background: var(--card-bg, var(--surface));
+  box-shadow: var(--card-glow, none);
+}
+
+.member-row[data-style="classic"] {
+  border-color: transparent;
+}
+
+.member-card[data-style="legend"] {
+  background-size:
+    100% 100%,
+    300% 300%;
+  animation:
+    card-in 0.3s ease,
+    legend-shimmer 6s linear infinite;
+}
+
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.style-swatch {
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  text-align: left;
+}
+
+.style-swatch[aria-checked="true"] {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.style-swatch[data-locked="true"] {
+  filter: grayscale(0.8);
+}
+
+.style-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ---------------------------------------------------------------- badges */
+
+.card-badges {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.member-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.member-foot .chip {
+  white-space: nowrap;
+}
+
+.member-foot .card-badges {
+  font-size: 15px;
+}
+
+.showcase {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.showcase-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.badge-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--amber-bg);
+  color: var(--amber-soft);
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  min-height: 0;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.badge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.badge-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.badge-tile {
+  width: 100%;
+  min-height: 84px;
+  padding: 8px 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-dim);
+}
+
+.badge-tile[data-earned="true"] {
+  border-color: var(--amber-you);
+  background: var(--amber-bg);
+  color: var(--text);
+}
+
+.badge-tile[data-earned="false"] .badge-icon {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+
+.badge-tile[data-secret="true"][data-earned="false"] {
+  border-style: dashed;
+}
+
+.badge-tile[data-secret="true"][data-earned="false"] .badge-icon {
+  font-family: var(--font-display);
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.badge-tile[data-secret="true"][data-earned="true"] {
+  border-color: #a77bff;
+  background: linear-gradient(160deg, #241c3a, var(--bg));
+}
+
+.badge-tile[aria-pressed="true"] {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.badge-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.badge-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.badge-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.badge-unlocked {
+  position: fixed;
+  left: 50%;
+  top: 64px;
+  transform: translateX(-50%);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--amber);
+  background: var(--amber-bg);
+  color: var(--text);
+  text-align: left;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.badge-unlocked-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.badge-unlocked .eyebrow {
+  color: var(--amber);
+}
+
+.badge-unlocked[data-secret="true"] {
+  border-color: #a77bff;
+  background: linear-gradient(160deg, #241c3a, var(--surface));
+}
+
+.badge-unlocked[data-secret="true"] .eyebrow {
+  color: #c7a8ff;
+}
+
+.badge-unlocked-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
 /* ---------------------------------------------------------------- motion */
 
 @keyframes fade-in {
@@ -1446,6 +1764,14 @@ h3 {
   from {
     opacity: 0;
     transform: translate(-50%, -10px) scale(0.9);
+  }
+}
+
+@keyframes legend-shimmer {
+  to {
+    background-position:
+      0 0,
+      300% 0;
   }
 }
 
