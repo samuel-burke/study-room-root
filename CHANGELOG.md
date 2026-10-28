@@ -8,6 +8,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
 
+### Changed
+
+- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), AFK checks and the on-device sound mute.
+
 ## [0.1.0] - 2026-10-28
 
 First release of **Study Squad: Group Study Timer**, covering the v1 scope.
