@@ -75,6 +75,6 @@ describe("parseSettings", () => {
     expect(config.recap).toEqual(DEFAULT_CONFIG.recap);
     expect(config.busyPosts.threshold).toBe(5);
     expect(config.xp).toEqual({ enabled: true, dailyCap: 50 });
-    expect(config.boss.name).toBe("Midterms");
+    expect(config.boss.name).toBe("");
   });
 });

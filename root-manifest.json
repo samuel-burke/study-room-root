@@ -393,10 +393,10 @@
           {
             "key": "bossName",
             "title": "Boss name",
-            "description": "Shown on the boss card and in posts.",
+            "description": "Shown on the boss card and in posts. Leave blank to get a new random funny name each week.",
             "text": {
-              "defaultValue": "Midterms",
-              "regex": "^.{1,40}$"
+              "defaultValue": "",
+              "regex": "^.{0,40}$"
             }
           },
           {

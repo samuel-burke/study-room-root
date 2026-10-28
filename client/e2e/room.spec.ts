@@ -85,7 +85,7 @@ test.describe("the break moment", () => {
     await expect(page.getByRole("status")).toContainText("Round 1 complete");
     await expect(moment).toContainText("6 days");
     await expect(moment).toContainText(/finished together/);
-    await expect(moment).toContainText("Midterms");
+    await expect(moment).toContainText(/hit .+ for/);
     await expect(moment).toContainText("Did you finish Read ch. 4?");
     // The board flips to Break for everyone at the same moment.
     await expect(page.locator(".phase-pill")).toHaveAttribute("data-phase", "break");

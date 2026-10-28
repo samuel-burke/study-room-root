@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DomainError, ErrorCode, LIMITS, PRESETS } from "../src";
+import { bossNameFor, DomainError, ErrorCode, LIMITS, PRESETS } from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
@@ -447,7 +447,7 @@ describe("channel posts", () => {
       goalsDone: 1,
       activeMembers: 1,
       topStreaks: [{ userId: "ana", streak: 1 }],
-      boss: expect.objectContaining({ name: "Midterms", daysLeft: 5 }),
+      boss: expect.objectContaining({ name: bossNameFor("2026-10-26", ""), daysLeft: 5 }),
     });
   });
 

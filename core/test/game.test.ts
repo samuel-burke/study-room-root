@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyDailyCap,
   applyDamage,
+  BOSS_NAMES,
+  bossNameFor,
   baseFocusXp,
   bossHpLeftMinutes,
   comboFor,
@@ -119,5 +121,31 @@ describe("boss", () => {
       expect(result.boss.maxHpMinutes).toBe(60);
       expect(result.defeatedNow).toBe(false);
     });
+  });
+});
+
+describe("bossNameFor", () => {
+  it("keeps the admin's custom name", () => {
+    expect(bossNameFor("2026-10-26", "Calc II")).toBe("Calc II");
+  });
+
+  it("gives every week a built-in name and moves to the next one each Monday", () => {
+    const first = BOSS_NAMES.indexOf(bossNameFor("2026-10-26", ""));
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(bossNameFor("2026-11-02", "")).toBe(BOSS_NAMES[(first + 1) % BOSS_NAMES.length]);
+  });
+
+  it("does not repeat a name until the list runs out", () => {
+    const names = new Set<string>();
+    for (let week = 0; week < BOSS_NAMES.length; week++) {
+      const monday = new Date(Date.UTC(2026, 9, 26) + week * 7 * 86_400_000);
+      names.add(bossNameFor(monday.toISOString().slice(0, 10), ""));
+    }
+    expect(names.size).toBe(BOSS_NAMES.length);
+  });
+
+  it("only has names that fit the 40-character limit", () => {
+    expect(new Set(BOSS_NAMES).size).toBe(BOSS_NAMES.length);
+    for (const name of BOSS_NAMES) expect(name.length).toBeLessThanOrEqual(40);
   });
 });

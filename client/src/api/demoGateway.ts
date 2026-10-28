@@ -1,5 +1,6 @@
 import {
   addDays,
+  bossNameFor,
   customPreset,
   dayKey,
   DEFAULT_CONFIG,
@@ -203,11 +204,8 @@ export class DemoGateway implements StudyRoomGateway {
     }
     if (!this.options.bots) return;
     for (const bot of BOTS) await member(bot.userId, bot.xp, bot.streak);
-    const boss = newBoss(
-      weekKey(dayKey(Date.now(), tz)),
-      this.config.boss.name,
-      this.config.boss.hpHours,
-    );
+    const week = weekKey(dayKey(Date.now(), tz));
+    const boss = newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.hpHours);
     await this.store.bosses.save({
       ...boss,
       damageMinutes: Math.round(boss.maxHpMinutes * BOSS_DAMAGE_SHARE),
