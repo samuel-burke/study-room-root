@@ -222,11 +222,21 @@ describe("Study Squad app", () => {
     expect(
       screen.getAllByRole("status").some((s) => s.textContent?.includes("Round 1 complete")),
     ).toBe(true);
-    // Finishing the round also earns a badge, announced on its own.
+    // Finishing the round also earns badges, each with its own full-screen moment.
     expect(await screen.findByText("Badge unlocked")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Nice!" }));
+    while (screen.queryByRole("button", { name: "Nice!" })) {
+      await user.click(screen.getByRole("button", { name: "Nice!" }));
+    }
     await act(async () => {
       await user.click(within(breakSheet).getByRole("button", { name: /Done/ }));
     });
+    // Checking the goal off earns more badges. Tap through each of their moments.
+    for (;;) {
+      const nice = await screen.findByRole("button", { name: "Nice!" }).catch(() => null);
+      if (!nice) break;
+      await user.click(nice);
+    }
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(
       within(screen.getByRole("region", { name: "Your session" })).getByRole("checkbox", {

@@ -78,7 +78,9 @@ Card styles (`core/src/game/cosmetics.ts`) change a member's card border and col
 
 Cards show one badge next to the level: the one the member picked, or their newest. An earlier version showed three, but a row of emoji on every card made the board noisy.
 
-Badges are drawn as medals (`client/src/components/BadgeMedal.tsx`), not emoji. Each family has its own silhouette (a shield for streaks, a hexagon for levels, a sunburst for focus, a rosette for goals, a spiked shield for bosses, a crowned crest for the leaderboard and a gem for secrets). Each badge names a line-drawn glyph, a tier and an optional stamp. The tier is the metal (bronze, silver, gold, platinum), and harder tiers get more dressing: a bevel at silver, ribbon tails at gold, and a laurel wreath and a passing shine at platinum. Secret badges are holographic. The stamp is the number, such as a streak length, and is hidden on small medals.
+Badges are drawn as medals (`client/src/components/BadgeMedal.tsx`), not emoji. Each family has its own silhouette (a shield for streaks, a hexagon for levels, a sunburst for focus, a rosette for goals, a spiked shield for bosses, a crowned crest for the leaderboard and a gem for secrets). Each badge names a line-drawn glyph, a tier and an optional stamp. The tier is the metal (bronze, silver, gold, platinum), and harder tiers get more dressing: a bevel at silver, ribbon tails at gold, and a laurel wreath and a passing shine at platinum. Secret badges are holographic.
+
+Earning a badge opens a full-screen moment (`BadgeUnlocked.tsx`) that grows with the tier: bronze pops in, silver adds light rays, gold spins in with a shockwave and confetti, platinum rises down a beam of light with a double shockwave and twinkling stars, and a secret badge shakes as a mystery gem before it bursts open. Each tier has a matching synthesised fanfare (`lib/badgeSounds.ts`) that follows the sound mute button from #26. The moment closes itself after a few seconds, or with a tap, the button or Escape. The stamp is the number, such as a streak length, and is hidden on small medals.
 
 ## Channel posts
 

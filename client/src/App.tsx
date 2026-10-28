@@ -152,6 +152,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
         <BadgeUnlocked
           key={state.newBadges[0]}
           badgeId={state.newBadges[0]}
+          muted={sounds.muted}
           onDismiss={actions.dismissBadge}
         />
       )}
