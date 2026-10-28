@@ -10,18 +10,24 @@ export function WeeklyLeaderboard({ gateway }: { gateway: StudyRoomGateway }) {
   const [board, setBoard] = useState<LeaderboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [attempt, setAttempt] = useState(0);
   const youId = gateway.currentUserId();
 
   useEffect(() => {
     let cancelled = false;
     gateway
       .getLeaderboard()
-      .then((b) => !cancelled && setBoard(b))
+      .then((b) => {
+        if (cancelled) return;
+        setBoard(b);
+        setError(null);
+      })
       .catch((e: unknown) => !cancelled && setError(toGatewayError(e).message));
     return () => {
       cancelled = true;
     };
-  }, [gateway]);
+  }, [gateway, attempt]);
 
   const userIds = useMemo(() => board?.entries.map((e) => e.userId) ?? [], [board]);
   const profiles = useProfiles(gateway, userIds);
@@ -53,6 +59,18 @@ export function WeeklyLeaderboard({ gateway }: { gateway: StudyRoomGateway }) {
         </div>
       )}
       {!board && !error && <div className="muted small">Loading…</div>}
+      {!board && error && (
+        <button
+          type="button"
+          className="btn btn-quiet"
+          onClick={() => {
+            setError(null);
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Try again
+        </button>
+      )}
 
       {board && (
         <>
