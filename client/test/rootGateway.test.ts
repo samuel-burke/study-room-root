@@ -156,6 +156,7 @@ describe("RootGateway", () => {
       phaseCompleted: vi.fn(),
       personalResult: vi.fn(),
       myStatus: vi.fn(),
+      badgesEarned: vi.fn(),
     };
     const unsubscribe = new RootGateway().subscribe(handlers);
     service.emit("roomUpdated", { room: proto.room });
