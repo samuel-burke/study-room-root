@@ -23,6 +23,8 @@ export interface GatewayHandlers {
   phaseCompleted(event: PhaseCompletedDto): void;
   personalResult(event: PersonalResultDto): void;
   myStatus(me: MyStatusDto): void;
+  /** Badges the current member just earned. */
+  badgesEarned(badgeIds: string[]): void;
 }
 
 /** An error the UI can show as-is. */
@@ -55,6 +57,10 @@ export interface StudyRoomGateway {
   deleteGoal(goalId: string): Promise<MyStatusDto>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<MyStatusDto>;
   getProgress(): Promise<ProgressDto>;
+  /** "" goes back to the automatic style. */
+  setCardStyle(style: string): Promise<ProgressDto>;
+  /** Up to three earned badges for the card; empty shows the most recent. */
+  setBadgeShowcase(badgeIds: string[]): Promise<ProgressDto>;
   /** Erases everything stored about the current member. */
   deleteMyData(): Promise<MyStatusDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;

@@ -1,9 +1,11 @@
 import type {
   BossState,
+  CardRecord,
   CommunityDayStats,
   DailyStatDelta,
   DailyStatRecord,
   DayKey,
+  EarnedBadgeRecord,
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
@@ -82,6 +84,19 @@ const toBoss = (r: Row): BossState => ({
   contributorIds: parseJson<string[]>(r.contributor_ids, []),
 });
 
+const toBadge = (r: Row): EarnedBadgeRecord => ({
+  userId: String(r.user_id),
+  badgeId: String(r.badge_id),
+  earnedAt: num(r.earned_at),
+});
+
+const toCard = (r: Row): CardRecord => ({
+  userId: String(r.user_id),
+  style: (r.style as string | null) ?? null,
+  showcase:
+    r.showcase === null || r.showcase === undefined ? null : parseJson<string[]>(r.showcase, []),
+});
+
 const ROOM_CYCLE_ID = 1;
 // SQLite's default limit on bound variables is 999; stay well under it.
 const IN_CHUNK = 500;
@@ -110,6 +125,8 @@ export class KnexStore implements Store {
         "room_participants",
         "session_log",
         "daily_stats",
+        "member_badges",
+        "member_cards",
       ]) {
         await db(table).where({ user_id: userId }).delete();
       }
@@ -297,6 +314,13 @@ export class KnexStore implements Store {
         combo: log.combo,
       });
     },
+    countFinished: async (userId: string, kind: SessionLogRecord["kind"]) => {
+      const row = await this.db("session_log")
+        .where({ user_id: userId, kind, finished: true })
+        .count({ n: "*" })
+        .first();
+      return num(row?.n ?? 0);
+    },
   };
 
   stats = {
@@ -348,6 +372,21 @@ export class KnexStore implements Store {
         activeMembers: num(row?.active_members ?? 0),
       };
     },
+    lifetime: async (userId: string) => {
+      const row = await this.db("daily_stats")
+        .where({ user_id: userId })
+        .select(
+          this.db.raw("COALESCE(SUM(focus_minutes), 0) AS focus_minutes"),
+          this.db.raw("COALESCE(SUM(goals_done), 0) AS goals_done"),
+          this.db.raw("COALESCE(SUM(sessions_finished), 0) AS sessions_finished"),
+        )
+        .first();
+      return {
+        focusMinutes: num(row?.focus_minutes ?? 0),
+        goalsDone: num(row?.goals_done ?? 0),
+        sessionsFinished: num(row?.sessions_finished ?? 0),
+      };
+    },
   };
 
   bosses = {
@@ -366,6 +405,48 @@ export class KnexStore implements Store {
           contributor_ids: JSON.stringify(b.contributorIds),
         })
         .onConflict("week_key")
+        .merge();
+    },
+    countDefeatedWith: async (userId: string) => {
+      // Contributor lists are JSON arrays: narrow with LIKE, then check exactly.
+      const rows = await this.db("bosses")
+        .whereNotNull("defeated_at")
+        .andWhere("contributor_ids", "like", `%${JSON.stringify(userId)}%`);
+      return rows.filter((r: Row) => parseJson<string[]>(r.contributor_ids, []).includes(userId))
+        .length;
+    },
+  };
+
+  badges = {
+    // Sorted here rather than in SQL, because chunks would each come back sorted on their own.
+    list: async (userIds: readonly string[]) =>
+      (await inChunks(userIds, (chunk) => this.db("member_badges").whereIn("user_id", chunk)))
+        .map(toBadge)
+        .sort(
+          (a, b) =>
+            a.earnedAt - b.earnedAt || (a.badgeId < b.badgeId ? -1 : a.badgeId > b.badgeId ? 1 : 0),
+        ),
+    award: async (b: EarnedBadgeRecord) => {
+      await this.db("member_badges")
+        .insert({ user_id: b.userId, badge_id: b.badgeId, earned_at: b.earnedAt })
+        .onConflict(["user_id", "badge_id"])
+        .ignore();
+    },
+  };
+
+  cards = {
+    list: async (userIds: readonly string[]) =>
+      (await inChunks(userIds, (chunk) => this.db("member_cards").whereIn("user_id", chunk))).map(
+        toCard,
+      ),
+    save: async (c: CardRecord) => {
+      await this.db("member_cards")
+        .insert({
+          user_id: c.userId,
+          style: c.style,
+          showcase: c.showcase === null ? null : JSON.stringify(c.showcase),
+        })
+        .onConflict("user_id")
         .merge();
     },
   };

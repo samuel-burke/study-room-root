@@ -1,5 +1,6 @@
 import type {
   BossDto,
+  CardLookDto,
   GoalDto,
   MemberCardDto,
   MemberStatus as MemberStatusDto,
@@ -21,6 +22,7 @@ import {
   PresetKey,
   ResultSource,
   type Boss,
+  type CardLook,
   type Goal,
   type MemberCard,
   type MyStatus,
@@ -115,6 +117,8 @@ const memberToProto = (m: MemberCardDto): MemberCard => ({
   goalPrivate: m.goalPrivate,
   level: m.level,
   streak: m.streak,
+  badges: m.badges,
+  cardStyle: m.cardStyle,
 });
 
 export function roomToProto(room: RoomStateDto): RoomState {
@@ -168,11 +172,20 @@ export function snapshotToProto(snapshot: SnapshotDto): RoomSnapshot {
   return { room: roomToProto(snapshot.room), me: myStatusToProto(snapshot.me) };
 }
 
+const cardLookToProto = (c: CardLookDto): CardLook => ({
+  chosenStyle: c.chosenStyle,
+  chosenShowcase: c.chosenShowcase,
+  style: c.style,
+  showcase: c.showcase,
+});
+
 export function progressToProto(progress: ProgressDto): Progress {
   return {
     me: myStatusToProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    badges: progress.badges.map((b) => ({ id: b.id, earnedAtMs: b.earnedAt })),
+    card: cardLookToProto(progress.card),
   };
 }
 
@@ -245,6 +258,8 @@ const memberFromProto = (m: MemberCard): MemberCardDto => ({
   goalPrivate: m.goalPrivate,
   level: m.level,
   streak: m.streak,
+  badges: m.badges ?? [],
+  cardStyle: m.cardStyle || "classic",
 });
 
 export function roomFromProto(room: RoomState | undefined): RoomStateDto {
@@ -300,11 +315,20 @@ export function snapshotFromProto(snapshot: RoomSnapshot): SnapshotDto {
   return { room: roomFromProto(snapshot.room), me: myStatusFromProto(snapshot.me) };
 }
 
+const cardLookFromProto = (c: CardLook | undefined): CardLookDto => ({
+  chosenStyle: c?.chosenStyle ?? "",
+  chosenShowcase: c?.chosenShowcase ?? [],
+  style: c?.style || "classic",
+  showcase: c?.showcase ?? [],
+});
+
 export function progressFromProto(progress: Progress): ProgressDto {
   return {
     me: myStatusFromProto(progress.me),
     days: progress.days.map((d) => ({ day: d.day, focusMinutes: d.focusMinutes })),
     totalFocusMinutes: progress.totalFocusMinutes,
+    badges: (progress.badges ?? []).map((b) => ({ id: b.id, earnedAt: b.earnedAtMs })),
+    card: cardLookFromProto(progress.card),
   };
 }
 

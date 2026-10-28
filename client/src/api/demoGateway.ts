@@ -38,30 +38,82 @@ interface Bot {
   /** Lifetime XP and streak, so the board looks like a room that's been open a while. */
   xp: number;
   streak: number;
+  /** Earned badges, oldest first, so cards show a few. */
+  badges: string[];
+  cardStyle?: string;
   private?: boolean;
   solo?: number;
 }
 
 const BOTS: Bot[] = [
-  { userId: "bot-ana", name: "Ana R.", goal: "Orgo ch. 4 notes", xp: 5600, streak: 31 },
-  { userId: "bot-marcus", name: "Marcus", goal: "LeetCode: 3 mediums", xp: 3200, streak: 12 },
+  {
+    userId: "bot-ana",
+    name: "Ana R.",
+    goal: "Orgo ch. 4 notes",
+    xp: 5600,
+    streak: 31,
+    badges: ["first-boss", "streak-30", "night-owl"],
+    cardStyle: "midnight",
+  },
+  {
+    userId: "bot-marcus",
+    name: "Marcus",
+    goal: "LeetCode: 3 mediums",
+    xp: 3200,
+    streak: 12,
+    badges: ["squad-up", "leet", "streak-7"],
+  },
   {
     userId: "bot-priya",
     name: "Priya",
     goal: "Thesis lit review",
     xp: 8200,
     streak: 54,
+    badges: ["focus-100h", "streak-50", "three-am"],
     private: true,
     solo: 45,
   },
-  { userId: "bot-devon", name: "Devon", goal: "Essay intro draft", xp: 900, streak: 3 },
-  { userId: "bot-jordan", name: "Jordan", goal: "Stats HW 5", xp: 1700, streak: 8 },
-  { userId: "bot-lena", name: "Lena", goal: "Anki: 120 cards", xp: 2200, streak: 9, solo: 25 },
-  { userId: "bot-kai", name: "Kai", goal: "Spanish reading", xp: 3900, streak: 17 },
+  {
+    userId: "bot-devon",
+    name: "Devon",
+    goal: "Essay intro draft",
+    xp: 900,
+    streak: 3,
+    badges: ["streak-3"],
+  },
+  {
+    userId: "bot-jordan",
+    name: "Jordan",
+    goal: "Stats HW 5",
+    xp: 1700,
+    streak: 8,
+    badges: ["early-bird", "comeback"],
+  },
+  {
+    userId: "bot-lena",
+    name: "Lena",
+    goal: "Anki: 120 cards",
+    xp: 2200,
+    streak: 9,
+    badges: ["productive-day", "speedrun"],
+    solo: 25,
+  },
+  {
+    userId: "bot-kai",
+    name: "Kai",
+    goal: "Spanish reading",
+    xp: 3900,
+    streak: 17,
+    badges: ["marathon", "full-house", "first-boss"],
+  },
 ];
 
 /** You start at level 7 on a 5-day streak, so finishing a round makes it 6. */
-const YOU = { xp: 2315, streak: 5 };
+const YOU = {
+  xp: 2315,
+  streak: 5,
+  badges: ["first-session", "squad-up", "first-goal", "streak-3", "level-5"],
+};
 /** The weekly boss starts 39% down. */
 const BOSS_DAMAGE_SHARE = 0.39;
 
@@ -141,6 +193,9 @@ export class DemoGateway implements StudyRoomGateway {
           if (userId === DEMO_USER_ID) this.emit((h) => h.myStatus(me));
           else this.keepBotBusy(userId, me);
         },
+        badgesEarned: (userId: string, badgeIds: string[]) => {
+          if (userId === DEMO_USER_ID) this.emit((h) => h.badgesEarned(badgeIds));
+        },
       },
       announcer: {
         busyRoom: async (_c, count, combo) =>
@@ -188,6 +243,12 @@ export class DemoGateway implements StudyRoomGateway {
         goalsPrivate: null,
       });
     await member(DEMO_USER_ID, YOU.xp, YOU.streak);
+    const earnedAt = Date.now() - 30 * 24 * 60 * MINUTE;
+    const award = async (userId: string, badges: readonly string[]) => {
+      for (const [i, badgeId] of badges.entries())
+        await this.store.badges.award({ userId, badgeId, earnedAt: earnedAt + i * MINUTE });
+    };
+    await award(DEMO_USER_ID, YOU.badges);
     // Five weeks of history: the last YOU.streak days active, a gap before that, then a mixed record.
     const today = dayKey(Date.now(), tz);
     for (let back = 1; back < 35; back++) {
@@ -203,7 +264,12 @@ export class DemoGateway implements StudyRoomGateway {
         await this.store.stats.add(DEMO_USER_ID, addDays(today, -back), { focusMinutes: minutes });
     }
     if (!this.options.bots) return;
-    for (const bot of BOTS) await member(bot.userId, bot.xp, bot.streak);
+    for (const bot of BOTS) {
+      await member(bot.userId, bot.xp, bot.streak);
+      await award(bot.userId, bot.badges);
+      if (bot.cardStyle)
+        await this.store.cards.save({ userId: bot.userId, style: bot.cardStyle, showcase: null });
+    }
     const week = weekKey(dayKey(Date.now(), tz));
     const boss = newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.hpHours);
     await this.store.bosses.save({
@@ -309,6 +375,14 @@ export class DemoGateway implements StudyRoomGateway {
 
   getProgress() {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
+  }
+
+  setCardStyle(style: string) {
+    return this.call(() => this.engine.setCardStyle(DEMO_USER_ID, style));
+  }
+
+  setBadgeShowcase(badgeIds: string[]) {
+    return this.call(() => this.engine.setBadgeShowcase(DEMO_USER_ID, badgeIds));
   }
 
   async getProfiles(userIds: string[]): Promise<Profile[]> {
