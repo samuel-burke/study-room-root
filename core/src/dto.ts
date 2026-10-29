@@ -99,6 +99,12 @@ export interface MyStatusDto {
   goalsPrivate: boolean;
   /** When the "Keep going?" prompt closes (server time). 0 when it isn't showing. */
   keepGoingEndsAt: number;
+  /**
+   * Badges the member earned in the operation that produced this status, so
+   * the unlock moment plays from the reply even if the badge push is lost.
+   * Left out when there are none.
+   */
+  newBadges?: string[];
 }
 
 export interface SnapshotDto {
