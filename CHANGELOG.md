@@ -4,16 +4,13 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-29
+
+Weekly goals and rewards: quests, a leaderboard, badges, named bosses, member profiles and sounds.
+
 ### Added
 
 - Tap anyone on the board or the weekly leaderboard to see their profile: level, XP, streak and the badges they've earned. Goals and focus history stay private, and someone else's secret badges don't say how they were found.
-
-## [0.2.0] - 2026-10-29
-
-Weekly goals and rewards: quests, a leaderboard, badges, named bosses and sounds.
-
-### Added
-
 - Sound cues when a focus block or break starts and ends, with a mute button that is remembered on your device
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
 - Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength. This turns on the Giant Slayer and Survived Finals badges.
@@ -32,7 +29,7 @@ Weekly goals and rewards: quests, a leaderboard, badges, named bosses and sounds
 - **Admins:** the "Boss HP (focus hours)" setting is gone. Check the new "Boss base HP (XP)" setting (default 10,000) after updating.
 - Boss HP and damage are measured in XP instead of focus minutes. Every XP earned focusing (combo included, before the daily cap) is damage. The "Boss HP (focus hours)" setting is replaced by "Boss base HP (XP)", default 10,000. Bosses already in the database convert at 2 XP per minute.
 - Boss loot is 100 XP times the boss's strength (50 to 200 XP), up from a flat 50.
-- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), "Keep going?" taps and the on-device sound mute.
+- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), "Keep going?" taps and the on-device sound mute. It also lists the profile details (level, XP, streak, badges) that other members can see.
 
 ### Fixed
 
