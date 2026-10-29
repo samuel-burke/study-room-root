@@ -8,7 +8,7 @@ import { withAudio } from "./sounds";
  * Hits are timed to the unlock animation (see `.unlock` in styles.css).
  */
 
-interface Tone {
+export interface Tone {
   freq: number;
   at: number;
   length: number;
@@ -22,7 +22,7 @@ interface Tone {
   attack?: number;
 }
 
-interface Noise {
+export interface Noise {
   at: number;
   length: number;
   volume: number;
@@ -31,7 +31,7 @@ interface Noise {
   to: number;
 }
 
-interface Fanfare {
+export interface Fanfare {
   tones: Tone[];
   noises?: Noise[];
   /** Seconds of reverb tail. 0 for none. */
@@ -259,4 +259,10 @@ export function scheduleFanfare(ctx: AudioContext, fanfare: Fanfare): void {
 /** Plays the fanfare for a badge tier. Any audio failure is swallowed. */
 export function playBadgeSound(tier: BadgeTier): void {
   withAudio((ctx) => scheduleFanfare(ctx, FANFARES[tier]));
+}
+
+/** Seconds from the first note to the end of the last one, not counting reverb. */
+export function fanfareLength(fanfare: Fanfare): number {
+  const ends = [...fanfare.tones, ...(fanfare.noises ?? [])].map((n) => n.at + n.length);
+  return Math.max(0, ...ends);
 }

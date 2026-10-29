@@ -14,6 +14,7 @@ import { Toast } from "./components/Toast";
 import { useMediaQuery } from "./state/useMediaQuery";
 import { useNow } from "./state/useNow";
 import { useProfiles } from "./state/useProfiles";
+import { useEventSounds } from "./state/useEventSounds";
 import { useSoundCues } from "./state/useSoundCues";
 import { useStudyRoom } from "./state/useStudyRoom";
 
@@ -31,6 +32,22 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
   const [screen, setScreen] = useState<"room" | "progress">("room");
   const [overlay, setOverlay] = useState<Overlay>(null);
   const sounds = useSoundCues(state.me?.status ?? null);
+  const celebrationAt = state.celebration?.startedAt ?? null;
+  const boss = state.room?.boss;
+  const level = state.me?.level;
+  const eventSoundState = useMemo(
+    () =>
+      boss && level !== undefined
+        ? {
+            celebrationAt,
+            bossKey: `${boss.name}:${boss.endsAt}`,
+            bossDefeated: boss.defeated,
+            level,
+          }
+        : null,
+    [celebrationAt, boss, level],
+  );
+  useEventSounds(eventSoundState, sounds.muted);
 
   const userIds = useMemo(
     () => [
