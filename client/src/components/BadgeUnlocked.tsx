@@ -195,7 +195,16 @@ export function BadgeUnlocked({
           {badge.name}
         </h2>
         <p className="unlock-desc">{badge.description}</p>
-        <button ref={button} type="button" className="btn btn-primary" onClick={onDismiss}>
+        <button
+          ref={button}
+          type="button"
+          className="btn btn-primary"
+          onClick={(e) => {
+            // The backdrop dismisses too; one click must only move on once.
+            e.stopPropagation();
+            onDismiss();
+          }}
+        >
           Nice!
         </button>
       </div>

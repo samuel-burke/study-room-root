@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { createHarness } from "../../core/test/helpers";
+import { strengthText } from "../src/components/BossCard";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { GoalsSheet } from "../src/components/GoalsSheet";
 import { Sheet } from "../src/components/Sheet";
@@ -98,5 +99,15 @@ describe("ErrorBoundary", () => {
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(screen.getByText("Room is back")).toBeInTheDocument();
     window.removeEventListener("error", quiet);
+  });
+});
+
+describe("strengthText", () => {
+  it("shows a second decimal only when the strength needs one", () => {
+    const text = (strength: number) =>
+      strengthText({ strength } as Parameters<typeof strengthText>[0]);
+    expect(text(1)).toBe("Strength 1.0×");
+    expect(text(1.5)).toBe("Strength 1.5×");
+    expect(text(1.25)).toBe("Strength 1.25×");
   });
 });

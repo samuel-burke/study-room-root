@@ -16,6 +16,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them
 - Earned badges show on member cards (one per card: your newest, or the one you pick), with a full-screen unlock animation and fanfare that get more epic with each tier
 - Card styles: borders and colours unlocked by level (gold at level 8) or by certain badges, picked on the progress screen or left on automatic
+- Testing aids: a "100 XP (for testing)" Boss base HP option, and demo URL settings that set the boss, streak, XP and daily cap or replay any badge unlock animation. See [docs/TESTING.md](docs/TESTING.md).
 
 ### Changed
 
@@ -25,6 +26,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- Tapping "Nice!" on a badge unlock skipped the next unlock when several arrived together
+- The boss card showed 1.25x strength as "1.3×"
 - The room timer retries a wake-up that failed (for example on a locked database) instead of stalling until someone acts
 - A failed presence update when a member opens or closes the app is logged instead of crashing the server
 - The app still starts when Root's job scheduler is unavailable; only the daily recap is skipped
