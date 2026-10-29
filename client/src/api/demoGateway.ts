@@ -222,6 +222,9 @@ function demoConfig(options: DemoOptions): AppConfig {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     postChannelId: "demo-channel",
     postChannelName: "study-hall",
+    voiceChannelId: "demo-voice",
+    voiceChannelName: "Study voice",
+    voiceChannelUrl: "https://rootapp.com",
   };
 }
 
@@ -295,6 +298,7 @@ export class DemoGateway implements StudyRoomGateway {
       DEMO_USER_ID,
       ...(this.options.bots ? BOTS.map((b) => b.userId) : []),
     ]);
+    if (this.options.bots) await this.engine.setVoiceMembers(["bot-ana", "bot-priya"]);
     await this.engine.start();
   }
 

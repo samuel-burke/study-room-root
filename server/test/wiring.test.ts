@@ -4,31 +4,53 @@ import { createShutdown, loadConfig, presenceHandlers } from "../src/wiring";
 const logger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
 describe("loadConfig", () => {
+  const lookup = (name = async (_id: string) => "study-hall") => ({
+    name: vi.fn(name),
+    link: vi.fn(async (id: string) => `https://rootapp.com/${id}`),
+  });
+
   it("adds the post channel's name", async () => {
-    const channelName = vi.fn(async () => "study-hall");
-    const config = await loadConfig({ room: { postChannel: "channel-1" } }, channelName, logger());
-    expect(channelName).toHaveBeenCalledWith("channel-1");
+    const channels = lookup();
+    const config = await loadConfig({ room: { postChannel: "channel-1" } }, channels, logger());
+    expect(channels.name).toHaveBeenCalledWith("channel-1");
     expect(config).toMatchObject({ postChannelId: "channel-1", postChannelName: "study-hall" });
   });
 
-  it("skips the lookup when no channel is set", async () => {
-    const channelName = vi.fn(async () => "unused");
-    const config = await loadConfig(undefined, channelName, logger());
-    expect(channelName).not.toHaveBeenCalled();
-    expect(config.postChannelId).toBeNull();
+  it("adds the voice channel's name and link", async () => {
+    const channels = lookup(async () => "Study voice");
+    const config = await loadConfig({ room: { voiceChannel: "voice-1" } }, channels, logger());
+    expect(config).toMatchObject({
+      voiceChannelId: "voice-1",
+      voiceChannelName: "Study voice",
+      voiceChannelUrl: "https://rootapp.com/voice-1",
+    });
   });
 
-  it("keeps the settings and logs when the channel can't be read", async () => {
+  it("skips the lookups when no channel is set", async () => {
+    const channels = lookup();
+    const config = await loadConfig(undefined, channels, logger());
+    expect(channels.name).not.toHaveBeenCalled();
+    expect(channels.link).not.toHaveBeenCalled();
+    expect(config.postChannelId).toBeNull();
+    expect(config.voiceChannelId).toBeNull();
+  });
+
+  it("keeps the settings and logs when a channel can't be read", async () => {
     const log = logger();
     const config = await loadConfig(
-      { room: { postChannel: "channel-1" } },
-      async () => {
+      { room: { postChannel: "channel-1", voiceChannel: "voice-1" } },
+      lookup(async () => {
         throw new Error("403");
-      },
+      }),
       log,
     );
-    expect(config.postChannelId).toBe("channel-1");
+    expect(config).toMatchObject({
+      postChannelId: "channel-1",
+      voiceChannelId: "voice-1",
+      voiceChannelUrl: "",
+    });
     expect(log.warn).toHaveBeenCalledWith("could not read post channel", { error: "Error: 403" });
+    expect(log.warn).toHaveBeenCalledWith("could not read voice channel", { error: "Error: 403" });
   });
 });
 

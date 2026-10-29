@@ -131,6 +131,7 @@ export class StudyRoomEngine {
   private readonly queue = new SerialQueue();
   private readonly pendingPosts = new Set<Promise<void>>();
   private readonly present = new Set<string>();
+  private readonly inVoice = new Set<string>();
   private config: AppConfig;
   private stopped = false;
 
@@ -198,6 +199,15 @@ export class StudyRoomEngine {
 
   userDetached(userId: string): Promise<void> {
     this.present.delete(userId);
+    return this.run(async (_tx, _now, effects) => {
+      effects.roomChanged = true;
+    });
+  }
+
+  /** Who is in the configured voice channel. The server keeps this current. */
+  setVoiceMembers(userIds: readonly string[]): Promise<void> {
+    this.inVoice.clear();
+    for (const id of userIds) this.inVoice.add(id);
     return this.run(async (_tx, _now, effects) => {
       effects.roomChanged = true;
     });
@@ -1290,6 +1300,13 @@ export class StudyRoomEngine {
         dailyXpCap: this.config.xp.dailyCap,
         postChannelName: this.config.postChannelId ? this.config.postChannelName : "",
       },
+      voice: this.config.voiceChannelId
+        ? {
+            channelName: this.config.voiceChannelName,
+            joinUrl: this.config.voiceChannelUrl,
+            userIds: [...this.inVoice],
+          }
+        : { channelName: "", joinUrl: "", userIds: [] },
     };
   }
 

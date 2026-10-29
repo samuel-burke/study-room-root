@@ -113,6 +113,7 @@ const room: RoomStateDto = {
     dailyXpCap: 300,
     postChannelName: "study-hall",
   },
+  voice: { channelName: "Study voice", joinUrl: "https://rootapp.com/x", userIds: ["u1", "u3"] },
 };
 
 const me: MyStatusDto = {

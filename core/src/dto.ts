@@ -64,6 +64,16 @@ export interface RoomFeaturesDto {
   postChannelName: string;
 }
 
+/** The community voice channel admins picked for studying together. */
+export interface VoiceDto {
+  /** Empty when admins haven't picked one. */
+  channelName: string;
+  /** Opens the channel in Root. Empty when no link could be made. */
+  joinUrl: string;
+  /** Members in that channel right now. */
+  userIds: string[];
+}
+
 export interface RoomStateDto {
   serverNow: number;
   timer: RoomTimerDto;
@@ -75,6 +85,7 @@ export interface RoomStateDto {
   combo: number;
   boss: BossDto;
   features: RoomFeaturesDto;
+  voice: VoiceDto;
 }
 
 export interface GoalDto {
