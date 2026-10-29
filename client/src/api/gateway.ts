@@ -1,5 +1,6 @@
 import type {
   LeaderboardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -68,6 +69,8 @@ export interface StudyRoomGateway {
   deleteMyData(): Promise<MyStatusDto>;
   /** Answers "Keep going?" so the member rolls into the next cycle. */
   keepGoing(): Promise<MyStatusDto>;
+  /** Another member's public game stats, for their profile card. */
+  getMemberProfile(userId: string): Promise<MemberProfileDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;
   subscribe(handlers: GatewayHandlers): () => void;
 }

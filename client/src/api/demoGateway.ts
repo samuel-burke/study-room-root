@@ -411,6 +411,10 @@ export class DemoGateway implements StudyRoomGateway {
     return this.call(() => this.engine.setBadgeShowcase(DEMO_USER_ID, badgeIds));
   }
 
+  getMemberProfile(userId: string) {
+    return this.call(() => this.engine.getMemberProfile(userId));
+  }
+
   async getProfiles(userIds: string[]): Promise<Profile[]> {
     return userIds.map((userId) => ({ userId, name: this.nameOf(userId) }));
   }

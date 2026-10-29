@@ -35,9 +35,10 @@ Each community's Study Squad data lives in that community's own app storage, hos
 
 ## Who sees what
 
-- **Just you:** your goal list, your XP total, your progress history, your weekly quests and your break results.
+- **Just you:** your goal list, your progress history, your weekly quests and your break results.
 - **Other members of the community:**
   - your card on the board while your timer is running (your name, picture, level, streak, card style, one badge, timer and current goal, or just "Focusing" if you keep goals private);
+  - your profile, which opens when someone taps you on the board or the leaderboard (your name, picture, level, XP, streak, card style and the badges you've earned). It never shows your goals or focus history;
   - the weekly leaderboard, which shows the names, pictures and focus minutes of the week's top 10. You can hide yourself from it any time under **Your progress**.
 - **Channel posts:** if an admin turns on updates, Study Squad posts friendly highlights to a channel. These can include community totals (hours focused, goals finished, how many people showed up), the names and streak lengths of the top three streaks, the names and focus time of the week's top three (never anyone who hid from the leaderboard), streak milestones like "Ana R. just hit a 30 day streak", and how many people are focusing.
 - **Community admins** choose Study Squad's settings, like timer length and which channel gets updates. They don't get any extra view of your data.

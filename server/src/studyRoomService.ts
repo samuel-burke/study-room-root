@@ -6,12 +6,14 @@ import type {
   DeleteMyDataRequest,
   EndSoloRequest,
   GetLeaderboardRequest,
+  GetMemberProfileRequest,
   GetProgressRequest,
   GetRoomRequest,
   KeepGoingRequest,
   JoinRoomTimerRequest,
   Leaderboard,
   LeaveRoomTimerRequest,
+  MemberProfile,
   MyStatus,
   Progress,
   RoomSnapshot,
@@ -78,6 +80,10 @@ export class StudyRoomService extends StudyRoomServiceBase {
 
   getLeaderboard(_request: GetLeaderboardRequest, client: Client): Promise<Leaderboard> {
     return this.call((h) => h.getLeaderboard(client.userId));
+  }
+
+  getMemberProfile(request: GetMemberProfileRequest, client: Client): Promise<MemberProfile> {
+    return this.call((h) => h.getMemberProfile(client.userId, request));
   }
 
   setLeaderboardHidden(request: SetLeaderboardHiddenRequest, client: Client): Promise<Leaderboard> {

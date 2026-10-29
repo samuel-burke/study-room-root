@@ -242,3 +242,51 @@ describe("leaderboard badges", () => {
     expect(hidden.notifier.badgesFor("ana")).not.toContain("podium");
   });
 });
+
+describe("member profiles", () => {
+  it("shows another member's level, XP, streak and badges, but not their goals", async () => {
+    const { engine, store } = createHarness();
+    await store.members.save({
+      userId: "ana",
+      xpTotal: LEVEL_8_XP + 10,
+      streak: EMPTY_STREAK,
+      goalsPrivate: true,
+    });
+    await store.badges.award({ userId: "ana", badgeId: "first-session", earnedAt: T0 });
+    await store.badges.award({ userId: "ana", badgeId: "night-owl", earnedAt: T0 + 1 });
+    await engine.joinRoomTimer("ana", { goals: ["Secret plans"] });
+    await engine.setBadgeShowcase("ana", ["first-session"]);
+
+    const profile = await engine.getMemberProfile("ana");
+    expect(profile).toEqual({
+      userId: "ana",
+      level: 8,
+      xpTotal: LEVEL_8_XP + 10,
+      xpIntoLevel: 10,
+      xpForNextLevel: profile.xpForNextLevel,
+      streak: 0,
+      badges: [
+        { id: "first-session", earnedAt: T0 },
+        { id: "night-owl", earnedAt: T0 + 1 },
+      ],
+      showcase: ["first-session"],
+      cardStyle: "gold",
+    });
+    expect(JSON.stringify(profile)).not.toContain("Secret plans");
+  });
+
+  it("reads a member it has never seen as brand new, and refuses junk ids", async () => {
+    const { engine } = createHarness();
+    expect(await engine.getMemberProfile("nobody")).toMatchObject({
+      level: 1,
+      xpTotal: 0,
+      streak: 0,
+      badges: [],
+      showcase: [],
+      cardStyle: "classic",
+    });
+    await expectError(engine.getMemberProfile(""), ErrorCode.Validation);
+    await expectError(engine.getMemberProfile("a b"), ErrorCode.Validation);
+    await expectError(engine.getMemberProfile(42), ErrorCode.Validation);
+  });
+});

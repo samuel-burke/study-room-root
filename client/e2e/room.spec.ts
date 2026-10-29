@@ -143,3 +143,15 @@ test.describe("progress", () => {
     );
   });
 });
+
+test("tapping a member opens their profile with stats and badges", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("timer")).toBeVisible();
+  const open = page.getByRole("button", { name: /^View .+'s profile$/ }).first();
+  await open.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("day streak");
+  await expect(dialog.getByRole("region", { name: "Badges" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+});

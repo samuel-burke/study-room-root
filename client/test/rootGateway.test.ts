@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   leaderboardToProto,
+  memberProfileToProto,
   myStatusToProto,
   progressToProto,
   snapshotToProto,
@@ -43,6 +44,7 @@ const service = vi.hoisted(() => {
       getProgress: vi.fn(),
       getLeaderboard: vi.fn(),
       setLeaderboardHidden: vi.fn(),
+      getMemberProfile: vi.fn(),
     },
   };
 });
@@ -149,6 +151,15 @@ describe("RootGateway", () => {
     await expect(gateway.setLeaderboardHidden(true)).resolves.toEqual(hidden);
     expect(service.client.getLeaderboard).toHaveBeenCalledWith({});
     expect(service.client.setLeaderboardHidden).toHaveBeenCalledWith({ hidden: true });
+  });
+
+  it("looks up another member's profile", async () => {
+    const { engine, store } = createHarness();
+    await store.badges.award({ userId: "kai", badgeId: "leet", earnedAt: 1 });
+    const profile = await engine.getMemberProfile("kai");
+    vi.mocked(service.client.getMemberProfile).mockResolvedValue(memberProfileToProto(profile));
+    await expect(new RootGateway().getMemberProfile("kai")).resolves.toEqual(profile);
+    expect(service.client.getMemberProfile).toHaveBeenCalledWith({ userId: "kai" });
   });
 
   it("turns leaderboard failures into GatewayErrors", async () => {

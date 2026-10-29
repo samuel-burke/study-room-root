@@ -3,10 +3,18 @@ import { useEffect, useMemo, useState } from "react";
 import { toGatewayError, type Profile, type StudyRoomGateway } from "../api/gateway";
 import { useProfiles } from "../state/useProfiles";
 import { Avatar } from "./Avatar";
+import { OpenProfileButton } from "./MemberBoard";
 import { Toggle } from "./Toggle";
 
 /** This week's standings by focus minutes, with the member's own opt-out switch. */
-export function WeeklyLeaderboard({ gateway }: { gateway: StudyRoomGateway }) {
+export function WeeklyLeaderboard({
+  gateway,
+  onOpenMember,
+}: {
+  gateway: StudyRoomGateway;
+  /** Opens a member's profile. */
+  onOpenMember?(userId: string): void;
+}) {
   const [board, setBoard] = useState<LeaderboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -84,6 +92,7 @@ export function WeeklyLeaderboard({ gateway }: { gateway: StudyRoomGateway }) {
                   entry={entry}
                   profile={profiles.get(entry.userId)}
                   you={entry.userId === youId}
+                  onOpen={onOpenMember && (() => onOpenMember(entry.userId))}
                 />
               ))}
               {!youListed && board.me.rank > 0 && (
@@ -94,6 +103,7 @@ export function WeeklyLeaderboard({ gateway }: { gateway: StudyRoomGateway }) {
                     focusMinutes: board.me.focusMinutes,
                   }}
                   you
+                  onOpen={onOpenMember && (() => onOpenMember(youId))}
                 />
               )}
             </ol>
@@ -126,15 +136,18 @@ function LeaderboardRow({
   entry,
   profile,
   you,
+  onOpen,
 }: {
   entry: LeaderboardEntryDto;
   profile?: Profile;
   you: boolean;
+  onOpen?(): void;
 }) {
   const name = you ? "You" : (profile?.name ?? "Member");
   const time = formatHours(entry.focusMinutes);
   return (
     <li className="member-row" data-you={you} aria-label={`Rank ${entry.rank}, ${name}, ${time}`}>
+      <OpenProfileButton name={name} onOpen={onOpen} />
       <span className="rank tabular" aria-hidden="true">
         {entry.rank}
       </span>
