@@ -18,7 +18,7 @@ describe("BadgeUnlocked", () => {
     expect(play).toHaveBeenCalledWith("gold");
     expect(screen.getByRole("button", { name: "Nice!" })).toHaveFocus();
     await userEvent.click(screen.getByRole("button", { name: "Nice!" }));
-    expect(onDismiss).toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it("stays quiet when sounds are muted", () => {

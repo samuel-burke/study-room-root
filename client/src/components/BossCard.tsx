@@ -19,9 +19,10 @@ export function hpText(boss: BossDto): string {
   return `${formatXp(left)} of ${formatXp(boss.maxHpXp)}`;
 }
 
-/** "Strength 1.5×" — 1 decimal, like the combo. */
+/** "Strength 1.5×" — 1 decimal like the combo, or 2 when needed so 1.25 doesn't read as 1.3. */
 export function strengthText(boss: BossDto): string {
-  return `Strength ${boss.strength.toFixed(1)}×`;
+  const digits = Number.isInteger(boss.strength * 10) ? 1 : 2;
+  return `Strength ${boss.strength.toFixed(digits)}×`;
 }
 
 export function BossCard({ boss, combo, now }: { boss: BossDto; combo: number; now: number }) {
