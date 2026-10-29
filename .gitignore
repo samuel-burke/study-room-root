@@ -27,3 +27,6 @@ client/blob-report/
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# Root packages
+*.pkg

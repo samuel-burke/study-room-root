@@ -35,7 +35,13 @@ export class RecapScheduler {
       const late = this.now() - job.jobTime.getTime();
       void this.fire(job.missed && late > MISSED_GRACE_MS);
     });
-    await this.reschedule();
+    // The recap is a nice-to-have: if Root's job scheduler is unavailable,
+    // log it and let the app start. The next settings change retries.
+    try {
+      await this.reschedule();
+    } catch (error) {
+      this.logger.error("recap schedule failed", { error: String(error) });
+    }
   }
 
   async reschedule(): Promise<void> {

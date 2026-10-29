@@ -22,6 +22,8 @@ export interface RoomViewState {
   breakMoment: PersonalResultDto | null;
   /** The room-wide burst everyone sees when a round ends. */
   celebration: Celebration | null;
+  /** Badges you just earned, shown one at a time, oldest first. */
+  newBadges: string[];
   error: string | null;
   /** Number of requests in flight. Buttons disable while > 0. */
   pending: number;
@@ -33,6 +35,7 @@ export const initialRoomViewState: RoomViewState = {
   me: null,
   breakMoment: null,
   celebration: null,
+  newBadges: [],
   error: null,
   pending: 0,
 };
@@ -44,6 +47,8 @@ export type RoomAction =
   | { type: "myStatus"; me: MyStatusDto }
   | { type: "phaseCompleted"; event: PhaseCompletedDto; at: number }
   | { type: "personalResult"; event: PersonalResultDto }
+  | { type: "badgesEarned"; badgeIds: string[] }
+  | { type: "dismissBadge" }
   | { type: "requestStarted" }
   | { type: "requestFinished" }
   | { type: "requestFailed"; message: string }
@@ -92,6 +97,16 @@ export function roomReducer(state: RoomViewState, action: RoomAction): RoomViewS
       };
     case "personalResult":
       return { ...state, breakMoment: action.event, me: action.event.me };
+    case "badgesEarned":
+      return {
+        ...state,
+        newBadges: [
+          ...state.newBadges,
+          ...action.badgeIds.filter((id) => !state.newBadges.includes(id)),
+        ],
+      };
+    case "dismissBadge":
+      return { ...state, newBadges: state.newBadges.slice(1) };
     case "requestStarted":
       return { ...state, pending: state.pending + 1, error: null };
     case "requestFinished":

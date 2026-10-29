@@ -1,17 +1,20 @@
-import { formatHours, type ProgressDto } from "@studyroom/core";
+import { formatHours, type ProgressDto, type QuestDto } from "@studyroom/core";
 import { useEffect, useState } from "react";
 import { toGatewayError, type StudyRoomGateway } from "../api/gateway";
-import { heatLevel } from "../lib/view";
+import { heatLevel, percent } from "../lib/view";
+import { BadgeShelf, CardStylePicker } from "./BadgeShelf";
 import { BackIcon, FlameIcon } from "./Icons";
 import { XpBar } from "./SessionPanel";
+import { WeeklyLeaderboard } from "./WeeklyLeaderboard";
 
-/** Level, streak with freeze status, and a five-week heatmap. */
+/** Level, streak with freeze status, a five-week heatmap, weekly quests, the weekly leaderboard, badges and card style. */
 export function ProgressScreen({
   gateway,
   xpEnabled,
   freezesEnabled,
   onBack,
   onDeleteData,
+  onOpenMember,
 }: {
   gateway: StudyRoomGateway;
   xpEnabled: boolean;
@@ -19,9 +22,24 @@ export function ProgressScreen({
   onBack(): void;
   /** Resolves true once the server has erased the member's data. */
   onDeleteData(): Promise<boolean>;
+  /** Opens a member's profile from the leaderboard. */
+  onOpenMember?(userId: string): void;
 }) {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(work: () => Promise<ProgressDto>) {
+    setSaving(true);
+    setError(null);
+    try {
+      setProgress(await work());
+    } catch (e) {
+      setError(toGatewayError(e).message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -103,11 +121,69 @@ export function ProgressScreen({
               <span>{formatHours(progress.totalFocusMinutes)} total</span>
             </div>
           </section>
+
+          {progress.quests.length > 0 && <WeeklyQuests quests={progress.quests} />}
+          <BadgeShelf
+            earned={progress.badges}
+            card={progress.card}
+            busy={saving}
+            onShowcase={(ids) => void save(() => gateway.setBadgeShowcase(ids))}
+          />
+          <CardStylePicker
+            level={progress.me.level}
+            earned={progress.badges}
+            card={progress.card}
+            busy={saving}
+            onPick={(style) => void save(() => gateway.setCardStyle(style))}
+          />
         </>
       )}
 
+      <WeeklyLeaderboard gateway={gateway} onOpenMember={onOpenMember} />
+
       <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>
+  );
+}
+
+const questAmount = (quest: QuestDto, value: number) =>
+  quest.unit === "minutes" ? formatHours(value) : String(value);
+
+function WeeklyQuests({ quests }: { quests: QuestDto[] }) {
+  return (
+    <section className="card" aria-label="Weekly quests">
+      <div className="row-between">
+        <h2 style={{ fontSize: 16 }}>Weekly quests</h2>
+        <span className="tiny dim">Resets Monday</span>
+      </div>
+      <ul className="quests">
+        {quests.map((quest) => (
+          <li key={quest.id} className="quest" data-done={quest.done}>
+            <div className="row-between small">
+              <span>{quest.title}</span>
+              <span className="muted tabular">
+                {questAmount(quest, quest.progress)} / {questAmount(quest, quest.target)}
+                {quest.done ? (
+                  <strong className="quest-reward"> · Done</strong>
+                ) : (
+                  quest.xp > 0 && <strong className="quest-reward"> · +{quest.xp} XP</strong>
+                )}
+              </span>
+            </div>
+            <div
+              className="bar"
+              role="progressbar"
+              aria-label={quest.title}
+              aria-valuemin={0}
+              aria-valuemax={quest.target}
+              aria-valuenow={quest.progress}
+            >
+              <span style={{ width: `${percent(quest.progress, quest.target)}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -137,8 +213,8 @@ function DeleteMyData({ onDelete, onDone }: { onDelete(): Promise<boolean>; onDo
           style={{ display: "flex", flexDirection: "column", gap: 10 }}
         >
           <div className="small">
-            This erases your goals, session history, XP, level and streak for this community. It
-            can&apos;t be undone.
+            This erases your goals, session history, XP, level, streak and badges for this
+            community. It can&apos;t be undone.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button

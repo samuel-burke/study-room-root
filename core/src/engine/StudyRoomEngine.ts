@@ -1,11 +1,15 @@
 import { BUSY_POST_COOLDOWN_MS, GAME, LIMITS, MINUTE_MS } from "../constants";
 import type {
   BossDto,
+  CardLookDto,
   GoalDto,
+  LeaderboardDto,
   MemberCardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   ProgressDto,
+  QuestDto,
   RecapDto,
   RoomStateDto,
   RoomTimerDto,
@@ -14,12 +18,29 @@ import type {
 import { conflictError, notFoundError, validationError } from "../errors";
 import {
   applyDamage,
-  bossHpLeftMinutes,
+  bossHpLeft,
+  bossLootXp,
+  bossNameFor,
+  bossStrength,
   newBoss,
   reconfigureBoss,
   type BossState,
 } from "../game/boss";
+import {
+  newlyEarnedBadges,
+  type BadgeFacts,
+  type QuestFacts,
+  type SessionFacts,
+} from "../game/badges";
 import { comboFor } from "../game/combo";
+import { questProgress, questsForWeek, QUESTS_PER_WEEK, type QuestProgress } from "../game/quests";
+import {
+  cardStyleById,
+  isCardStyleUnlocked,
+  resolveCardStyle,
+  resolveShowcase,
+  SHOWCASE_SIZE,
+} from "../game/cosmetics";
 import { currentStreak, EMPTY_STREAK, freezeAvailable, recordActiveDay } from "../game/streak";
 import { applyDailyCap, baseFocusXp, focusXp, levelFromXp } from "../game/xp";
 import type { AppConfig } from "../settings";
@@ -27,12 +48,19 @@ import {
   addDays,
   dayKey,
   daysBetween,
+  localTime,
   nextWeekStart,
   startOfDay,
   weekdayName,
   weekKey,
 } from "../time/calendar";
-import { buildCycle, cycleEndsAt, overlapMs, phaseAt, type CyclePhase } from "../timer/roomCycle";
+import {
+  buildCycle,
+  keepGoingWindow,
+  overlapMs,
+  phaseAt,
+  type CyclePhase,
+} from "../timer/roomCycle";
 import {
   validateGoalText,
   validateId,
@@ -41,12 +69,15 @@ import {
 } from "../validation";
 import type {
   Announcer,
+  CardRecord,
   Clock,
+  EarnedBadgeRecord,
   GoalRecord,
   Logger,
   MemberRecord,
   Notifier,
   ParticipantRecord,
+  RoomCycleRecord,
   Store,
   WakeScheduler,
 } from "./ports";
@@ -75,6 +106,8 @@ interface BusyPostState {
 
 const BUSY_KEY = "busyPost";
 const LAST_RECAP_KEY = "lastRecapDay";
+/** How long to wait before retrying a wake-up whose tick failed. */
+const TICK_RETRY_MS = 30_000;
 
 /**
  * Side effects collected while a transaction runs, released only after it
@@ -85,6 +118,8 @@ class Effects {
   readonly posts: Array<(announcer: Announcer) => Promise<void>> = [];
   roomChanged = false;
   readonly statusChanged = new Set<string>();
+  /** Badges earned during the operation, per member, pushed once it commits. */
+  readonly badges = new Map<string, string[]>();
 }
 
 /**
@@ -97,6 +132,7 @@ export class StudyRoomEngine {
   private readonly pendingPosts = new Set<Promise<void>>();
   private readonly present = new Set<string>();
   private config: AppConfig;
+  private stopped = false;
 
   constructor(private readonly deps: EngineDeps) {
     this.config = deps.config;
@@ -106,10 +142,12 @@ export class StudyRoomEngine {
 
   /** Settles anything that came due while the server was down, then schedules wake-ups. */
   start(): Promise<void> {
+    this.stopped = false;
     return this.run(async () => undefined);
   }
 
   stop(): void {
+    this.stopped = true;
     this.deps.scheduler.cancel();
   }
 
@@ -128,7 +166,8 @@ export class StudyRoomEngine {
       this.config = config;
       if (config.boss.enabled) {
         const boss = await this.loadBoss(tx, now);
-        const result = reconfigureBoss(boss, config.boss.name, config.boss.hpHours, now);
+        const name = bossNameFor(boss.weekKey, config.boss.name);
+        const result = reconfigureBoss(boss, name, config.boss.baseHpXp, now);
         await tx.bosses.save(result.boss);
         if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects);
       }
@@ -174,20 +213,97 @@ export class StudyRoomEngine {
   }
 
   getProgress(userId: string): Promise<ProgressDto> {
+    return this.run(async (tx, now) => this.buildProgress(tx, userId, now));
+  }
+
+  /**
+   * Another member's public stats, for the profile that opens when they're
+   * tapped. Anyone in the community can look anyone up, so this returns game
+   * stats only (see MemberProfileDto). Unknown members read as brand new.
+   */
+  async getMemberProfile(userIdInput: unknown): Promise<MemberProfileDto> {
+    const userId = validateId(userIdInput, "member");
     return this.run(async (tx, now) => {
+      const member = await tx.members.get(userId);
+      const members = new Map(member ? [[userId, member]] : []);
+      const progress = levelFromXp(member?.xpTotal ?? 0);
       const today = dayKey(now, this.config.timeZone);
-      const from = addDays(today, -(LIMITS.progressWindowDays - 1));
-      const rows = await tx.stats.listForUser(userId, from, today);
-      const byDay = new Map(rows.map((r) => [r.day, r.focusMinutes]));
-      const days = Array.from({ length: LIMITS.progressWindowDays }, (_, i) => {
-        const day = addDays(from, i);
-        return { day, focusMinutes: byDay.get(day) ?? 0 };
-      });
+      const look = (await this.cardLooks(tx, [userId], members)).get(userId)!;
       return {
-        me: await this.buildMyStatus(tx, userId, now),
-        days,
-        totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
+        userId,
+        level: progress.level,
+        xpTotal: member?.xpTotal ?? 0,
+        xpIntoLevel: progress.xpIntoLevel,
+        xpForNextLevel: progress.xpForNextLevel,
+        streak: member ? currentStreak(member.streak, today, this.config.streakFreezesEnabled) : 0,
+        badges: (await tx.badges.list([userId])).map((b) => ({
+          id: b.badgeId,
+          earnedAt: b.earnedAt,
+        })),
+        showcase: look.showcase,
+        cardStyle: look.style,
       };
+    });
+  }
+
+  // ---------------------------------------------------------------- card looks
+
+  /** Picks the card style other members see. "" goes back to automatic. */
+  async setCardStyle(userId: string, styleInput: unknown): Promise<ProgressDto> {
+    if (typeof styleInput !== "string") throw validationError("Pick a card style.");
+    const style = styleInput === "" ? null : cardStyleById(styleInput);
+    if (style === undefined) throw validationError("That card style doesn't exist.");
+    return this.run(async (tx, now, effects) => {
+      if (style) {
+        const member = await this.loadMember(tx, userId);
+        const held = new Set((await tx.badges.list([userId])).map((b) => b.badgeId));
+        if (!isCardStyleUnlocked(style, levelFromXp(member.xpTotal).level, held)) {
+          throw validationError(
+            "level" in style.unlock
+              ? `Reach level ${style.unlock.level} to unlock ${style.name}.`
+              : `Earn the badge that unlocks ${style.name} first.`,
+          );
+        }
+      }
+      const card = await this.loadCard(tx, userId);
+      await tx.cards.save({ ...card, style: style?.id ?? null });
+      this.touch(effects, userId);
+      return this.buildProgress(tx, userId, now);
+    });
+  }
+
+  /** Picks up to three earned badges to show on the card. An empty list means "most recent". */
+  async setBadgeShowcase(userId: string, badgeIdsInput: unknown): Promise<ProgressDto> {
+    if (!Array.isArray(badgeIdsInput) || badgeIdsInput.some((id) => typeof id !== "string")) {
+      throw validationError("Pick badges to show.");
+    }
+    const badgeIds = [...new Set(badgeIdsInput as string[])];
+    if (badgeIds.length > SHOWCASE_SIZE) {
+      throw validationError(`Pick up to ${SHOWCASE_SIZE} badges.`);
+    }
+    return this.run(async (tx, now, effects) => {
+      const held = new Set((await tx.badges.list([userId])).map((b) => b.badgeId));
+      if (badgeIds.some((id) => !held.has(id))) {
+        throw validationError("You can only show badges you've earned.");
+      }
+      const card = await this.loadCard(tx, userId);
+      await tx.cards.save({ ...card, showcase: badgeIds.length > 0 ? badgeIds : null });
+      this.touch(effects, userId);
+      return this.buildProgress(tx, userId, now);
+    });
+  }
+
+  /** This week's focus-minute standings, plus where the caller stands. */
+  getLeaderboard(userId: string): Promise<LeaderboardDto> {
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now));
+  }
+
+  /** Opting out hides the member from the leaderboard and from rankings in recaps. */
+  async setLeaderboardHidden(userId: string, hidden: unknown): Promise<LeaderboardDto> {
+    if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
+    return this.run(async (tx, now) => {
+      await tx.leaderboard.setHidden(userId, hidden);
+      return this.buildLeaderboard(tx, userId, now);
     });
   }
 
@@ -212,7 +328,7 @@ export class StudyRoomEngine {
             settledCount: 0,
           });
         }
-        await tx.room.addParticipant({ userId, joinedAt: now });
+        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false });
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -238,9 +354,10 @@ export class StudyRoomEngine {
             minutes,
             combo,
             finished: false,
+            plannedMinutes: cycle.preset.focusMinutes,
             now,
           });
-          await this.damageBoss(tx, effects, minutes * combo, [userId], now);
+          await this.damageBoss(tx, effects, focusXp(minutes, combo), [userId], now);
         }
         await tx.room.removeParticipant(userId);
         if (participants.length === 1) await tx.room.saveCycle(null);
@@ -298,14 +415,32 @@ export class StudyRoomEngine {
           minutes,
           combo: 1,
           finished: false,
+          plannedMinutes: solo.minutes,
           now,
         });
-        await this.damageBoss(tx, effects, minutes, [userId], now);
+        await this.damageBoss(tx, effects, focusXp(minutes, 1), [userId], now);
       }
       if (solo) await tx.solos.delete(userId);
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
       return this.snapshot(tx, userId, now);
+    });
+  }
+
+  /**
+   * Answers "Keep going?" during the cycle's final long break, so the member
+   * rolls into the next cycle instead of being released. A tap at any other
+   * time changes nothing.
+   */
+  keepGoing(userId: string): Promise<MyStatusDto> {
+    return this.run(async (tx, now, effects) => {
+      const participant = (await tx.room.listParticipants()).find((p) => p.userId === userId);
+      const cycle = await tx.room.getCycle();
+      if (participant && cycle && this.keepGoingEndsAt(participant, cycle, now) > 0) {
+        await tx.room.addParticipant({ ...participant, keepGoing: true });
+        effects.statusChanged.add(userId);
+      }
+      return this.buildMyStatus(tx, userId, now);
     });
   }
 
@@ -340,6 +475,12 @@ export class StudyRoomEngine {
           const member = await this.loadMember(tx, userId);
           await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
           await tx.stats.add(userId, day, { xp, goalsDone: 1 });
+          const quests = await this.rewardQuests(tx, userId, now);
+          await this.awardBadges(tx, effects, userId, now, {
+            goal: { secondsOpen: Math.floor((now - goal.createdAt) / 1000) },
+            quests,
+            ...(await this.activityFacts(tx, userId, day)),
+          });
         }
         await tx.goals.update(updated);
       }
@@ -430,6 +571,9 @@ export class StudyRoomEngine {
           const me = await this.buildMyStatus(tx, userId, now);
           effects.notifications.push((n) => n.myStatusUpdated(userId, me));
         }
+        for (const [userId, badgeIds] of effects.badges) {
+          effects.notifications.push((n) => n.badgesEarned(userId, badgeIds));
+        }
         return { result, nextWake: await this.nextWakeAt(tx, now) };
       });
       this.release(effects);
@@ -461,10 +605,18 @@ export class StudyRoomEngine {
       this.deps.scheduler.cancel();
       return;
     }
-    this.deps.scheduler.wakeAt(at, () => {
-      this.tick().catch((error: unknown) =>
-        this.deps.logger.error("tick failed", { error: String(error) }),
-      );
+    this.deps.scheduler.wakeAt(at, () => this.wake());
+  }
+
+  /**
+   * A failed tick (say, the database was briefly locked) schedules nothing,
+   * so without a retry the room timer would stall until someone acts.
+   */
+  private wake(): void {
+    this.tick().catch((error: unknown) => {
+      this.deps.logger.error("tick failed", { error: String(error) });
+      if (this.stopped) return;
+      this.deps.scheduler.wakeAt(this.deps.clock.now() + TICK_RETRY_MS, () => this.wake());
     });
   }
 
@@ -497,6 +649,10 @@ export class StudyRoomEngine {
       if (phase.kind === "focus") {
         await this.settleFocusPhase(tx, phases, phase, cycle.preset.focusMinutes, effects);
       }
+      if (phase.endsAt === keepGoingWindow(phases).opensAt) {
+        // The long break starts: push "Keep going?" to everyone who focused this cycle.
+        for (const p of await tx.room.listParticipants()) effects.statusChanged.add(p.userId);
+      }
       settled++;
       effects.roomChanged = true;
     }
@@ -509,15 +665,15 @@ export class StudyRoomEngine {
   }
 
   /**
-   * At the end of a cycle everyone is released, so nobody can leave a timer
-   * running for hours. People who joined during the final long break haven't
-   * focused yet, so they roll straight into a fresh cycle.
+   * At the end of a cycle, only people who tapped "Keep going?" roll into a
+   * fresh cycle, so nobody can leave a timer running for hours. Everyone else
+   * is released and keeps everything they earned. People who joined during
+   * the final long break haven't focused yet, so they roll over too.
    */
   private async finishCycle(tx: Store, phases: CyclePhase[], effects: Effects): Promise<boolean> {
-    const end = cycleEndsAt(phases);
-    const lastFocusEnd = phases.filter((p) => p.kind === "focus").at(-1)?.endsAt ?? end;
+    const { opensAt: lastFocusEnd, closesAt: end } = keepGoingWindow(phases);
     const participants = await tx.room.listParticipants();
-    const carried = participants.filter((p) => p.joinedAt >= lastFocusEnd);
+    const carried = participants.filter((p) => p.keepGoing || p.joinedAt >= lastFocusEnd);
     for (const p of participants) {
       if (!carried.includes(p)) {
         await tx.room.removeParticipant(p.userId);
@@ -529,7 +685,10 @@ export class StudyRoomEngine {
         ? { cycleStartedAt: end, preset: this.config.preset, settledCount: 0 }
         : null,
     );
-    for (const p of carried) await tx.room.addParticipant({ ...p, joinedAt: end });
+    for (const p of carried) {
+      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false });
+      effects.statusChanged.add(p.userId);
+    }
     effects.roomChanged = true;
     // Returns true when a new cycle started, which may itself be overdue after downtime.
     return carried.length > 0;
@@ -554,7 +713,14 @@ export class StudyRoomEngine {
       .filter((s) => s.minutes >= finishThreshold)
       .map((s) => s.participant.userId);
     const combo = comboFor(finisherIds.length, this.config.comboEnabled);
-    const roomDamageMinutes = minuteShares.reduce((sum, s) => sum + s.minutes * combo, 0);
+    // Damage is the XP the round earns before the daily cap, so capped members still hit the boss.
+    const roomDamageXp = minuteShares.reduce((sum, s) => sum + focusXp(s.minutes, combo), 0);
+    // Stayed for the whole cycle: this is its last round and they finished round 1 too.
+    const focusPhases = phases.filter((p) => p.kind === "focus");
+    const lastRound = focusPhases.at(-1)?.index === phase.index;
+    const firstRoundEnd = focusPhases[0]?.endsAt ?? phase.endsAt;
+    const fullCycle = (joinedAt: number) =>
+      lastRound && joinedAt <= firstRoundEnd - finishThreshold * MINUTE_MS;
 
     const credits = [];
     for (const share of minuteShares) {
@@ -568,6 +734,8 @@ export class StudyRoomEngine {
           minutes: share.minutes,
           combo,
           finished: finisherIds.includes(share.participant.userId),
+          plannedMinutes: focusMinutes,
+          fullCycle: fullCycle(share.participant.joinedAt),
           now: phase.endsAt,
         }),
       });
@@ -575,7 +743,7 @@ export class StudyRoomEngine {
     await this.damageBoss(
       tx,
       effects,
-      roomDamageMinutes,
+      roomDamageXp,
       minuteShares.map((s) => s.participant.userId),
       phase.endsAt,
     );
@@ -587,7 +755,7 @@ export class StudyRoomEngine {
         kind: phase.kind,
         round: phase.round,
         finisherIds,
-        roomDamageMinutes,
+        roomDamageXp,
         combo,
         room,
       }),
@@ -606,7 +774,7 @@ export class StudyRoomEngine {
         streak: credit.streak,
         streakExtended: credit.streakExtended,
         finisherIds,
-        roomDamageMinutes,
+        roomDamageXp,
         goalPrompt: await this.goalPrompt(tx, userId),
         breakEndsAt,
         me: await this.buildMyStatus(tx, userId, phase.endsAt),
@@ -626,9 +794,11 @@ export class StudyRoomEngine {
           minutes: solo.minutes,
           combo: 1,
           finished: true,
+          plannedMinutes: solo.minutes,
           now: solo.endsAt,
         });
-        await this.damageBoss(tx, effects, solo.minutes, [solo.userId], solo.endsAt);
+        const damageXp = focusXp(solo.minutes, 1);
+        await this.damageBoss(tx, effects, damageXp, [solo.userId], solo.endsAt);
         const stillOnBreak = solo.breakEndsAt > now;
         if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break" });
         else await tx.solos.delete(solo.userId);
@@ -644,7 +814,7 @@ export class StudyRoomEngine {
           streak: credit.streak,
           streakExtended: credit.streakExtended,
           finisherIds: [solo.userId],
-          roomDamageMinutes: solo.minutes,
+          roomDamageXp: damageXp,
           goalPrompt: await this.goalPrompt(tx, solo.userId),
           breakEndsAt: solo.breakEndsAt,
           me: await this.buildMyStatus(tx, solo.userId, now),
@@ -688,6 +858,9 @@ export class StudyRoomEngine {
       minutes: number;
       combo: number;
       finished: boolean;
+      /** What the timer was set to, for badges. */
+      plannedMinutes: number;
+      fullCycle?: boolean;
       now: number;
     },
   ) {
@@ -700,11 +873,18 @@ export class StudyRoomEngine {
 
     let streak = member.streak;
     let streakExtended = false;
+    let freezesSpent = 0;
     if (finished) {
       const update = recordActiveDay(member.streak, day, this.config.streakFreezesEnabled);
       streak = update.state;
       streakExtended = update.extended;
+      freezesSpent = update.freezesSpent;
     }
+    // A streak that restarted at 1 after an earlier one: that earlier one was broken.
+    const comebackFrom =
+      streakExtended && streak.streak === 1 && member.streak.lastActiveDay !== null
+        ? member.streak.streak
+        : 0;
     await tx.members.save({ ...member, xpTotal: member.xpTotal + xpEarned, streak });
     await tx.stats.add(userId, day, {
       focusMinutes: minutes,
@@ -720,6 +900,26 @@ export class StudyRoomEngine {
       finished,
       xp: xpEarned,
       combo,
+    });
+    const quests = await this.rewardQuests(tx, userId, now);
+
+    const tz = this.config.timeZone;
+    const session: SessionFacts = {
+      kind: input.kind,
+      finished,
+      minutes: Math.floor(minutes),
+      plannedMinutes: input.plannedMinutes,
+      combo,
+      start: localTime(input.startedAt, tz),
+      end: localTime(input.endedAt, tz),
+      fullCycle: finished && input.fullCycle === true,
+    };
+    await this.awardBadges(tx, effects, userId, now, {
+      session,
+      streak: { length: streak.streak, comebackFrom, freezeSaved: freezesSpent > 0 },
+      leaderboard: { rank: await this.weeklyRank(tx, userId, day) },
+      quests,
+      ...(await this.activityFacts(tx, userId, day)),
     });
 
     const channelId = this.config.postChannelId;
@@ -745,25 +945,46 @@ export class StudyRoomEngine {
   private async damageBoss(
     tx: Store,
     effects: Effects,
-    minutes: number,
+    xp: number,
     contributorIds: readonly string[],
     now: number,
   ): Promise<void> {
-    if (!this.config.boss.enabled || minutes <= 0) return;
+    if (!this.config.boss.enabled || xp <= 0) return;
     const boss = await this.loadBoss(tx, now);
-    const result = applyDamage(boss, minutes, contributorIds, now);
+    const result = applyDamage(boss, xp, contributorIds, now);
     await tx.bosses.save(result.boss);
-    if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects);
+    if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects, contributorIds);
   }
 
-  /** Loot: every contributor gets bonus XP, outside the daily cap because it happens once a week. */
-  private async onBossDefeated(tx: Store, boss: BossState, effects: Effects): Promise<void> {
-    const lootXp = this.config.xp.enabled ? GAME.bossLootXp : 0;
+  /**
+   * Loot: every contributor gets bonus XP scaled by the boss's strength,
+   * outside the daily cap because it happens once a week.
+   */
+  private async onBossDefeated(
+    tx: Store,
+    boss: BossState,
+    effects: Effects,
+    finalBlowIds: readonly string[] = [],
+  ): Promise<void> {
+    const lootXp = this.config.xp.enabled ? bossLootXp(boss.name) : 0;
     if (lootXp > 0) {
       for (const member of await tx.members.list(boss.contributorIds)) {
         await tx.members.save({ ...member, xpTotal: member.xpTotal + lootXp });
         effects.statusChanged.add(member.userId);
       }
+    }
+    const defeatedAt = boss.defeatedAt ?? this.deps.clock.now();
+    for (const userId of boss.contributorIds) {
+      await this.awardBadges(tx, effects, userId, defeatedAt, {
+        boss: {
+          name: boss.name,
+          strength: bossStrength(boss.name),
+          defeats: await tx.bosses.countDefeatedWith(userId),
+          contributors: boss.contributorIds.length,
+          finalBlow: finalBlowIds.includes(userId),
+          at: localTime(defeatedAt, this.config.timeZone),
+        },
+      });
     }
     effects.roomChanged = true;
     const channelId = this.config.postChannelId;
@@ -772,6 +993,124 @@ export class StudyRoomEngine {
         a.bossDefeated(channelId, boss.name, boss.contributorIds.length, lootXp),
       );
     }
+  }
+
+  /**
+   * Pays the reward for every quest the member has just finished this week.
+   * Like boss loot it is outside the daily cap: it comes at most three times
+   * a week, and a capped reward would often be zero. Returns the quest facts
+   * badges look at.
+   */
+  private async rewardQuests(tx: Store, userId: string, now: number): Promise<QuestFacts> {
+    const week = weekKey(dayKey(now, this.config.timeZone));
+    const rewarded = new Set(await tx.quests.listRewarded(userId, week));
+    let xp = 0;
+    for (const { quest, done } of await this.weeklyQuests(tx, userId, now)) {
+      if (!done || rewarded.has(quest.id)) continue;
+      const questXp = this.config.xp.enabled ? quest.xp : 0;
+      await tx.quests.markRewarded({
+        userId,
+        weekKey: week,
+        questId: quest.id,
+        xp: questXp,
+        rewardedAt: now,
+      });
+      rewarded.add(quest.id);
+      xp += questXp;
+    }
+    if (xp > 0) {
+      const member = await this.loadMember(tx, userId);
+      await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+    }
+    return {
+      doneThisWeek: rewarded.size,
+      perWeek: QUESTS_PER_WEEK,
+      totalDone: await tx.quests.countRewarded(userId),
+    };
+  }
+
+  /** This week's quests and the member's progress, from daily_stats and session_log. */
+  private async weeklyQuests(tx: Store, userId: string, now: number): Promise<QuestProgress[]> {
+    const tz = this.config.timeZone;
+    const week = weekKey(dayKey(now, tz));
+    const days = await tx.stats.listForUser(userId, week, addDays(week, 6));
+    const sessions = await tx.sessions.listForUser(
+      userId,
+      startOfDay(week, tz),
+      startOfDay(addDays(week, 7), tz),
+    );
+    return questsForWeek(week).map((quest) => questProgress(quest, { days, sessions }));
+  }
+
+  private questDto({ quest, progress, done }: QuestProgress): QuestDto {
+    return {
+      id: quest.id,
+      title: quest.title,
+      progress,
+      target: quest.target,
+      unit: quest.unit,
+      xp: this.config.xp.enabled ? quest.xp : 0,
+      done,
+    };
+  }
+
+  // ---------------------------------------------------------------- badges
+
+  /**
+   * Awards every badge these facts newly earn. XP and level are read here,
+   * after the operation's own XP has been saved, so level badges always see
+   * the latest total. Focus blocks also pass the weekly leaderboard rank.
+   */
+  private async awardBadges(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    now: number,
+    facts: Omit<BadgeFacts, "xpTotal" | "level">,
+  ): Promise<void> {
+    const member = await this.loadMember(tx, userId);
+    const held = new Set((await tx.badges.list([userId])).map((b) => b.badgeId));
+    const earned = newlyEarnedBadges(
+      { ...facts, xpTotal: member.xpTotal, level: levelFromXp(member.xpTotal).level },
+      held,
+    );
+    if (earned.length === 0) return;
+    for (const badgeId of earned) await tx.badges.award({ userId, badgeId, earnedAt: now });
+    effects.badges.set(userId, [...(effects.badges.get(userId) ?? []), ...earned]);
+    // The card may show the new badge.
+    this.touch(effects, userId);
+  }
+
+  /**
+   * The member's place on this week's leaderboard, for badges. 0 when they're
+   * hidden, unranked, or too few members are ranked for a place to mean much.
+   */
+  private async weeklyRank(tx: Store, userId: string, day: string): Promise<number> {
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekKey(day), day));
+    if (ranked.length < LIMITS.leaderboardBadgeMinRanked) return 0;
+    return ranked.find((e) => e.userId === userId)?.rank ?? 0;
+  }
+
+  /** Today's and all-time totals, for badges. */
+  private async activityFacts(
+    tx: Store,
+    userId: string,
+    day: string,
+  ): Promise<Pick<BadgeFacts, "today" | "lifetime">> {
+    const today = await tx.stats.get(userId, day);
+    const lifetime = await tx.stats.lifetime(userId);
+    return {
+      today: {
+        day,
+        focusMinutes: today?.focusMinutes ?? 0,
+        sessionsFinished: today?.sessionsFinished ?? 0,
+        goalsDone: today?.goalsDone ?? 0,
+      },
+      lifetime: {
+        ...lifetime,
+        roomRoundsFinished: await tx.sessions.countFinished(userId, "room"),
+      },
+    };
   }
 
   private async checkBusyRoom(tx: Store, now: number, effects: Effects): Promise<void> {
@@ -806,10 +1145,15 @@ export class StudyRoomEngine {
     );
   }
 
+  private async loadCard(tx: Store, userId: string): Promise<CardRecord> {
+    return (await tx.cards.list([userId]))[0] ?? { userId, style: null, showcase: null };
+  }
+
   private async loadBoss(tx: Store, now: number): Promise<BossState> {
     const week = weekKey(dayKey(now, this.config.timeZone));
     return (
-      (await tx.bosses.get(week)) ?? newBoss(week, this.config.boss.name, this.config.boss.hpHours)
+      (await tx.bosses.get(week)) ??
+      newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.baseHpXp)
     );
   }
 
@@ -895,6 +1239,7 @@ export class StudyRoomEngine {
     const members = new Map((await tx.members.list(ids)).map((m) => [m.userId, m]));
     const goals = await tx.goals.firstOpen(ids);
     const today = dayKey(now, this.config.timeZone);
+    const looks = await this.cardLooks(tx, ids, members);
 
     const card = (
       userId: string,
@@ -911,6 +1256,8 @@ export class StudyRoomEngine {
         goalPrivate: isPrivate,
         level: levelFromXp(member?.xpTotal ?? 0).level,
         streak: member ? currentStreak(member.streak, today, this.config.streakFreezesEnabled) : 0,
+        badges: looks.get(userId)?.showcase ?? [],
+        cardStyle: looks.get(userId)?.style ?? "classic",
       };
     };
 
@@ -952,8 +1299,10 @@ export class StudyRoomEngine {
       return {
         enabled: false,
         name: "",
-        maxHpMinutes: 0,
-        damageMinutes: 0,
+        maxHpXp: 0,
+        damageXp: 0,
+        strength: 1,
+        lootXp: 0,
         endsAt,
         defeated: false,
       };
@@ -962,10 +1311,62 @@ export class StudyRoomEngine {
     return {
       enabled: true,
       name: boss.name,
-      maxHpMinutes: boss.maxHpMinutes,
-      damageMinutes: boss.damageMinutes,
+      maxHpXp: boss.maxHpXp,
+      damageXp: boss.damageXp,
+      strength: bossStrength(boss.name),
+      lootXp: this.config.xp.enabled ? bossLootXp(boss.name) : 0,
       endsAt,
       defeated: boss.defeatedAt !== null,
+    };
+  }
+
+  /** What each member's card shows: their style and showcase badges. */
+  private async cardLooks(
+    tx: Store,
+    userIds: readonly string[],
+    members: ReadonlyMap<string, MemberRecord>,
+  ): Promise<Map<string, CardLookDto>> {
+    const earned = new Map<string, EarnedBadgeRecord[]>();
+    for (const badge of await tx.badges.list(userIds)) {
+      earned.set(badge.userId, [...(earned.get(badge.userId) ?? []), badge]);
+    }
+    const cards = new Map((await tx.cards.list(userIds)).map((c) => [c.userId, c]));
+    const looks = new Map<string, CardLookDto>();
+    for (const userId of userIds) {
+      const mine = earned.get(userId) ?? [];
+      const card = cards.get(userId);
+      const level = levelFromXp(members.get(userId)?.xpTotal ?? 0).level;
+      looks.set(userId, {
+        chosenStyle: card?.style ?? "",
+        chosenShowcase: card?.showcase ?? [],
+        style: resolveCardStyle(card?.style ?? null, level, new Set(mine.map((b) => b.badgeId))),
+        showcase: resolveShowcase(card?.showcase ?? null, mine),
+      });
+    }
+    return looks;
+  }
+
+  private async buildProgress(tx: Store, userId: string, now: number): Promise<ProgressDto> {
+    const today = dayKey(now, this.config.timeZone);
+    const from = addDays(today, -(LIMITS.progressWindowDays - 1));
+    const rows = await tx.stats.listForUser(userId, from, today);
+    const byDay = new Map(rows.map((r) => [r.day, r.focusMinutes]));
+    const days = Array.from({ length: LIMITS.progressWindowDays }, (_, i) => {
+      const day = addDays(from, i);
+      return { day, focusMinutes: byDay.get(day) ?? 0 };
+    });
+    const member = await tx.members.get(userId);
+    const members = new Map(member ? [[userId, member]] : []);
+    return {
+      me: await this.buildMyStatus(tx, userId, now),
+      days,
+      totalFocusMinutes: days.reduce((sum, d) => sum + d.focusMinutes, 0),
+      quests: (await this.weeklyQuests(tx, userId, now)).map((q) => this.questDto(q)),
+      badges: (await tx.badges.list([userId])).map((b) => ({
+        id: b.badgeId,
+        earnedAt: b.earnedAt,
+      })),
+      card: (await this.cardLooks(tx, [userId], members)).get(userId)!,
     };
   }
 
@@ -976,12 +1377,15 @@ export class StudyRoomEngine {
     const streakState = member?.streak ?? EMPTY_STREAK;
     const progress = levelFromXp(member?.xpTotal ?? 0);
     const solo = await tx.solos.get(userId);
-    const onRoomTimer = (await tx.room.listParticipants()).some((p) => p.userId === userId);
+    const participant = (await tx.room.listParticipants()).find((p) => p.userId === userId);
+    const onRoomTimer = participant !== undefined;
 
     let status: MyStatusDto["status"] = "idle";
     let endsAt = 0;
-    if (onRoomTimer) {
+    let keepGoingEndsAt = 0;
+    if (participant) {
       const cycle = await tx.room.getCycle();
+      if (cycle) keepGoingEndsAt = this.keepGoingEndsAt(participant, cycle, now);
       const phase = cycle
         ? phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now)
         : undefined;
@@ -1007,15 +1411,49 @@ export class StudyRoomEngine {
       freezeAvailable: freezeAvailable(streakState, today, this.config.streakFreezesEnabled),
       goals: goals.map((g) => ({ id: g.id, text: g.text, done: g.done })),
       goalsPrivate: this.goalsArePrivate(member),
+      keepGoingEndsAt,
     };
+  }
+
+  private async buildLeaderboard(tx: Store, userId: string, now: number): Promise<LeaderboardDto> {
+    const tz = this.config.timeZone;
+    const today = dayKey(now, tz);
+    const weekStart = weekKey(today);
+    const ranked = rankByMinutes(await tx.leaderboard.standings(weekStart, today));
+    const hidden = await tx.leaderboard.isHidden(userId);
+    const mine = ranked.find((e) => e.userId === userId);
+    const myRows = await tx.stats.listForUser(userId, weekStart, today);
+    return {
+      weekStart,
+      endsAt: nextWeekStart(now, tz),
+      entries: ranked.slice(0, LIMITS.leaderboardSize),
+      me: {
+        rank: mine?.rank ?? 0,
+        focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
+        hidden,
+      },
+    };
+  }
+
+  /** When the member's "Keep going?" prompt closes, or 0 when it isn't showing for them. */
+  private keepGoingEndsAt(
+    participant: ParticipantRecord,
+    cycle: RoomCycleRecord,
+    now: number,
+  ): number {
+    const { opensAt, closesAt } = keepGoingWindow(buildCycle(cycle.cycleStartedAt, cycle.preset));
+    const asked = !participant.keepGoing && participant.joinedAt < opensAt;
+    return asked && now >= opensAt && now < closesAt ? closesAt : 0;
   }
 
   private async recapFor(tx: Store, at: number, now: number): Promise<RecapDto> {
     const tz = this.config.timeZone;
     const day = dayKey(at, tz);
     const stats = await tx.stats.communityDay(day);
+    const hidden = new Set(await tx.leaderboard.listHidden());
     const candidates = await tx.members.listActiveSince(addDays(day, -14));
     const topStreaks = candidates
+      .filter((m) => !hidden.has(m.userId))
       .map((m) => ({
         userId: m.userId,
         streak: currentStreak(m.streak, day, this.config.streakFreezesEnabled),
@@ -1023,13 +1461,18 @@ export class StudyRoomEngine {
       .filter((s) => s.streak > 0)
       .sort((a, b) => b.streak - a.streak || a.userId.localeCompare(b.userId))
       .slice(0, LIMITS.topStreaksInRecap);
+    const topFocus = this.config.recapLeaderboardEnabled
+      ? rankByMinutes(await tx.leaderboard.standings(weekKey(day), day))
+          .slice(0, LIMITS.topFocusInRecap)
+          .map(({ userId, focusMinutes }) => ({ userId, focusMinutes }))
+      : [];
     let boss: RecapDto["boss"] = null;
     if (this.config.boss.enabled) {
       const state = await this.loadBoss(tx, at);
       const weekEnd = addDays(state.weekKey, 7);
       boss = {
         name: state.name,
-        hpLeftMinutes: bossHpLeftMinutes(state),
+        hpLeftXp: bossHpLeft(state),
         daysLeft: Math.max(0, daysBetween(dayKey(now, tz), weekEnd)),
         defeated: state.defeatedAt !== null,
       };
@@ -1042,6 +1485,26 @@ export class StudyRoomEngine {
       activeMembers: stats.activeMembers,
       boss,
       topStreaks,
+      topFocus,
     };
   }
+}
+
+/**
+ * Whole minutes, ranked so ties share a place (1, 2, 2, 4). Rounding down
+ * first means two people shown with the same minutes never get different ranks.
+ */
+function rankByMinutes(rows: readonly { userId: string; focusMinutes: number }[]) {
+  const whole = rows
+    .map((r) => ({ userId: r.userId, focusMinutes: Math.floor(r.focusMinutes) }))
+    .filter((r) => r.focusMinutes > 0)
+    .sort(
+      (a, b) =>
+        b.focusMinutes - a.focusMinutes || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
+    );
+  let rank = 0;
+  return whole.map((r, i) => {
+    if (i === 0 || r.focusMinutes !== whole[i - 1]!.focusMinutes) rank = i + 1;
+    return { ...r, rank };
+  });
 }

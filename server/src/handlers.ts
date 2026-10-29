@@ -1,4 +1,10 @@
-import { myStatusToProto, progressToProto, snapshotToProto } from "@studyroom/contract";
+import {
+  leaderboardToProto,
+  memberProfileToProto,
+  myStatusToProto,
+  progressToProto,
+  snapshotToProto,
+} from "@studyroom/contract";
 import {
   DomainError,
   ErrorCode,
@@ -9,12 +15,18 @@ import {
 import type {
   AddGoalRequest,
   DeleteGoalRequest,
+  GetMemberProfileRequest,
   JoinRoomTimerRequest,
+  Leaderboard,
+  MemberProfile,
   MyStatus,
   Progress,
   RoomSnapshot,
   SetGoalDoneRequest,
+  SetBadgeShowcaseRequest,
+  SetCardStyleRequest,
   SetGoalsPrivateRequest,
+  SetLeaderboardHiddenRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
 
@@ -67,6 +79,24 @@ export class StudyRoomHandlers {
   getProgress(userId: string): Promise<Progress> {
     return this.handle("getProgress", userId, "read", async () =>
       progressToProto(await this.engine.getProgress(userId)),
+    );
+  }
+
+  getLeaderboard(userId: string): Promise<Leaderboard> {
+    return this.handle("getLeaderboard", userId, "read", async () =>
+      leaderboardToProto(await this.engine.getLeaderboard(userId)),
+    );
+  }
+
+  getMemberProfile(userId: string, request: GetMemberProfileRequest): Promise<MemberProfile> {
+    return this.handle("getMemberProfile", userId, "read", async () =>
+      memberProfileToProto(await this.engine.getMemberProfile(request.userId)),
+    );
+  }
+
+  setLeaderboardHidden(userId: string, request: SetLeaderboardHiddenRequest): Promise<Leaderboard> {
+    return this.handle("setLeaderboardHidden", userId, "write", async () =>
+      leaderboardToProto(await this.engine.setLeaderboardHidden(userId, request.hidden)),
     );
   }
 
@@ -128,9 +158,27 @@ export class StudyRoomHandlers {
     );
   }
 
+  setCardStyle(userId: string, request: SetCardStyleRequest): Promise<Progress> {
+    return this.handle("setCardStyle", userId, "write", async () =>
+      progressToProto(await this.engine.setCardStyle(userId, request.style)),
+    );
+  }
+
+  setBadgeShowcase(userId: string, request: SetBadgeShowcaseRequest): Promise<Progress> {
+    return this.handle("setBadgeShowcase", userId, "write", async () =>
+      progressToProto(await this.engine.setBadgeShowcase(userId, request.badgeIds)),
+    );
+  }
+
   deleteMyData(userId: string): Promise<MyStatus> {
     return this.handle("deleteMyData", userId, "write", async () =>
       myStatusToProto(await this.engine.deleteMyData(userId)),
+    );
+  }
+
+  keepGoing(userId: string): Promise<MyStatus> {
+    return this.handle("keepGoing", userId, "write", async () =>
+      myStatusToProto(await this.engine.keepGoing(userId)),
     );
   }
 

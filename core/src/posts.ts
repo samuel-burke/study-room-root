@@ -1,5 +1,5 @@
 import { formatCombo } from "./game/combo";
-import { formatHours, pluralize } from "./format";
+import { formatHours, formatXp, pluralize } from "./format";
 import type { RecapDto } from "./dto";
 
 /**
@@ -33,12 +33,18 @@ export function dailyRecapPost(recap: RecapDto, names: ReadonlyMap<string, strin
     lines.push(
       recap.boss.defeated
         ? `${recap.boss.name}: defeated 🎉`
-        : `${recap.boss.name}: down to ${formatHours(recap.boss.hpLeftMinutes)} HP · ${pluralize(recap.boss.daysLeft, "day")} left`,
+        : `${recap.boss.name}: down to ${formatXp(recap.boss.hpLeftXp)} HP · ${pluralize(recap.boss.daysLeft, "day")} left`,
     );
   }
   if (recap.topStreaks.length > 0) {
     const streaks = recap.topStreaks.map((s) => `${names.get(s.userId) ?? "Someone"} ${s.streak}`);
     lines.push(`Top streaks: ${streaks.join(" · ")}`);
+  }
+  if (recap.topFocus.length > 0) {
+    const leaders = recap.topFocus.map(
+      (f, i) => `${i + 1}. ${names.get(f.userId) ?? "Someone"} ${formatHours(f.focusMinutes)}`,
+    );
+    lines.push(`This week: ${leaders.join(" · ")}`);
   }
   return lines.join("\n");
 }

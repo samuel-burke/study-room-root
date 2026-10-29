@@ -1,5 +1,8 @@
 import {
   addDays,
+  BADGES,
+  badgeById,
+  bossNameFor,
   customPreset,
   dayKey,
   DEFAULT_CONFIG,
@@ -28,6 +31,22 @@ export interface DemoOptions {
   /** How far into round 1 the room is when the page opens. */
   elapsedMinutes: number;
   bots: boolean;
+  // Test knobs. Each one is left out unless its URL parameter is given.
+  /** HP the weekly boss has left, in XP. */
+  bossHpLeft?: number;
+  /** Stands in for the admin's "Boss name" setting. */
+  bossName?: string;
+  /** Stands in for the admin's "Boss base HP" setting. */
+  bossBaseHp?: number;
+  /** Stands in for the admin's "Daily XP cap" setting. */
+  dailyCap?: number;
+  /** Your starting streak and XP. */
+  streak?: number;
+  xp?: number;
+  /** Days missed since you were last active. 0 means yesterday was active. */
+  missedDays?: number;
+  /** Badges whose unlock animation plays when the page opens, without earning them. */
+  unlock?: string[];
 }
 
 interface Bot {
@@ -37,46 +56,139 @@ interface Bot {
   /** Lifetime XP and streak, so the board looks like a room that's been open a while. */
   xp: number;
   streak: number;
+  /** Earned badges, oldest first, so cards show a few. */
+  badges: string[];
+  cardStyle?: string;
   private?: boolean;
   solo?: number;
 }
 
 const BOTS: Bot[] = [
-  { userId: "bot-ana", name: "Ana R.", goal: "Orgo ch. 4 notes", xp: 5600, streak: 31 },
-  { userId: "bot-marcus", name: "Marcus", goal: "LeetCode: 3 mediums", xp: 3200, streak: 12 },
+  {
+    userId: "bot-ana",
+    name: "Ana R.",
+    goal: "Orgo ch. 4 notes",
+    xp: 5600,
+    streak: 31,
+    badges: ["first-boss", "streak-30", "night-owl"],
+    cardStyle: "midnight",
+  },
+  {
+    userId: "bot-marcus",
+    name: "Marcus",
+    goal: "LeetCode: 3 mediums",
+    xp: 3200,
+    streak: 12,
+    badges: ["squad-up", "leet", "streak-7"],
+  },
   {
     userId: "bot-priya",
     name: "Priya",
     goal: "Thesis lit review",
     xp: 8200,
     streak: 54,
+    badges: ["focus-100h", "streak-50", "three-am"],
     private: true,
     solo: 45,
   },
-  { userId: "bot-devon", name: "Devon", goal: "Essay intro draft", xp: 900, streak: 3 },
-  { userId: "bot-jordan", name: "Jordan", goal: "Stats HW 5", xp: 1700, streak: 8 },
-  { userId: "bot-lena", name: "Lena", goal: "Anki: 120 cards", xp: 2200, streak: 9, solo: 25 },
-  { userId: "bot-kai", name: "Kai", goal: "Spanish reading", xp: 3900, streak: 17 },
+  {
+    userId: "bot-devon",
+    name: "Devon",
+    goal: "Essay intro draft",
+    xp: 900,
+    streak: 3,
+    badges: ["streak-3"],
+  },
+  {
+    userId: "bot-jordan",
+    name: "Jordan",
+    goal: "Stats HW 5",
+    xp: 1700,
+    streak: 8,
+    badges: ["early-bird", "comeback"],
+  },
+  {
+    userId: "bot-lena",
+    name: "Lena",
+    goal: "Anki: 120 cards",
+    xp: 2200,
+    streak: 9,
+    badges: ["productive-day", "speedrun"],
+    solo: 25,
+  },
+  {
+    userId: "bot-kai",
+    name: "Kai",
+    goal: "Spanish reading",
+    xp: 3900,
+    streak: 17,
+    badges: ["marathon", "full-house", "first-boss"],
+  },
 ];
 
 /** You start at level 7 on a 5-day streak, so finishing a round makes it 6. */
-const YOU = { xp: 2315, streak: 5 };
+const YOU = {
+  xp: 2315,
+  streak: 5,
+  badges: ["first-session", "squad-up", "first-goal", "streak-3", "level-5"],
+};
 /** The weekly boss starts 39% down. */
 const BOSS_DAMAGE_SHARE = 0.39;
 
-/** Reads demo knobs from the URL, e.g. `?focus=0.2&break=0.1&bots=0`. */
+/** One of each medal, in tier order, for `?unlock=all`. */
+function onePerTier(): string[] {
+  const tiers = ["bronze", "silver", "gold", "platinum", "secret"];
+  return tiers.flatMap((tier) => BADGES.find((b) => b.tier === tier)?.id ?? []);
+}
+
+/**
+ * Reads demo knobs from the URL, e.g. `?focus=0.2&break=0.1&bots=0`. Test
+ * knobs (`bossLeft`, `bossName`, `bossHp`, `cap`, `streak`, `xp`, `missed`,
+ * `unlock`) set up states that take days or hours to reach for real. See
+ * docs/TESTING.md.
+ */
 export function demoOptionsFromSearch(search: string): DemoOptions {
   const params = new URLSearchParams(search);
-  const positive = (key: string) => {
-    const value = Number(params.get(key));
-    return Number.isFinite(value) && value > 0 ? value : undefined;
+  const number = (key: string) => {
+    const raw = params.get(key);
+    const value = raw === null || raw.trim() === "" ? Number.NaN : Number(raw);
+    return Number.isFinite(value) ? value : undefined;
   };
-  return {
+  const positive = (key: string) => {
+    const value = number(key);
+    return value !== undefined && value > 0 ? value : undefined;
+  };
+  const whole = (key: string, max: number) => {
+    const value = number(key);
+    return value !== undefined && value >= 0 ? Math.min(max, Math.round(value)) : undefined;
+  };
+  const bossName = params.get("bossName")?.trim().slice(0, 40);
+  const unlock = params.get("unlock");
+  const options: DemoOptions = {
     focusMinutes: positive("focus"),
     breakMinutes: positive("break"),
     elapsedMinutes: positive("elapsed") ?? (params.has("focus") ? 0 : 10.5),
     bots: params.get("bots") !== "0",
   };
+  const bossHpLeft = whole("bossLeft", 1_000_000);
+  if (bossHpLeft !== undefined && bossHpLeft > 0) options.bossHpLeft = bossHpLeft;
+  if (bossName) options.bossName = bossName;
+  const bossBaseHp = whole("bossHp", 1_000_000);
+  if (bossBaseHp !== undefined && bossBaseHp > 0) options.bossBaseHp = bossBaseHp;
+  const dailyCap = whole("cap", 100_000);
+  if (dailyCap !== undefined && dailyCap > 0) options.dailyCap = dailyCap;
+  const streak = whole("streak", 1000);
+  if (streak !== undefined) options.streak = streak;
+  const xp = whole("xp", 10_000_000);
+  if (xp !== undefined) options.xp = xp;
+  const missedDays = whole("missed", 30);
+  if (missedDays !== undefined) options.missedDays = missedDays;
+  if (unlock) {
+    const ids = unlock === "all" ? onePerTier() : unlock.split(",").map((id) => id.trim());
+    const known = ids.filter((id) => badgeById(id) !== undefined);
+    if (known.length > 0) options.unlock = known;
+  }
+  return options;
 }
 
 class BrowserScheduler implements WakeScheduler {
@@ -101,6 +213,12 @@ function demoConfig(options: DemoOptions): AppConfig {
     ...DEFAULT_CONFIG,
     presetKey: custom ? "custom" : DEFAULT_CONFIG.presetKey,
     preset,
+    xp: { ...DEFAULT_CONFIG.xp, dailyCap: options.dailyCap ?? DEFAULT_CONFIG.xp.dailyCap },
+    boss: {
+      ...DEFAULT_CONFIG.boss,
+      name: options.bossName ?? DEFAULT_CONFIG.boss.name,
+      baseHpXp: options.bossBaseHp ?? DEFAULT_CONFIG.boss.baseHpXp,
+    },
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     postChannelId: "demo-channel",
     postChannelName: "study-hall",
@@ -121,6 +239,7 @@ export class DemoGateway implements StudyRoomGateway {
   private readonly config: AppConfig;
   private readonly pendingBots = new Set<string>();
   private skewMs = 0;
+  private unlockPreviewed = false;
   private nextId = 1;
 
   private constructor(private readonly options: DemoOptions) {
@@ -139,6 +258,9 @@ export class DemoGateway implements StudyRoomGateway {
         myStatusUpdated: (userId: string, me: MyStatusDto) => {
           if (userId === DEMO_USER_ID) this.emit((h) => h.myStatus(me));
           else this.keepBotBusy(userId, me);
+        },
+        badgesEarned: (userId: string, badgeIds: string[]) => {
+          if (userId === DEMO_USER_ID) this.emit((h) => h.badgesEarned(badgeIds));
         },
       },
       announcer: {
@@ -178,40 +300,70 @@ export class DemoGateway implements StudyRoomGateway {
 
   private async seedHistory() {
     const tz = this.config.timeZone;
-    const yesterday = addDays(dayKey(Date.now(), tz), -1);
-    const member = (userId: string, xp: number, streak: number) =>
+    const today = dayKey(Date.now(), tz);
+    const yesterday = addDays(today, -1);
+    const member = (userId: string, xp: number, streak: number, lastActiveDay = yesterday) =>
       this.store.members.save({
         userId,
         xpTotal: xp,
-        streak: { streak, lastActiveDay: yesterday, freezeWeeksUsed: [] },
+        streak: { streak, lastActiveDay, freezeWeeksUsed: [] },
         goalsPrivate: null,
       });
-    await member(DEMO_USER_ID, YOU.xp, YOU.streak);
-    // Five weeks of history: the last YOU.streak days active, a gap before that, then a mixed record.
-    const today = dayKey(Date.now(), tz);
+    const yourStreak = this.options.streak ?? YOU.streak;
+    const missed = this.options.missedDays ?? 0;
+    await member(DEMO_USER_ID, this.options.xp ?? YOU.xp, yourStreak, addDays(today, -1 - missed));
+    const earnedAt = Date.now() - 30 * 24 * 60 * MINUTE;
+    const award = async (userId: string, badges: readonly string[]) => {
+      for (const [i, badgeId] of badges.entries())
+        await this.store.badges.award({ userId, badgeId, earnedAt: earnedAt + i * MINUTE });
+    };
+    await award(DEMO_USER_ID, YOU.badges);
+    // Five weeks of history: any missed days, then the streak's active days,
+    // a gap before that, then a mixed record.
     for (let back = 1; back < 35; back++) {
+      const streakDay = back - missed;
       const minutes =
-        back <= YOU.streak
-          ? 30 + ((back * 37) % 90)
-          : back === YOU.streak + 1
-            ? 0
-            : (back * 53) % 4 === 0
+        streakDay < 1
+          ? 0
+          : streakDay <= yourStreak
+            ? 30 + ((back * 37) % 90)
+            : streakDay === yourStreak + 1
               ? 0
-              : (back * 29) % 140;
+              : (back * 53) % 4 === 0
+                ? 0
+                : (back * 29) % 140;
       if (minutes > 0)
         await this.store.stats.add(DEMO_USER_ID, addDays(today, -back), { focusMinutes: minutes });
     }
+    await this.seedBoss();
     if (!this.options.bots) return;
-    for (const bot of BOTS) await member(bot.userId, bot.xp, bot.streak);
-    const boss = newBoss(
-      weekKey(dayKey(Date.now(), tz)),
-      this.config.boss.name,
-      this.config.boss.hpHours,
-    );
-    await this.store.bosses.save({
-      ...boss,
-      damageMinutes: Math.round(boss.maxHpMinutes * BOSS_DAMAGE_SHARE),
-    });
+    // Earlier days this week, so the weekly leaderboard has standings to show.
+    for (const [i, bot] of BOTS.entries()) {
+      for (let day = weekKey(today); day < today; day = addDays(day, 1)) {
+        const focusMinutes = 30 + ((i * 47 + Number(day.slice(-2)) * 29) % 120);
+        await this.store.stats.add(bot.userId, day, { focusMinutes });
+      }
+    }
+    for (const bot of BOTS) {
+      await member(bot.userId, bot.xp, bot.streak);
+      await award(bot.userId, bot.badges);
+      if (bot.cardStyle)
+        await this.store.cards.save({ userId: bot.userId, style: bot.cardStyle, showcase: null });
+    }
+  }
+
+  /** This week's boss, part way down. Without bots it starts fresh unless `?bossLeft=` says otherwise. */
+  private async seedBoss() {
+    const week = weekKey(dayKey(Date.now(), this.config.timeZone));
+    const boss = newBoss(week, bossNameFor(week, this.config.boss.name), this.config.boss.baseHpXp);
+    const left = this.options.bossHpLeft;
+    const damageXp =
+      left !== undefined
+        ? Math.max(0, boss.maxHpXp - left)
+        : this.options.bots
+          ? Math.round(boss.maxHpXp * BOSS_DAMAGE_SHARE)
+          : 0;
+    if (damageXp > 0) await this.store.bosses.save({ ...boss, damageXp });
   }
 
   private async startBot(bot: Bot) {
@@ -220,9 +372,16 @@ export class DemoGateway implements StudyRoomGateway {
     else await this.engine.joinRoomTimer(bot.userId, start);
   }
 
-  /** When a bot's session ends it starts another a few seconds later, so the room never empties. */
+  /**
+   * Bots tap "Keep going?", and when a bot's session ends anyway it starts
+   * another a few seconds later, so the room never empties.
+   */
   private keepBotBusy(userId: string, me: MyStatusDto) {
     const bot = BOTS.find((b) => b.userId === userId);
+    if (bot && me.keepGoingEndsAt > 0) {
+      this.engine.keepGoing(userId).catch(() => undefined);
+      return;
+    }
     if (!bot || me.status !== "idle" || this.pendingBots.has(userId)) return;
     this.pendingBots.add(userId);
     setTimeout(() => {
@@ -236,6 +395,26 @@ export class DemoGateway implements StudyRoomGateway {
         : this.engine.joinRoomTimer(userId, start);
       work.catch(() => undefined);
     }, 3_000);
+  }
+
+  /**
+   * `?unlock=` plays unlock animations once, on the first click or key press:
+   * browsers only allow sound after one. Nothing is awarded, so a reload
+   * plays them again.
+   */
+  private previewUnlocks() {
+    const ids = this.options.unlock;
+    if (!ids || this.unlockPreviewed) return;
+    this.unlockPreviewed = true;
+    const play = () => {
+      window.removeEventListener("pointerdown", play);
+      window.removeEventListener("keydown", play);
+      // Let the app's own click handler unlock audio first.
+      setTimeout(() => this.emit((h) => h.badgesEarned(ids)), 300);
+    };
+    window.addEventListener("pointerdown", play);
+    window.addEventListener("keydown", play);
+    console.info(`[demo] Click anywhere to play ${ids.length} badge unlock(s).`);
   }
 
   private emit(fn: (handlers: GatewayHandlers) => void) {
@@ -309,8 +488,32 @@ export class DemoGateway implements StudyRoomGateway {
     return this.call(() => this.engine.deleteMyData(DEMO_USER_ID));
   }
 
+  keepGoing() {
+    return this.call(() => this.engine.keepGoing(DEMO_USER_ID));
+  }
+
   getProgress() {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
+  }
+
+  getLeaderboard() {
+    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID));
+  }
+
+  setLeaderboardHidden(hidden: boolean) {
+    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden));
+  }
+
+  setCardStyle(style: string) {
+    return this.call(() => this.engine.setCardStyle(DEMO_USER_ID, style));
+  }
+
+  setBadgeShowcase(badgeIds: string[]) {
+    return this.call(() => this.engine.setBadgeShowcase(DEMO_USER_ID, badgeIds));
+  }
+
+  getMemberProfile(userId: string) {
+    return this.call(() => this.engine.getMemberProfile(userId));
   }
 
   async getProfiles(userIds: string[]): Promise<Profile[]> {
@@ -319,6 +522,7 @@ export class DemoGateway implements StudyRoomGateway {
 
   subscribe(handlers: GatewayHandlers) {
     this.listeners.add(handlers);
+    this.previewUnlocks();
     return () => {
       this.listeners.delete(handlers);
     };

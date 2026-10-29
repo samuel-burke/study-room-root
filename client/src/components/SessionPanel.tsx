@@ -11,7 +11,11 @@ interface SessionPanelProps {
   onAddGoal(text: string): Promise<boolean>;
 }
 
-export function XpBar({ me }: { me: MyStatusDto }) {
+export function XpBar({
+  me,
+}: {
+  me: Pick<MyStatusDto, "level" | "xpIntoLevel" | "xpForNextLevel">;
+}) {
   return (
     <div className="xp">
       <div className="row-between small muted tabular">

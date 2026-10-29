@@ -67,15 +67,24 @@ message MemberCard {
   bool goal_private = 5;
   int32 level = 6;
   int32 streak = 7;
+  // At most one badge id for now (the catalog is in @studyroom/core).
+  repeated string badges = 8;
+  // A card style id, such as "gold".
+  string card_style = 9;
 }
 
 message Boss {
   bool enabled = 1;
   string name = 2;
-  double max_hp_minutes = 3;
-  double damage_minutes = 4;
+  // HP and damage are in XP.
+  double max_hp_xp = 3;
+  double damage_xp = 4;
   double ends_at_ms = 5;
   bool defeated = 6;
+  // 0.5 to 2: how much tougher than the admin's base HP this boss is.
+  double strength = 7;
+  // XP each contributor gets when it's defeated.
+  int32 loot_xp = 8;
 }
 
 message RoomFeatures {
@@ -121,6 +130,8 @@ message MyStatus {
   bool freeze_available = 11;
   repeated Goal goals = 12;
   bool goals_private = 13;
+  // When the "Keep going?" prompt closes. 0 when it isn't showing.
+  double keep_going_ends_at_ms = 14;
 }
 
 message RoomSnapshot {
@@ -133,10 +144,79 @@ message DayStat {
   double focus_minutes = 2;
 }
 
+enum QuestUnit {
+  QUEST_UNIT_UNSPECIFIED = 0;
+  QUEST_UNIT_COUNT = 1;
+  QUEST_UNIT_MINUTES = 2;
+}
+
+message Quest {
+  string id = 1;
+  string title = 2;
+  double progress = 3;
+  double target = 4;
+  QuestUnit unit = 5;
+  int32 xp = 6;
+  bool done = 7;
+}
+
+message EarnedBadge {
+  string id = 1;
+  double earned_at_ms = 2;
+}
+
+message CardLook {
+  // Empty means automatic.
+  string chosen_style = 1;
+  repeated string chosen_showcase = 2;
+  string style = 3;
+  repeated string showcase = 4;
+}
+
 message Progress {
   MyStatus me = 1;
   repeated DayStat days = 2;
   double total_focus_minutes = 3;
+  repeated Quest quests = 4;
+  // Field numbers start at 10 so other progress additions can take 4 to 9.
+  repeated EarnedBadge badges = 10;
+  CardLook card = 11;
+}
+
+message LeaderboardEntry {
+  string user_id = 1;
+  // Whole focus minutes this week.
+  double focus_minutes = 2;
+  // 1-based. Equal minutes share a rank.
+  int32 rank = 3;
+}
+
+// This week's focus-minute standings. Members who opted out are never listed.
+message Leaderboard {
+  // Monday of this week in the community time zone, "YYYY-MM-DD".
+  string week_start = 1;
+  double ends_at_ms = 2;
+  repeated LeaderboardEntry entries = 3;
+  // 0 when the caller is hidden or hasn't focused this week.
+  int32 my_rank = 4;
+  double my_focus_minutes = 5;
+  bool hidden = 6;
+}
+
+// What anyone can see about a member by tapping them: game stats only, never
+// goals, focus history or leaderboard minutes.
+message MemberProfile {
+  string user_id = 1;
+  int32 level = 2;
+  int32 xp_total = 3;
+  int32 xp_into_level = 4;
+  int32 xp_for_next_level = 5;
+  int32 streak = 6;
+  // Oldest first.
+  repeated EarnedBadge badges = 7;
+  // The badges on their card.
+  repeated string showcase = 8;
+  string card_style = 9;
 }
 
 // ---------------------------------------------------------------- requests
@@ -178,8 +258,33 @@ message SetGoalsPrivateRequest {
 
 message GetProgressRequest {}
 
+message GetLeaderboardRequest {}
+
+// The member to look up. The caller still comes from the connection.
+message GetMemberProfileRequest {
+  string user_id = 1;
+}
+
+message SetLeaderboardHiddenRequest {
+  bool hidden = 1;
+}
+
+// Empty style means automatic (the best style the caller's level unlocks).
+message SetCardStyleRequest {
+  string style = 1;
+}
+
+// At most one earned badge id for now. Empty means "show my most recent".
+message SetBadgeShowcaseRequest {
+  repeated string badge_ids = 1;
+}
+
 // Erases everything the app stores about the caller. Cannot be undone.
 message DeleteMyDataRequest {}
+
+// Answers "Keep going?" in the cycle's final long break, so the caller rolls
+// into the next cycle. A tap at any other time changes nothing.
+message KeepGoingRequest {}
 
 // ---------------------------------------------------------------- broadcasts
 
@@ -191,7 +296,7 @@ message PhaseCompletedEvent {
   Phase kind = 1;
   int32 round = 2;
   repeated string finisher_user_ids = 3;
-  double room_damage_minutes = 4;
+  double room_damage_xp = 4;
   double combo = 5;
   RoomState room = 6;
 }
@@ -208,7 +313,7 @@ message PersonalResultEvent {
   int32 streak = 9;
   bool streak_extended = 10;
   repeated string finisher_user_ids = 11;
-  double room_damage_minutes = 12;
+  double room_damage_xp = 12;
   // Absent when the member has no open goal.
   optional Goal goal_prompt = 13;
   double break_ends_at_ms = 14;
@@ -217,6 +322,10 @@ message PersonalResultEvent {
 
 message MyStatusEvent {
   MyStatus me = 1;
+}
+
+message BadgesEarnedEvent {
+  repeated string badge_ids = 1;
 }
 
 // ---------------------------------------------------------------- service
@@ -233,10 +342,17 @@ service StudyRoomService {
   rpc SetGoalsPrivate(SetGoalsPrivateRequest) returns (MyStatus);
   rpc GetProgress(GetProgressRequest) returns (Progress);
   rpc DeleteMyData(DeleteMyDataRequest) returns (MyStatus);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (Leaderboard);
+  rpc SetLeaderboardHidden(SetLeaderboardHiddenRequest) returns (Leaderboard);
+  rpc KeepGoing(KeepGoingRequest) returns (MyStatus);
+  rpc SetCardStyle(SetCardStyleRequest) returns (Progress);
+  rpc SetBadgeShowcase(SetBadgeShowcaseRequest) returns (Progress);
+  rpc GetMemberProfile(GetMemberProfileRequest) returns (MemberProfile);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);
   rpc BroadcastPhaseCompleted(PhaseCompletedEvent) returns (rootsdk.Void);
   rpc BroadcastPersonalResult(PersonalResultEvent) returns (rootsdk.Void);
   rpc BroadcastMyStatus(MyStatusEvent) returns (rootsdk.Void);
+  rpc BroadcastBadgesEarned(BadgesEarnedEvent) returns (rootsdk.Void);
 }

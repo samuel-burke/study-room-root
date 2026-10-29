@@ -4,6 +4,44 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-29
+
+Weekly goals and rewards: quests, a leaderboard, badges, named bosses, member profiles and sounds.
+
+### Added
+
+- Tap anyone on the board or the weekly leaderboard to see their profile: level, XP, streak and the badges they've earned. Goals and focus history stay private, and someone else's secret badges don't say how they were found.
+- Sound cues when a focus block or break starts and ends, with a mute button that is remembered on your device
+- Sounds for a round celebration, a boss defeat and a level-up. They wait their turn instead of playing over each other, and the mute button silences them too.
+- The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
+- Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength. This turns on the Giant Slayer and Survived Finals badges.
+- Weekly leaderboard on the progress screen, ranked by focus minutes and reset every Monday in the community time zone. Members can hide themselves, which also keeps them out of recap rankings.
+- The daily recap lists the week's top 3 by focus minutes (admin setting **Leaderboard in recap**, on by default)
+- Weekly quests on the progress screen: three rotating quests each week that reset on Monday and pay a small XP bonus, plus the three quest badges
+- "Keep going?" at the end of each room cycle (#6): during the final long break, tap to roll straight into the next cycle instead of rejoining. If you don't tap, the cycle ends your session as before, and you keep everything you earned.
+- Badges (#9): 60+ permanent badges for streaks, levels, focus time, room rounds and combos, goals and the weekly boss, including the Early Bird, Night Owl, Marathon, Comeback and First Boss badges from the progress mockup
+- Secret badges: Easter eggs for odd hours, special dates, exact numbers and rare situations, shown as "?" until someone finds them
+- Earned badges show on member cards (one per card: your newest, or the one you pick), with a full-screen unlock animation and fanfare that get more epic with each tier
+- Card styles: borders and colours unlocked by level (gold at level 8) or by certain badges, picked on the progress screen or left on automatic
+- Testing aids: a "100 XP (for testing)" Boss base HP option, and demo URL settings that set the boss, streak, XP and daily cap or replay any badge unlock animation. See [docs/TESTING.md](docs/TESTING.md).
+
+### Changed
+
+- **Admins:** the "Boss HP (focus hours)" setting is gone. Check the new "Boss base HP (XP)" setting (default 10,000) after updating.
+- Boss HP and damage are measured in XP instead of focus minutes. Every XP earned focusing (combo included, before the daily cap) is damage. The "Boss HP (focus hours)" setting is replaced by "Boss base HP (XP)", default 10,000. Bosses already in the database convert at 2 XP per minute.
+- Boss loot is 100 XP times the boss's strength (50 to 200 XP), up from a flat 50.
+- Rewrote the privacy policy in a friendlier, plainer tone, and added weekly quests, the weekly leaderboard (with its opt-out), "Keep going?" taps and the on-device sound mute. It also lists the profile details (level, XP, streak, badges) that other members can see.
+
+### Fixed
+
+- Tapping "Nice!" on a badge unlock skipped the next unlock when several arrived together
+- The boss card showed 1.25x strength as "1.3×"
+- The room timer retries a wake-up that failed (for example on a locked database) instead of stalling until someone acts
+- A failed presence update when a member opens or closes the app is logged instead of crashing the server
+- The app still starts when Root's job scheduler is unavailable; only the daily recap is skipped
+- Shutdown always closes the database
+- The client shows a message with a retry instead of a blank screen if it fails to load or hits a rendering bug
+
 ## [0.1.0] - 2026-10-28
 
 First release of **Study Squad: Group Study Timer**, covering the v1 scope.

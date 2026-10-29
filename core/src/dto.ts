@@ -1,6 +1,7 @@
 import type { PhaseKind } from "./timer/roomCycle";
 import type { PresetKey, TimerPreset } from "./timer/presets";
 import type { DayKey } from "./time/calendar";
+import type { QuestUnit } from "./game/quests";
 
 /**
  * Transport-neutral shapes the engine produces. The server maps them to
@@ -32,13 +33,22 @@ export interface MemberCardDto {
   goalPrivate: boolean;
   level: number;
   streak: number;
+  /** Up to three badge ids to show on the card. */
+  badges: string[];
+  /** Card style id (see CARD_STYLES). */
+  cardStyle: string;
 }
 
 export interface BossDto {
   enabled: boolean;
   name: string;
-  maxHpMinutes: number;
-  damageMinutes: number;
+  /** HP and damage are in XP. */
+  maxHpXp: number;
+  damageXp: number;
+  /** 0.5 to 2: how much tougher than the admin's base HP this boss is. */
+  strength: number;
+  /** XP each contributor gets when it's defeated. */
+  lootXp: number;
   endsAt: number;
   defeated: boolean;
 }
@@ -87,6 +97,8 @@ export interface MyStatusDto {
   freezeAvailable: boolean;
   goals: GoalDto[];
   goalsPrivate: boolean;
+  /** When the "Keep going?" prompt closes (server time). 0 when it isn't showing. */
+  keepGoingEndsAt: number;
 }
 
 export interface SnapshotDto {
@@ -99,7 +111,8 @@ export interface PhaseCompletedDto {
   kind: PhaseKind;
   round: number;
   finisherIds: string[];
-  roomDamageMinutes: number;
+  /** Boss damage, in XP. */
+  roomDamageXp: number;
   combo: number;
   room: RoomStateDto;
 }
@@ -118,7 +131,8 @@ export interface PersonalResultDto {
   streak: number;
   streakExtended: boolean;
   finisherIds: string[];
-  roomDamageMinutes: number;
+  /** Boss damage, in XP. */
+  roomDamageXp: number;
   goalPrompt: GoalDto | null;
   breakEndsAt: number;
   me: MyStatusDto;
@@ -129,10 +143,79 @@ export interface DayStatDto {
   focusMinutes: number;
 }
 
+export interface QuestDto {
+  id: string;
+  title: string;
+  /** Capped at the target. Whole minutes when `unit` is "minutes". */
+  progress: number;
+  target: number;
+  unit: QuestUnit;
+  /** Reward for finishing; 0 when XP is off. */
+  xp: number;
+  done: boolean;
+}
+
+export interface EarnedBadgeDto {
+  id: string;
+  earnedAt: number;
+}
+
+export interface CardLookDto {
+  /** The style the member picked, or "" for automatic. */
+  chosenStyle: string;
+  /** The badges the member picked, or empty for "most recent". */
+  chosenShowcase: string[];
+  /** What the card shows right now. */
+  style: string;
+  showcase: string[];
+}
+
 export interface ProgressDto {
   me: MyStatusDto;
   days: DayStatDto[];
   totalFocusMinutes: number;
+  quests: QuestDto[];
+  /** Earned badges, oldest first. The catalog itself lives in core (BADGES). */
+  badges: EarnedBadgeDto[];
+  card: CardLookDto;
+}
+
+/**
+ * What any member can see about another by tapping them: game stats only.
+ * Goals, focus history and leaderboard minutes stay out, so nothing a member
+ * keeps private (or opted out of showing) leaks through a profile.
+ */
+export interface MemberProfileDto {
+  userId: string;
+  level: number;
+  xpTotal: number;
+  xpIntoLevel: number;
+  xpForNextLevel: number;
+  streak: number;
+  /** Earned badges, oldest first. */
+  badges: EarnedBadgeDto[];
+  /** The badges on their card, as the board shows them. */
+  showcase: string[];
+  cardStyle: string;
+}
+
+export interface LeaderboardEntryDto {
+  userId: string;
+  /** Whole focus minutes this week. */
+  focusMinutes: number;
+  /** 1-based. Members with the same minutes share a rank. */
+  rank: number;
+}
+
+/** This week's focus-minute standings. Members who opted out are never listed. */
+export interface LeaderboardDto {
+  /** Monday of this week, in the community time zone. */
+  weekStart: DayKey;
+  /** When the board resets (next Monday 00:00 in the community time zone). */
+  endsAt: number;
+  entries: LeaderboardEntryDto[];
+  /** The caller's own week. rank is 0 when they're hidden or haven't focused yet. */
+  me: { rank: number; focusMinutes: number; hidden: boolean };
 }
 
 export interface RecapDto {
@@ -141,6 +224,8 @@ export interface RecapDto {
   focusMinutes: number;
   goalsDone: number;
   activeMembers: number;
-  boss: { name: string; hpLeftMinutes: number; daysLeft: number; defeated: boolean } | null;
+  boss: { name: string; hpLeftXp: number; daysLeft: number; defeated: boolean } | null;
   topStreaks: { userId: string; streak: number }[];
+  /** Most focus minutes so far this week. Empty when the admin turned it off. */
+  topFocus: { userId: string; focusMinutes: number }[];
 }

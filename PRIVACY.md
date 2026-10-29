@@ -2,76 +2,86 @@
 
 _Effective October 28, 2026_
 
-Study Squad is a group study timer that runs inside [Root](https://www.rootapp.com) communities. It is made by Samuel Burke ("we", "us"). This policy explains what Study Squad stores, why, who can see it, and how to delete it.
+Study Squad is a group study timer for [Root](https://www.rootapp.com) communities, made by Samuel Burke ("we", "us"). This page explains, in plain language, what Study Squad keeps, why, who sees it, and how you can delete it whenever you like.
 
-Your Root account itself (your login, profile and messages) is handled by Root under [Root's own privacy policy](https://www.rootapp.com). This policy covers only what Study Squad adds.
+**The short version:** Study Squad only keeps your study activity (your goals, timers and progress) so the app can work. We never sell it, there are no ads and no tracking, and you can delete all of it yourself in a few taps.
 
-## What Study Squad stores
+Your Root account (your login, profile and messages) is looked after by Root under [Root's own privacy policy](https://www.rootapp.com). This page covers only what Study Squad adds.
 
-When you use Study Squad in a community, it stores:
+## What Study Squad keeps
 
-| What                                                                      | Why                                                                     |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Your Root user ID                                                         | To know which goals, sessions and progress are yours                    |
-| Goals you type in, and whether they're done                               | To show your goal list and your current goal on the board               |
-| Your choice to keep goals private                                         | So the board shows "Focusing" instead of your goal                      |
-| When your focus sessions started and ended, and whether you finished them | To run the room and solo timers and count your streak                   |
-| Focus minutes, XP, goals finished and sessions finished per day           | For your level, progress heatmap, the daily XP cap and community recaps |
-| Your streak and which weekly streak freezes you've used                   | To show and protect your streak                                         |
-| That you contributed to the weekly boss                                   | To give contributors their reward when the boss is defeated             |
+Everything Study Squad keeps is about your studying, and each piece has a job:
 
-Study Squad also **reads, but does not store**:
+| What                                                            | Why                                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Your Root user ID                                               | So the app knows which goals and progress are yours                       |
+| Goals you type in, and whether they're done                     | To show your goal list and your current goal on the board                 |
+| Your privacy choices (private goals, hidden from leaderboard)   | So the app always respects them                                           |
+| When your focus sessions start and end, and if you finish them  | To run the timers and count your streak                                   |
+| Whether you tapped "Keep going?" at the end of a cycle          | So you stay on the room timer for the next cycle                          |
+| Your daily focus minutes, XP, goals and sessions finished       | For your level, progress chart, weekly quests, the leaderboard and recaps |
+| Which weekly quest rewards you've already received              | So each reward is given once                                              |
+| Your streak and the streak freezes you've used this week        | To show and protect your streak                                           |
+| That you helped fight the weekly boss                           | To reward everyone who helped when the boss is defeated                   |
+| Badges you've earned and when, your card style and pinned badge | To show your badges and the look of your card                             |
 
-- your Root nickname and profile picture, to show your card and to name top streaks in channel posts (nicknames are kept in server memory for up to 10 minutes);
-- whether you currently have Study Squad open, to show "people in the room" (kept in memory only).
+A few things Study Squad **uses but doesn't save**:
 
-Each community's Study Squad data is stored in that community's app database, which Root hosts. It is not shared between communities.
+- Your Root nickname and picture, to show your card. Nicknames are held in memory for up to 10 minutes so the app doesn't have to keep asking Root.
+- Whether you have Study Squad open right now, to show who's in the room.
+- Whether sounds are muted. This is saved only on your own device, in your browser.
 
-## Who can see it
+Each community's Study Squad data lives in that community's own app storage, hosted by Root. Communities never see each other's data.
 
-- **Other members of the community** can see your card on the board while you have a timer running: your name, picture, level, streak, timer status and current goal (or "Focusing" if your goals are private).
-- **Only you** can see your goal list, your XP total, your progress history and your break results.
-- **Channel posts**: if an admin picks a channel for updates, Study Squad posts there. These posts can include community totals (hours focused, goals finished, how many members showed up), the nicknames and streak lengths of the top three streaks, streak milestones such as "Ana R. just hit a 30 day streak", and how many people are focusing.
-- **Community admins** choose Study Squad's settings (timer length, the post channel, recap time and so on). They don't get any extra access to your data through Study Squad.
-- **We** don't look through community data. Root may show us error logs, which contain user IDs and counts but never your goal text.
+## Who sees what
 
-## What we don't do
+- **Just you:** your goal list, your progress history, your weekly quests and your break results.
+- **Other members of the community:**
+  - your card on the board while your timer is running (your name, picture, level, streak, card style, one badge, timer and current goal, or just "Focusing" if you keep goals private);
+  - your profile, which opens when someone taps you on the board or the leaderboard (your name, picture, level, XP, streak, card style and the badges you've earned). It never shows your goals or focus history;
+  - the weekly leaderboard, which shows the names, pictures and focus minutes of the week's top 10. You can hide yourself from it any time under **Your progress**.
+- **Channel posts:** if an admin turns on updates, Study Squad posts friendly highlights to a channel. These can include community totals (hours focused, goals finished, how many people showed up), the names and streak lengths of the top three streaks, the names and focus time of the week's top three (never anyone who hid from the leaderboard), streak milestones like "Ana R. just hit a 30 day streak", and how many people are focusing.
+- **Community admins** choose Study Squad's settings, like timer length and which channel gets updates. They don't get any extra view of your data.
+- **Us:** we don't browse community data. Root may share app logs with us so we can fix bugs. These record things like your user ID and what went wrong, and they're only used to keep the app working.
 
-- No ads, no analytics or tracking, and no selling or sharing of your data.
-- No third-party services. Study Squad's fonts are bundled with the app, so it doesn't contact Google or anyone else.
+## What we never do
+
+- We never sell or share your data.
+- No ads, no analytics and no tracking.
+- No outside services. Study Squad's fonts and sounds are built into the app, so it doesn't contact Google or anyone else.
 
 ## How long we keep it
 
-Study Squad keeps your data **for as long as the app is installed in the community**, so your streak, level and history are still there when you come back. It is deleted sooner if you ask (below).
+Your progress stays until you choose to delete it. Nothing expires on its own, so your streak, level and history are right where you left them whenever you come back.
 
 ## Deleting your data
 
-You can delete your data at any time, yourself, from inside the app:
+You're always in control, and you don't need to ask anyone. To delete everything:
 
-1. Open Study Squad and tap the **Your progress** button.
+1. Open Study Squad and tap **Your progress**.
 2. Under **Your data**, tap **Delete my data**, then **Delete everything**.
 
-This immediately and permanently erases your goals, session history, daily stats, XP, level, streak and privacy choice in that community, ends any timer you have running, and removes you from the weekly boss's contributor list. It can't be undone.
+This removes your goals, session history, daily stats, XP, level, streak, badges, card style, quest rewards and privacy choices in that community straight away. It also stops any timer you have running and takes you off the weekly boss's helper list. Deleting is permanent, so your progress can't be brought back afterwards.
 
-Deletion doesn't change:
+A couple of things live outside Study Squad, so deleting doesn't touch them:
 
-- **Messages already posted to a channel**, such as a recap that named you. These are Root messages. Ask a community admin to remove them, or delete them through Root.
-- **Error logs**, which contain your user ID and are kept by Root under its own retention rules.
+- **Channel posts that already went out**, such as a recap that mentioned you. These are regular Root messages, so a community admin can remove them, or you can through Root.
+- **App logs**, which Root keeps for a limited time under its own rules.
 
-If you use Study Squad in more than one community, delete your data in each one. If you can't reach the app, for example after being removed from a community, contact us (below) and we'll help.
+If you use Study Squad in more than one community, delete your data in each one. If you can't reach the app, for example after leaving a community, just contact us (below) and we'll take care of it.
 
 ## Children
 
-Study Squad is not directed at children under 13, and you must meet Root's own age requirements to use it.
+Study Squad isn't made for children under 13, and you need to meet Root's own age requirements to use it.
 
-## Security
+## Keeping it safe
 
-Study Squad takes your identity only from your signed-in Root connection, checks that you own any goal you change, keeps private goals and personal results off other members' screens, and limits how fast requests can be made. More detail is in [SECURITY.md](SECURITY.md).
+Study Squad only trusts your signed-in Root connection to know who you are, checks that a goal is yours before changing it, keeps private goals and personal results off other people's screens, and limits how fast requests can be made. There's more in [SECURITY.md](SECURITY.md).
 
 ## Changes
 
-If we change this policy, we'll update the date at the top and describe the change in the [changelog](CHANGELOG.md). If a change affects how your existing data is used, we'll post a notice in the app first.
+If we update this policy, we'll change the date at the top and note what changed in the [changelog](CHANGELOG.md). If a change affects how your existing data is used, we'll let you know in the app first.
 
 ## Contact
 
-Questions or requests: use the developer contact on Study Squad's listing in Root's app directory, or open an issue at [github.com/samuel-burke/study-room-root](https://github.com/samuel-burke/study-room-root/issues). Please don't put personal details in a public issue.
+Questions or requests? Use the developer contact on Study Squad's listing in Root's app directory, or open an issue at [github.com/samuel-burke/study-squad-root-app](https://github.com/samuel-burke/study-squad-root-app/issues). Please don't put personal details in a public issue.

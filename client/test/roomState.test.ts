@@ -7,7 +7,13 @@ async function snapshot(): Promise<SnapshotDto> {
     store: new MemoryStore(),
     clock: { now: () => 1_000 },
     scheduler: { wakeAt() {}, cancel() {} },
-    notifier: { roomUpdated() {}, phaseCompleted() {}, personalResult() {}, myStatusUpdated() {} },
+    notifier: {
+      roomUpdated() {},
+      phaseCompleted() {},
+      personalResult() {},
+      myStatusUpdated() {},
+      badgesEarned() {},
+    },
     announcer: {
       async busyRoom() {},
       async streakMilestone() {},
@@ -45,7 +51,7 @@ describe("roomReducer", () => {
       kind: "focus" as const,
       round: 2,
       finisherIds: ["a", "b"],
-      roomDamageMinutes: 55,
+      roomDamageXp: 110,
       combo: 1.1,
       room: snap.room,
     };

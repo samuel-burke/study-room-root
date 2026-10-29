@@ -35,15 +35,18 @@ The room timer is the default and the brighter button because joining it is what
 | Combo             | 1.0x + 0.1x per extra person who **finishes** the round, max 2.0x | Rewards focusing together                                                |
 | Finishing a round | At least 5 minutes in that round (or half the round, if shorter)  | Joining in the last seconds doesn't count toward the combo or the streak |
 | Leaving early     | Minutes so far are credited, round not finished                   | Honest time still counts                                                 |
-| Boss loot         | +50 XP to every contributor, outside the cap                      | Happens once a week; a capped reward would often be zero                 |
+| Boss loot         | +100 XP × boss strength to every contributor, outside the cap     | Happens once a week; a capped reward would often be zero                 |
+| Weekly quests     | +30 to +40 XP per quest, once per week, outside the cap           | At most three a week; a capped reward would often be zero                |
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
 ## Anti-AFK guardrails
 
-A random "are you there?" tap is planned for v2. For v1:
+The room timer never interrupts a focus round and never takes back anything earned. The only check is at the end of a cycle:
 
-- participants are released from the room timer when a cycle ends (about two hours with 25/5), so a forgotten timer can't run all night;
+- **"Keep going?"** During the cycle's final long break, everyone who focused that cycle is asked "Keep going?" and has the whole break (15 minutes on 25/5) to tap. Tapping rolls them straight into the next cycle, so a multi-hour session never has to rejoin. Anyone who doesn't tap is released when the cycle ends (about every two hours with 25/5), keeping all their XP, combo and streak credit, and can rejoin at any time. A forgotten timer therefore stops after one cycle, and missing the tap costs nothing.
+  - This replaced a random mid-round "Still there?" check. That one interrupted focus, and couldn't reach people with their screen off, so it ended up penalising people who were genuinely studying. The app has no way to send a phone notification, so the generous window matters.
+  - Solo timers need no check: they end on their own (at most three hours).
 - people who joined during the final long break haven't focused yet, so they roll into a fresh cycle instead of being dropped;
 - the daily XP cap bounds what any idle timer can earn.
 
@@ -62,7 +65,49 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 ## Weekly boss
 
-A boss spawns lazily each Monday (community time zone) with the admin's name and HP in focus hours. Every focus minute deals damage, multiplied by the combo for room rounds. Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
+A boss spawns lazily each Monday (community time zone) with the admin's name (or the week's built-in name) and HP in XP. Each boss has a strength from 0.5x to 2x that fits its name, so "The Final Final Exam" is tougher than "Professor Pop Quiz". The built-in list averages exactly 1x, with weaker bosses below and stronger ones above. Its HP (the XP it takes to defeat) is the admin's base HP times its strength, and so is its loot. Names an admin types get strength from keywords: finals, thesis and boards are 2x; midterms, exams, deadlines and projects 1.5x; quizzes and homework 0.75x; anything else 1x.
+
+Damage is the focus XP a session earns, combo included, counted **before** the daily cap. The cap limits what a member earns, not how much they help the room, so the people studying most still hit the boss. Goal XP doesn't count, because checking off goals is too easy to farm. Damage is dealt even with XP turned off; there's just no loot then.
+
+Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
+
+## Weekly leaderboard
+
+- Ranked by focus **minutes**, not goals, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
+- Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
+- The board lists the top 10. You always see your own rank and minutes, even below the top 10.
+- Members can hide themselves. Hidden members are left out of the board and out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
+- The daily recap lists the week's top 3 when the admin setting **Leaderboard in recap** is on (default).
+- The Podium and Pole Position badges use the rank at the end of each focus block. A place only counts once at least 3 members are ranked that week, so the first person to focus on a Monday doesn't win by default.
+
+## Weekly quests
+
+Each week (Monday to Sunday, community time zone) shows three quests from a pool of seven (`core/src/game/quests.ts`), such as "Finish 5 goals", "Finish 3 room rounds" and "Focus on a weekend day". Week _n_ takes three neighbouring quests from the pool, so the set is the same for everyone, consecutive weeks never share a quest, and every quest comes around within three weeks.
+
+- Quests are sized so a new member can finish them in an ordinary week.
+- Progress is read from `session_log` and `daily_stats`, so there are no extra counters to keep in sync. The only new table, `quest_rewards`, records which rewards were paid so each is paid once.
+- "Focus" quests count finished sessions, the same rule as streak days, so a few seconds on a timer doesn't count.
+- A reward is paid the moment a quest is finished. When XP is off, quests still show progress but pay nothing, and turning XP back on doesn't pay out quests already finished that week.
+- Finished quests feed the quest badges (first quest, a full week's sweep, 25 quests), counted from `quest_rewards`.
+
+## Badges and card styles
+
+Badges are permanent and come in two kinds: visible ones that say how to earn them, and secret ones (Easter eggs) that show as "?" until someone finds them. The catalog is `BADGES` in `core/src/game/badges.ts`. Each badge is a pure check over facts the engine gathers when something happens: a focus block ends, a goal is checked off for the first time, or a boss falls. That keeps the rules unit-tested without a store, and makes adding a badge one entry in a list.
+
+- **Nothing new is tracked for badges.** Progress comes from what's already stored (daily stats, the session log, boss contributors); only the earned badges and the card look are new tables. Lifetime badges (hours focused, goals, rounds) therefore also reach members who earned them before badges existed, the next time they finish something.
+- **Badges never repeat** and keep the time they were first earned. The member's devices get one push per operation listing what it earned, which shows the unlock banner. A member with the app closed misses the banner but still finds the badge on the progress screen.
+- **Times of day** (Early Bird before 8am, Night Owl after 10pm, the 3am Three O'Clock Club) use when the session started, in the community time zone, and need a finished session so a timer left running doesn't count.
+- **Secret badges are only secret in the UI.** The catalog ships in the client bundle so cards can render badge names offline; anyone reading the code can find them, which is fine for Easter eggs.
+- **Badges that need another feature** declare it (`requires`): weekly quests, the weekly leaderboard, and the built-in boss roster with strengths. They stay out of the catalog until that feature adds itself to `LIVE_BADGE_FEATURES` and passes its facts to `awardBadges`. Weekly quests are live, so the three quest badges can be earned.
+
+Card styles (`core/src/game/cosmetics.ts`) change a member's card border and colour on the board. Most unlock with level (Lagoon at 3, Ember at 5, Gold at 8, Aurora at 12, Nebula at 16, Legend at 25), a few with a badge. A member who hasn't picked one gets the best style their level unlocks, so the room notices a level 8 member's gold border without anyone opening a menu. A pick that's no longer unlocked falls back to automatic rather than failing.
+
+Cards show one badge next to the level: the one the member picked, or their newest. An earlier version showed three, but a row of emoji on every card made the board noisy.
+
+Badges are drawn as medals (`client/src/components/BadgeMedal.tsx`), not emoji. Each family has its own silhouette (a shield for streaks, a hexagon for levels, a sunburst for focus, a rosette for goals, a spiked shield for bosses, a crowned crest for the leaderboard and a gem for secrets). Each badge names a line-drawn glyph, a tier and an optional stamp. The tier is the metal (bronze, silver, gold, platinum), and harder tiers get more dressing: a bevel at silver, ribbon tails at gold, and a laurel wreath and a passing shine at platinum. Secret badges are holographic.
+
+Earning a badge opens a full-screen moment (`BadgeUnlocked.tsx`) that grows with the tier: bronze pops in, silver adds light rays, gold spins in with a shockwave and confetti, platinum rises down a beam of light with a double shockwave and twinkling stars, and a secret badge shakes as a mystery gem before it bursts open. Each tier has a matching synthesised fanfare (`lib/badgeSounds.ts`) that follows the sound mute button from #26. The moment closes itself after a few seconds, or with a tap, the button or Escape. The stamp is the number, such as a streak length, and is hidden on small medals.
 
 ## Channel posts
 
@@ -82,7 +127,7 @@ Numeric settings are `select` items, not `number` items: in `@rootsdk/dev-tools`
 
 - **Name**: the mockups say "Study Room"; the app is now called Study Squad. Internal code names (`StudyRoomEngine`, the `StudyRoomService` Protobuf service, `@studyroom/*` packages) keep the old name, because renaming the service would change the wire paths for no user benefit.
 - **Admin setup** is Root's App settings screen (see above). The room shows a read-only summary behind the settings button.
-- **Weekly quests and badges** on the progress screen are not in v1. They were in the gamification ideas but outside the v1 scope (XP, combo, boss).
+- **Weekly quests and badges** came after v1. Quest rewards are smaller than the mockup's (+30 to +40 XP rather than +50 to +100) to keep them a bonus next to focus XP, and "Join 3 room timers" counts finished room rounds.
 - **"Chat in #study-hall"** on the break screen is a hint, not a link, because the SDK has no supported way to deep-link to a channel.
 - **Avatars** use Root profile pictures when a member has one, and the design's initials and colors otherwise.
 - Fonts (DM Sans, Space Grotesk) are bundled with the client instead of loaded from Google Fonts, to avoid third-party requests from inside Root.

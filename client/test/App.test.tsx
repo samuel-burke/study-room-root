@@ -115,6 +115,18 @@ describe("Study Squad app", () => {
     expect(opener).toHaveFocus();
   });
 
+  it("mutes and unmutes sound effects from the header", async () => {
+    const { user } = await renderApp();
+    const button = screen.getByRole("button", { name: "Sound effects" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(window.localStorage.getItem("studysquad.soundsMuted")).toBe("1");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    window.localStorage.clear();
+  });
+
   it("shows server errors without losing the room", async () => {
     const { gateway, user } = await renderApp();
     vi.spyOn(gateway, "addGoal").mockRejectedValueOnce({
@@ -128,6 +140,27 @@ describe("Study Squad app", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("timer")).toBeInTheDocument();
+  });
+
+  it("asks 'Keep going?' in the long break and hides it once tapped", async () => {
+    const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
+    const snapshot = await gateway.getSnapshot();
+    const endsAt = gateway.now() + 10 * 60_000;
+    vi.spyOn(gateway, "getSnapshot").mockResolvedValueOnce({
+      ...snapshot,
+      me: { ...snapshot.me, keepGoingEndsAt: endsAt },
+    });
+    const keepGoing = vi
+      .spyOn(gateway, "keepGoing")
+      .mockResolvedValueOnce({ ...snapshot.me, keepGoingEndsAt: 0 });
+    const user = userEvent.setup();
+    render(<App gateway={gateway} />);
+
+    const prompt = await screen.findByRole("alertdialog", { name: "Keep going?" });
+    expect(prompt).toHaveTextContent(/Tap within (9:59|10:00)/);
+    await user.click(within(prompt).getByRole("button", { name: "Keep going" }));
+    expect(keepGoing).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
   it("offers a retry when the room can't load", async () => {
@@ -148,8 +181,42 @@ describe("Study Squad app", () => {
     expect(screen.getByRole("list", { name: "Focus time, last 5 weeks" }).children).toHaveLength(
       35,
     );
+    const quests = screen.getByRole("region", { name: "Weekly quests" });
+    expect(within(quests).getAllByRole("progressbar")).toHaveLength(3);
     await user.click(screen.getByRole("button", { name: "Back to the room" }));
     expect(await screen.findByRole("timer")).toBeInTheDocument();
+  });
+
+  it("shows badges, keeps secrets hidden, and lets you restyle your card", async () => {
+    const { user } = await renderApp();
+    await user.click(screen.getByRole("button", { name: "Your progress" }));
+    const shelf = await screen.findByRole("region", { name: "Badges" });
+    expect(within(shelf).getByRole("button", { name: "First Steps, earned" })).toBeInTheDocument();
+    expect(within(shelf).getByRole("button", { name: "Night Owl, locked" })).toBeInTheDocument();
+    expect(
+      within(shelf).getAllByRole("button", { name: "Secret badge, not found yet" }).length,
+    ).toBeGreaterThan(10);
+    expect(within(shelf).queryByText("Three O'Clock Club")).not.toBeInTheDocument();
+
+    await user.click(within(shelf).getByRole("button", { name: "Squad Up, earned" }));
+    const detail = within(shelf).getByRole("region", { name: "Badge details" });
+    expect(detail).toHaveTextContent("Finish your first round on the room timer.");
+    await user.click(within(detail).getByRole("button", { name: "Show on my card" }));
+    await waitFor(() =>
+      expect(within(shelf).getByRole("button", { name: "Show my newest instead" })).toBeEnabled(),
+    );
+    expect(within(shelf).getByLabelText("On your card")).toHaveTextContent("Squad Up");
+
+    // Level 7 in the demo: Ember is unlocked, Gold needs level 8.
+    const styles = screen.getByRole("radiogroup", { name: "Card style" });
+    expect(within(styles).getByRole("radio", { name: /Gold/ })).toBeDisabled();
+    await user.click(within(styles).getByRole("radio", { name: /Ember/ }));
+    await waitFor(() =>
+      expect(within(styles).getByRole("radio", { name: /Ember/ })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
   });
 
   it("uses the phone layout with a bottom action bar on small screens", async () => {
@@ -175,10 +242,24 @@ describe("Study Squad app", () => {
     const breakSheet = await screen.findByRole("dialog", { name: "Nice work" }, { timeout: 4_000 });
     expect(breakSheet).toHaveTextContent("Round 1 complete");
     expect(breakSheet).toHaveTextContent("6 days");
-    expect(screen.getByRole("status")).toHaveTextContent("Round 1 complete");
+    expect(
+      screen.getAllByRole("status").some((s) => s.textContent?.includes("Round 1 complete")),
+    ).toBe(true);
+    // Finishing the round also earns badges, each with its own full-screen moment.
+    expect(await screen.findByText("Badge unlocked")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Nice!" }));
+    while (screen.queryByRole("button", { name: "Nice!" })) {
+      await user.click(screen.getByRole("button", { name: "Nice!" }));
+    }
     await act(async () => {
       await user.click(within(breakSheet).getByRole("button", { name: /Done/ }));
     });
+    // Checking the goal off earns more badges. Tap through each of their moments.
+    for (;;) {
+      const nice = await screen.findByRole("button", { name: "Nice!" }).catch(() => null);
+      if (!nice) break;
+      await user.click(nice);
+    }
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(
       within(screen.getByRole("region", { name: "Your session" })).getByRole("checkbox", {

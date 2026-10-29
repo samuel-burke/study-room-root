@@ -25,12 +25,13 @@ describe("channel posts", () => {
         focusMinutes: 41.5 * 60,
         goalsDone: 23,
         activeMembers: 14,
-        boss: { name: "Midterms", hpLeftMinutes: 57 * 60, daysLeft: 4, defeated: false },
+        boss: { name: "Midterms", hpLeftXp: 6840, daysLeft: 4, defeated: false },
         topStreaks: [
           { userId: "p", streak: 54 },
           { userId: "a", streak: 31 },
           { userId: "missing", streak: 17 },
         ],
+        topFocus: [],
       },
       new Map([
         ["p", "Priya"],
@@ -41,7 +42,7 @@ describe("channel posts", () => {
       [
         "Tuesday recap",
         "41.5 hrs focused as a community · 23 goals finished · 14 members showed up",
-        "Midterms: down to 57 hrs HP · 4 days left",
+        "Midterms: down to 6,840 HP · 4 days left",
         "Top streaks: Priya 54 · Ana R. 31 · Someone 17",
       ].join("\n"),
     );
@@ -57,9 +58,36 @@ describe("channel posts", () => {
         activeMembers: 1,
         boss: null,
         topStreaks: [],
+        topFocus: [],
       },
       new Map(),
     );
     expect(text.split("\n")).toHaveLength(2);
+  });
+
+  it("lists the week's top focusers when the recap carries them", () => {
+    const text = dailyRecapPost(
+      {
+        day: "2026-10-28",
+        weekday: "Wednesday",
+        focusMinutes: 300,
+        goalsDone: 0,
+        activeMembers: 3,
+        boss: null,
+        topStreaks: [],
+        topFocus: [
+          { userId: "p", focusMinutes: 312 },
+          { userId: "a", focusMinutes: 60 },
+          { userId: "missing", focusMinutes: 45 },
+        ],
+      },
+      new Map([
+        ["p", "Priya"],
+        ["a", "Ana R."],
+      ]),
+    );
+    expect(text.split("\n").at(-1)).toBe(
+      "This week: 1. Priya 5.2 hrs · 2. Ana R. 1 hr · 3. Someone 45 min",
+    );
   });
 });

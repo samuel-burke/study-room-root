@@ -1,5 +1,5 @@
 {
-  "id": "your-app-id",
+  "id": "ADIjs4fHiQmWa4Qi7Kaa4w",
   "version": "0.1.0",
   "package": {
     "client": {
@@ -172,9 +172,17 @@
             }
           },
           {
+            "key": "recapLeaderboard",
+            "title": "Leaderboard in recap",
+            "description": "Add the week's top 3 by focus minutes to the daily recap. Members who hid themselves are never listed.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
             "key": "timeZone",
             "title": "Community time zone",
-            "description": "Decides when a day starts for streaks, recaps and the weekly boss.",
+            "description": "Decides when a day starts for streaks, recaps, the weekly boss and the leaderboard.",
             "select": {
               "multiSelect": false,
               "values": ["America/New_York"],
@@ -385,7 +393,7 @@
           {
             "key": "bossEnabled",
             "title": "Weekly boss",
-            "description": "A community goal with an HP bar. Every focus minute deals damage. A new boss spawns every Monday.",
+            "description": "A community goal with an HP bar. Every XP earned focusing deals damage, and everyone who pitched in gets bonus XP when it falls. A new boss spawns every Monday.",
             "checkbox": {
               "defaultValue": true
             }
@@ -393,59 +401,59 @@
           {
             "key": "bossName",
             "title": "Boss name",
-            "description": "Shown on the boss card and in posts.",
+            "description": "Shown on the boss card and in posts. Leave blank to get a new random funny name each week.",
             "text": {
-              "defaultValue": "Midterms",
-              "regex": "^.{1,40}$"
+              "defaultValue": "",
+              "regex": "^.{0,40}$"
             }
           },
           {
-            "key": "bossHpHours",
-            "title": "Boss HP (focus hours)",
-            "description": "Suggested: 15 hours per active member.",
+            "key": "bossBaseHpXp",
+            "title": "Boss base HP (XP)",
+            "description": "HP of a 1x boss. Each boss multiplies it by its strength (0.5x to 2x, averaging 1x) and drops more XP the stronger it is. An hour of focus is 120 XP. Suggested: 2,000 XP per active member.",
             "select": {
               "multiSelect": false,
-              "values": ["100"],
+              "values": ["10000"],
               "options": [
                 {
-                  "key": "10",
-                  "value": "10 hours"
-                },
-                {
-                  "key": "25",
-                  "value": "25 hours"
-                },
-                {
-                  "key": "50",
-                  "value": "50 hours"
-                },
-                {
-                  "key": "75",
-                  "value": "75 hours"
-                },
-                {
                   "key": "100",
-                  "value": "100 hours"
-                },
-                {
-                  "key": "150",
-                  "value": "150 hours"
-                },
-                {
-                  "key": "200",
-                  "value": "200 hours"
-                },
-                {
-                  "key": "300",
-                  "value": "300 hours"
-                },
-                {
-                  "key": "500",
-                  "value": "500 hours"
+                  "value": "100 XP (for testing)"
                 },
                 {
                   "key": "1000",
-                  "value": "1000 hours"
+                  "value": "1,000 XP"
+                },
+                {
+                  "key": "2500",
+                  "value": "2,500 XP"
+                },
+                {
+                  "key": "5000",
+                  "value": "5,000 XP"
+                },
+                {
+                  "key": "10000",
+                  "value": "10,000 XP"
+                },
+                {
+                  "key": "15000",
+                  "value": "15,000 XP"
+                },
+                {
+                  "key": "20000",
+                  "value": "20,000 XP"
+                },
+                {
+                  "key": "30000",
+                  "value": "30,000 XP"
+                },
+                {
+                  "key": "50000",
+                  "value": "50,000 XP"
+                },
+                {
+                  "key": "100000",
+                  "value": "100,000 XP"
                 }
               ]
             }

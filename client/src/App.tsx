@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { StudyRoomGateway } from "./api/gateway";
+import { BadgeUnlocked } from "./components/BadgeUnlocked";
+import { KeepGoing } from "./components/KeepGoing";
+import { MemberProfileSheet } from "./components/MemberProfileSheet";
 import { BreakMoment } from "./components/BreakMoment";
 import { Celebration } from "./components/Celebration";
 import { GoalsSheet } from "./components/GoalsSheet";
@@ -11,10 +14,16 @@ import { Toast } from "./components/Toast";
 import { useMediaQuery } from "./state/useMediaQuery";
 import { useNow } from "./state/useNow";
 import { useProfiles } from "./state/useProfiles";
+import { useEventSounds } from "./state/useEventSounds";
+import { useSoundCues } from "./state/useSoundCues";
 import { useStudyRoom } from "./state/useStudyRoom";
 
 type Overlay =
-  { kind: "start"; mode: "room" | "solo" } | { kind: "goals" } | { kind: "settings" } | null;
+  | { kind: "start"; mode: "room" | "solo" }
+  | { kind: "goals" }
+  | { kind: "settings" }
+  | { kind: "member"; userId: string }
+  | null;
 
 export function App({ gateway }: { gateway: StudyRoomGateway }) {
   const { state, actions } = useStudyRoom(gateway);
@@ -22,6 +31,23 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
   const compact = useMediaQuery("(max-width: 760px)");
   const [screen, setScreen] = useState<"room" | "progress">("room");
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const sounds = useSoundCues(state.me?.status ?? null);
+  const celebrationAt = state.celebration?.startedAt ?? null;
+  const boss = state.room?.boss;
+  const level = state.me?.level;
+  const eventSoundState = useMemo(
+    () =>
+      boss && level !== undefined
+        ? {
+            celebrationAt,
+            bossKey: `${boss.name}:${boss.endsAt}`,
+            bossDefeated: boss.defeated,
+            level,
+          }
+        : null,
+    [celebrationAt, boss, level],
+  );
+  useEventSounds(eventSoundState, sounds.muted);
 
   const userIds = useMemo(
     () => [
@@ -75,6 +101,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             freezesEnabled={room.features.streakFreezesEnabled}
             onBack={() => setScreen("room")}
             onDeleteData={actions.deleteMyData}
+            onOpenMember={(userId) => setOverlay({ kind: "member", userId })}
           />
         ) : (
           <RoomScreen
@@ -84,6 +111,8 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             now={now}
             busy={busy}
             compact={compact}
+            soundsMuted={sounds.muted}
+            onToggleSounds={() => sounds.setMuted(!sounds.muted)}
             onStart={(mode) => setOverlay({ kind: "start", mode })}
             onLeave={() => void actions.leaveRoomTimer()}
             onEndSolo={() => void actions.endSolo()}
@@ -93,6 +122,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             onOpenGoals={() => setOverlay({ kind: "goals" })}
             onOpenProgress={() => setScreen("progress")}
             onOpenSettings={() => setOverlay({ kind: "settings" })}
+            onOpenMember={(userId) => setOverlay({ kind: "member", userId })}
           />
         )}
       </div>
@@ -120,6 +150,16 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
           onClose={() => setOverlay(null)}
         />
       )}
+      {overlay?.kind === "member" && (
+        <MemberProfileSheet
+          key={overlay.userId}
+          gateway={gateway}
+          userId={overlay.userId}
+          you={overlay.userId === me.userId}
+          xpEnabled={room.features.xpEnabled}
+          onClose={() => setOverlay(null)}
+        />
+      )}
       {overlay?.kind === "settings" && (
         <SettingsSheet room={room} onClose={() => setOverlay(null)} />
       )}
@@ -141,6 +181,22 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             void actions.setGoalDone(id, true).then((ok) => ok && actions.dismissBreak());
           }}
           onClose={actions.dismissBreak}
+        />
+      )}
+      {state.newBadges[0] && (
+        <BadgeUnlocked
+          key={state.newBadges[0]}
+          badgeId={state.newBadges[0]}
+          muted={sounds.muted}
+          onDismiss={actions.dismissBadge}
+        />
+      )}
+      {me.keepGoingEndsAt > now && (
+        <KeepGoing
+          endsAt={me.keepGoingEndsAt}
+          now={now}
+          busy={busy}
+          onKeepGoing={() => void actions.keepGoing()}
         />
       )}
       {state.error && <Toast message={state.error} onDismiss={actions.dismissError} />}

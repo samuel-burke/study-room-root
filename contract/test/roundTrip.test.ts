@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
+  LeaderboardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -8,6 +10,8 @@ import type {
   SnapshotDto,
 } from "@studyroom/core";
 import {
+  Leaderboard,
+  MemberProfile,
   type MemberStatus,
   PersonalResultEvent,
   PhaseCompletedEvent,
@@ -15,6 +19,10 @@ import {
   RoomSnapshot,
 } from "@studyroom/gen-shared";
 import {
+  leaderboardFromProto,
+  leaderboardToProto,
+  memberProfileFromProto,
+  memberProfileToProto,
   personalResultFromProto,
   personalResultToProto,
   phaseCompletedFromProto,
@@ -45,6 +53,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 12,
       streak: 31,
+      badges: ["night-owl", "first-boss", "longest-day"],
+      cardStyle: "gold",
     },
     {
       userId: "u2",
@@ -54,6 +64,8 @@ const room: RoomStateDto = {
       goalPrivate: true,
       level: 9,
       streak: 0,
+      badges: [],
+      cardStyle: "classic",
     },
     {
       userId: "u3",
@@ -63,6 +75,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 15,
       streak: 54,
+      badges: [],
+      cardStyle: "classic",
     },
     {
       userId: "u4",
@@ -72,6 +86,8 @@ const room: RoomStateDto = {
       goalPrivate: false,
       level: 3,
       streak: 2,
+      badges: [],
+      cardStyle: "classic",
     },
   ],
   presentCount: 9,
@@ -80,8 +96,10 @@ const room: RoomStateDto = {
   boss: {
     enabled: true,
     name: "Midterms",
-    maxHpMinutes: 6000,
-    damageMinutes: 2340.5,
+    maxHpXp: 12_000,
+    damageXp: 4681,
+    strength: 1.5,
+    lootXp: 150,
     endsAt: 99,
     defeated: false,
   },
@@ -114,6 +132,7 @@ const me: MyStatusDto = {
     { id: "g2", text: "Make 20 flashcards", done: false },
   ],
   goalsPrivate: false,
+  keepGoingEndsAt: 1_793_150_200_000,
 };
 
 describe("contract round trip", () => {
@@ -147,7 +166,7 @@ describe("contract round trip", () => {
       kind: "focus",
       round: 2,
       finisherIds: ["u1", "u2"],
-      roomDamageMinutes: 55,
+      roomDamageXp: 110,
       combo: 1.1,
       room,
     };
@@ -168,7 +187,7 @@ describe("contract round trip", () => {
       streak: 6,
       streakExtended: true,
       finisherIds: ["u1"],
-      roomDamageMinutes: 30,
+      roomDamageXp: 60,
       goalPrompt: { id: "g2", text: "Make 20 flashcards", done: false },
       breakEndsAt: 123,
       me,
@@ -187,9 +206,73 @@ describe("contract round trip", () => {
         { day: "2026-10-28", focusMinutes: 42.5 },
       ],
       totalFocusMinutes: 42.5,
+      quests: [
+        {
+          id: "goals",
+          title: "Finish 5 goals",
+          progress: 2,
+          target: 5,
+          unit: "count",
+          xp: 40,
+          done: false,
+        },
+        {
+          id: "focusTime",
+          title: "Focus for 2 hours",
+          progress: 120,
+          target: 120,
+          unit: "minutes",
+          xp: 0,
+          done: true,
+        },
+      ],
+      badges: [
+        { id: "first-session", earnedAt: 1_793_150_000_000 },
+        { id: "leet", earnedAt: 1_793_150_000_500 },
+      ],
+      card: {
+        chosenStyle: "",
+        chosenShowcase: ["leet"],
+        style: "lagoon",
+        showcase: ["leet"],
+      },
     };
     const bytes = Progress.toBinary(progressToProto(progress));
     expect(progressFromProto(Progress.fromBinary(bytes))).toEqual(progress);
+  });
+
+  it("preserves the leaderboard", () => {
+    const board: LeaderboardDto = {
+      weekStart: "2026-10-26",
+      endsAt: 1_793_592_000_000,
+      entries: [
+        { userId: "priya", focusMinutes: 312, rank: 1 },
+        { userId: "ana", focusMinutes: 60, rank: 2 },
+        { userId: "kai", focusMinutes: 60, rank: 2 },
+      ],
+      me: { rank: 0, focusMinutes: 15, hidden: true },
+    };
+    const bytes = Leaderboard.toBinary(leaderboardToProto(board));
+    expect(leaderboardFromProto(Leaderboard.fromBinary(bytes))).toEqual(board);
+  });
+
+  it("preserves a member profile", () => {
+    const profile: MemberProfileDto = {
+      userId: "priya",
+      level: 8,
+      xpTotal: 2460,
+      xpIntoLevel: 10,
+      xpForNextLevel: 400,
+      streak: 12,
+      badges: [
+        { id: "first-session", earnedAt: 1_793_000_000_000 },
+        { id: "leet", earnedAt: 1_793_100_000_000 },
+      ],
+      showcase: ["leet"],
+      cardStyle: "gold",
+    };
+    const bytes = MemberProfile.toBinary(memberProfileToProto(profile));
+    expect(memberProfileFromProto(MemberProfile.fromBinary(bytes))).toEqual(profile);
   });
 });
 

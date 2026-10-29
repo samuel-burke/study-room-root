@@ -1,10 +1,11 @@
 import { GAME } from "../constants";
 
-/** Base XP for focused minutes, before combo. */
+/** Base XP for focused minutes, before combo. All XP amounts are whole numbers. */
 export function baseFocusXp(minutes: number): number {
   return Math.floor(minutes) * GAME.xpPerFocusMinute;
 }
 
+/** Rounded to the nearest whole XP, since combo steps are 0.1x. */
 export function focusXp(minutes: number, combo: number): number {
   return Math.round(baseFocusXp(minutes) * combo);
 }
@@ -12,7 +13,7 @@ export function focusXp(minutes: number, combo: number): number {
 /** How much of `raw` XP can still be granted today under the daily cap. */
 export function applyDailyCap(raw: number, xpEarnedToday: number, dailyCap: number): number {
   if (raw <= 0) return 0;
-  return Math.max(0, Math.min(raw, dailyCap - xpEarnedToday));
+  return Math.max(0, Math.round(Math.min(raw, dailyCap - xpEarnedToday)));
 }
 
 /** XP needed to go from `level` to `level + 1`. Level 7 needs 500. */

@@ -3,7 +3,7 @@ import type { Profile } from "../api/gateway";
 import { phasePill } from "../lib/view";
 import { BossCard, MobileBoss } from "./BossCard";
 import { ComboCard, ComboPill } from "./ComboCard";
-import { ChartIcon, PeopleIcon, SlidersIcon, TimerIcon } from "./Icons";
+import { ChartIcon, PeopleIcon, SlidersIcon, SoundOffIcon, SoundOnIcon, TimerIcon } from "./Icons";
 import { MemberBoard } from "./MemberBoard";
 import { SessionPanel } from "./SessionPanel";
 import { TimerCard } from "./TimerCard";
@@ -15,6 +15,8 @@ export interface RoomScreenProps {
   now: number;
   busy: boolean;
   compact: boolean;
+  soundsMuted: boolean;
+  onToggleSounds(): void;
   onStart(mode: "room" | "solo"): void;
   onLeave(): void;
   onEndSolo(): void;
@@ -24,14 +26,20 @@ export interface RoomScreenProps {
   onOpenGoals(): void;
   onOpenProgress(): void;
   onOpenSettings(): void;
+  onOpenMember(userId: string): void;
 }
 
 function Header({
   room,
   compact,
+  soundsMuted,
+  onToggleSounds,
   onOpenProgress,
   onOpenSettings,
-}: Pick<RoomScreenProps, "room" | "compact" | "onOpenProgress" | "onOpenSettings">) {
+}: Pick<
+  RoomScreenProps,
+  "room" | "compact" | "soundsMuted" | "onToggleSounds" | "onOpenProgress" | "onOpenSettings"
+>) {
   const channel = room.features.postChannelName;
   return (
     <header className="app-header">
@@ -57,6 +65,16 @@ function Header({
           <PeopleIcon />
           {room.presentCount} in the room
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Sound effects"
+          aria-pressed={!soundsMuted}
+          title={soundsMuted ? "Sounds off" : "Sounds on"}
+          onClick={onToggleSounds}
+        >
+          {soundsMuted ? <SoundOffIcon size={18} /> : <SoundOnIcon size={18} />}
+        </button>
         <button
           type="button"
           className="icon-btn"
@@ -101,6 +119,7 @@ export function RoomScreen(props: RoomScreenProps) {
       youId={me.userId}
       now={now}
       compact={compact}
+      onOpenMember={props.onOpenMember}
     />
   );
 

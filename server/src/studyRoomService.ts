@@ -5,15 +5,23 @@ import type {
   DeleteGoalRequest,
   DeleteMyDataRequest,
   EndSoloRequest,
+  GetLeaderboardRequest,
+  GetMemberProfileRequest,
   GetProgressRequest,
   GetRoomRequest,
+  KeepGoingRequest,
   JoinRoomTimerRequest,
+  Leaderboard,
   LeaveRoomTimerRequest,
+  MemberProfile,
   MyStatus,
   Progress,
   RoomSnapshot,
+  SetBadgeShowcaseRequest,
+  SetCardStyleRequest,
   SetGoalDoneRequest,
   SetGoalsPrivateRequest,
+  SetLeaderboardHiddenRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
 import { RequestFailure, type StudyRoomHandlers } from "./handlers";
@@ -70,8 +78,32 @@ export class StudyRoomService extends StudyRoomServiceBase {
     return this.call((h) => h.getProgress(client.userId));
   }
 
+  getLeaderboard(_request: GetLeaderboardRequest, client: Client): Promise<Leaderboard> {
+    return this.call((h) => h.getLeaderboard(client.userId));
+  }
+
+  getMemberProfile(request: GetMemberProfileRequest, client: Client): Promise<MemberProfile> {
+    return this.call((h) => h.getMemberProfile(client.userId, request));
+  }
+
+  setLeaderboardHidden(request: SetLeaderboardHiddenRequest, client: Client): Promise<Leaderboard> {
+    return this.call((h) => h.setLeaderboardHidden(client.userId, request));
+  }
+
+  setCardStyle(request: SetCardStyleRequest, client: Client): Promise<Progress> {
+    return this.call((h) => h.setCardStyle(client.userId, request));
+  }
+
+  setBadgeShowcase(request: SetBadgeShowcaseRequest, client: Client): Promise<Progress> {
+    return this.call((h) => h.setBadgeShowcase(client.userId, request));
+  }
+
   deleteMyData(_request: DeleteMyDataRequest, client: Client): Promise<MyStatus> {
     return this.call((h) => h.deleteMyData(client.userId));
+  }
+
+  keepGoing(_request: KeepGoingRequest, client: Client): Promise<MyStatus> {
+    return this.call((h) => h.keepGoing(client.userId));
   }
 
   private async call<T>(work: (handlers: StudyRoomHandlers) => Promise<T>): Promise<T> {

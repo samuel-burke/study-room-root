@@ -43,9 +43,11 @@ npm run demo
 
 Open the printed URL. Add `?focus=0.2&break=0.2` to make rounds 12 seconds long and see the break moment quickly.
 
+More URL settings for testing (boss nearly beaten, a long streak, replaying badge unlocks) are in [docs/TESTING.md](docs/TESTING.md).
+
 ## Run it inside Root
 
-1. Sign up at the [Root Developer Portal](https://dev.rootapp.com) and create an app. Put its id in `root-manifest.json` (`"id"`).
+1. Sign up at the [Root Developer Portal](https://dev.rootapp.com) and create an app. Its id is already in `root-manifest.json` (`"id"`). Use your own app id if you fork this.
 2. Copy `.env.example` to `server/.env` and paste your dev token. Never commit it.
 3. Start the server through Root's dev host, then the client:
 

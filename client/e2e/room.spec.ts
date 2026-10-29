@@ -13,7 +13,7 @@ test.describe("focus room", () => {
     await expect(page.getByText("Ana R.")).toBeVisible();
     if (!isPhone(page)) {
       await expect(page.getByRole("region", { name: "Weekly boss" })).toContainText(
-        "61 of 100 hrs HP left",
+        /[\d,]+ of [\d,]+ HP left/,
       );
       await expect(page.getByRole("region", { name: "Combo meter" })).toContainText("1.4x");
     }
@@ -82,10 +82,12 @@ test.describe("the break moment", () => {
 
     const moment = page.getByRole("dialog", { name: "Nice work, everyone" });
     await expect(moment).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status")).toContainText("Round 1 complete");
+    await expect(page.getByRole("status").filter({ hasText: "Round 1 complete" })).toHaveCount(1);
+    // The round also earns a badge, announced in its own banner.
+    await expect(page.getByText("Badge unlocked")).toBeVisible();
     await expect(moment).toContainText("6 days");
     await expect(moment).toContainText(/finished together/);
-    await expect(moment).toContainText("Midterms");
+    await expect(moment).toContainText(/hit .+ for/);
     await expect(moment).toContainText("Did you finish Read ch. 4?");
     // The board flips to Break for everyone at the same moment.
     await expect(page.locator(".phase-pill")).toHaveAttribute("data-phase", "break");
@@ -105,7 +107,51 @@ test.describe("progress", () => {
     await expect(
       page.getByRole("list", { name: "Focus time, last 5 weeks" }).getByRole("listitem"),
     ).toHaveCount(35);
+    await expect(
+      page.getByRole("region", { name: "Weekly quests" }).getByRole("progressbar"),
+    ).toHaveCount(3);
     await page.getByRole("button", { name: "Back to the room" }).click();
     await expect(page.getByRole("timer")).toBeVisible();
   });
+
+  test("shows the weekly leaderboard and lets you hide yourself", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    const board = page.getByRole("region", { name: "Weekly leaderboard" });
+    await expect(board.getByText("By focus minutes · resets Monday")).toBeVisible();
+    const show = board.getByRole("switch", { name: "Show me on the leaderboard" });
+    await expect(show).toHaveAttribute("aria-checked", "true");
+    await show.click();
+    await expect(show).toHaveAttribute("aria-checked", "false");
+    await expect(board.getByText("You're hidden.")).toBeVisible();
+    await expect(board.getByRole("listitem", { name: /, You,/ })).toHaveCount(0);
+  });
+
+  test("shows the badge shelf and card styles", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Your progress" }).click();
+    const shelf = page.getByRole("region", { name: "Badges" });
+    await expect(shelf.getByRole("button", { name: "First Steps, earned" })).toBeVisible();
+    await expect(
+      shelf.getByRole("button", { name: "Secret badge, not found yet" }).first(),
+    ).toBeVisible();
+    const styles = page.getByRole("radiogroup", { name: "Card style" });
+    await styles.getByRole("radio", { name: /Ember/ }).click();
+    await expect(styles.getByRole("radio", { name: /Ember/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+});
+
+test("tapping a member opens their profile with stats and badges", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("timer")).toBeVisible();
+  const open = page.getByRole("button", { name: /^View .+'s profile$/ }).first();
+  await open.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("day streak");
+  await expect(dialog.getByRole("region", { name: "Badges" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
 });

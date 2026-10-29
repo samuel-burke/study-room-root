@@ -1,7 +1,8 @@
-import type { MemberCardDto } from "@studyroom/core";
+import { badgeById, type MemberCardDto } from "@studyroom/core";
 import type { Profile } from "../api/gateway";
 import { isFocusing, rowTime, statusChip } from "../lib/view";
 import { Avatar } from "./Avatar";
+import { BadgeMedal } from "./BadgeMedal";
 import { FlameIcon, LockIcon } from "./Icons";
 
 interface BoardProps {
@@ -10,6 +11,8 @@ interface BoardProps {
   youId: string;
   now: number;
   compact?: boolean;
+  /** Opens a member's profile. */
+  onOpenMember?(userId: string): void;
 }
 
 /** You first, then everyone else in the order they started. */
@@ -25,28 +28,69 @@ function goalText(member: MemberCardDto) {
   return member.goalText || null;
 }
 
+/** Covers a card so tapping anywhere on it opens the member's profile. */
+export function OpenProfileButton({ name, onOpen }: { name: string; onOpen?(): void }) {
+  if (!onOpen) return null;
+  return (
+    <button
+      type="button"
+      className="open-profile"
+      aria-label={name === "You" ? "View your profile" : `View ${name}'s profile`}
+      onClick={onOpen}
+    />
+  );
+}
+
+/**
+ * The one badge a member features on the board: their first pin, or their
+ * newest. The rest live on their progress screen.
+ */
+function FeaturedBadge({ ids }: { ids: string[] }) {
+  const badge = ids.map(badgeById).find((b) => b !== undefined);
+  if (!badge) return null;
+  return (
+    <span
+      className="featured-badge"
+      title={badge.name}
+      role="img"
+      aria-label={`Badge: ${badge.name}`}
+    >
+      <BadgeMedal badge={badge} size={22} />
+    </span>
+  );
+}
+
 function MemberCard({
   member,
   profile,
   you,
   now,
+  onOpen,
 }: {
   member: MemberCardDto;
   profile?: Profile;
   you: boolean;
   now: number;
+  onOpen?(): void;
 }) {
   const chip = statusChip(member, now);
   const name = you ? "You" : (profile?.name ?? "Member");
   const goal = goalText(member);
   return (
-    <li className="member-card" data-you={you} aria-label={`${name}, ${chip.label}`}>
+    <li
+      className="member-card"
+      data-you={you}
+      data-style={member.cardStyle}
+      aria-label={`${name}, ${chip.label}`}
+    >
+      <OpenProfileButton name={name} onOpen={onOpen} />
       <div className="member-top">
         <Avatar userId={member.userId} profile={profile} you={you} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="member-name">
             <span className="name">{name}</span>
             <span className="level-chip">Lv {member.level}</span>
+            <FeaturedBadge ids={member.badges} />
           </div>
           <div className="streak-line">
             <FlameIcon size={13} stroke="var(--flame)" />
@@ -64,9 +108,11 @@ function MemberCard({
           Focusing
         </div>
       )}
-      <div className="chip" data-tone={chip.tone}>
-        <span className="dot" />
-        {chip.label}
+      <div className="member-foot">
+        <div className="chip" data-tone={chip.tone}>
+          <span className="dot" />
+          {chip.label}
+        </div>
       </div>
     </li>
   );
@@ -77,21 +123,29 @@ function MemberRow({
   profile,
   you,
   now,
+  onOpen,
 }: {
   member: MemberCardDto;
   profile?: Profile;
   you: boolean;
   now: number;
+  onOpen?(): void;
 }) {
   const chip = statusChip(member, now);
   const name = you ? "You" : (profile?.name ?? "Member");
   const goal = goalText(member) ?? (member.goalPrivate ? "Focusing (private)" : "Focusing");
   const time = rowTime(member, now);
   return (
-    <li className="member-row" aria-label={`${name}, ${chip.label}`}>
+    <li className="member-row" data-style={member.cardStyle} aria-label={`${name}, ${chip.label}`}>
+      <OpenProfileButton name={name} onOpen={onOpen} />
       <Avatar userId={member.userId} profile={profile} you={you} />
       <div className="body">
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{name}</div>
+        <div
+          style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
+        >
+          {name}
+          <FeaturedBadge ids={member.badges} />
+        </div>
         <div className="goal-line">{goal}</div>
       </div>
       <div className="time" data-tone={chip.tone}>
@@ -101,7 +155,7 @@ function MemberRow({
   );
 }
 
-export function MemberBoard({ members, profiles, youId, now, compact }: BoardProps) {
+export function MemberBoard({ members, profiles, youId, now, compact, onOpenMember }: BoardProps) {
   const ordered = orderMembers(members, youId);
   const focusing = members.filter(isFocusing).length;
   const onBreak = members.length - focusing;
@@ -118,6 +172,7 @@ export function MemberBoard({ members, profiles, youId, now, compact }: BoardPro
               profile={profiles.get(m.userId)}
               you={m.userId === youId}
               now={now}
+              onOpen={onOpenMember && (() => onOpenMember(m.userId))}
             />
           ))}
         </ul>
@@ -146,6 +201,7 @@ export function MemberBoard({ members, profiles, youId, now, compact }: BoardPro
               profile={profiles.get(m.userId)}
               you={m.userId === youId}
               now={now}
+              onOpen={onOpenMember && (() => onOpenMember(m.userId))}
             />
           ))}
         </ul>

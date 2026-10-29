@@ -1,9 +1,4 @@
-import {
-  formatCountdown,
-  formatHours,
-  type BossDto,
-  type PersonalResultDto,
-} from "@studyroom/core";
+import { formatCountdown, formatXp, type BossDto, type PersonalResultDto } from "@studyroom/core";
 import type { Profile } from "../api/gateway";
 import { percent } from "../lib/view";
 import { Avatar } from "./Avatar";
@@ -46,9 +41,9 @@ export function BreakMoment({
   const finishers = [youId, ...result.finisherIds.filter((id) => id !== youId)].filter((id) =>
     result.finisherIds.includes(id),
   );
-  const hpLeft = Math.max(0, boss.maxHpMinutes - boss.damageMinutes);
-  const hitPct = percent(Math.min(result.roomDamageMinutes, boss.damageMinutes), boss.maxHpMinutes);
-  const leftPct = percent(hpLeft, boss.maxHpMinutes);
+  const hpLeft = Math.max(0, boss.maxHpXp - boss.damageXp);
+  const hitPct = percent(Math.min(result.roomDamageXp, boss.damageXp), boss.maxHpXp);
+  const leftPct = percent(hpLeft, boss.maxHpXp);
   const breakLeft = result.breakEndsAt - now;
 
   return (
@@ -104,7 +99,7 @@ export function BreakMoment({
       {boss.enabled && (
         <div className="break-panel boss-hit">
           <strong style={{ color: "var(--coral-text)", fontSize: 13 }}>
-            {solo ? "You" : "The room"} hit {boss.name} for {formatHours(result.roomDamageMinutes)}
+            {solo ? "You" : "The room"} hit {boss.name} for {formatXp(result.roomDamageXp)} XP
           </strong>
           <div className="bar" aria-hidden="true">
             <span style={{ width: `${leftPct}%`, background: "var(--coral)", borderRadius: 0 }} />
@@ -115,7 +110,7 @@ export function BreakMoment({
           <div className="tiny tabular" style={{ color: "var(--boss-muted)" }}>
             {boss.defeated
               ? `${boss.name} is defeated!`
-              : `${hpText(boss)} HP left · ${percent(boss.damageMinutes, boss.maxHpMinutes)}% defeated`}
+              : `${hpText(boss)} HP left · ${percent(boss.damageXp, boss.maxHpXp)}% defeated`}
           </div>
         </div>
       )}

@@ -1,17 +1,21 @@
 import type {
   BossState,
+  CardRecord,
   CommunityDayStats,
   DailyStatDelta,
   DailyStatRecord,
   DayKey,
+  EarnedBadgeRecord,
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
+  QuestRewardRecord,
   RoomCycleRecord,
   SessionLogRecord,
   SoloRecord,
   Store,
   TimerPreset,
+  WeekFocusRecord,
 } from "@studyroom/core";
 import type { Knex } from "knex";
 
@@ -73,13 +77,37 @@ const toStat = (r: Row): DailyStatRecord => ({
   sessionsFinished: num(r.sessions_finished),
 });
 
+const toSession = (r: Row): SessionLogRecord => ({
+  userId: String(r.user_id),
+  kind: r.kind === "room" ? "room" : "solo",
+  startedAt: num(r.started_at),
+  endedAt: num(r.ended_at),
+  focusedMinutes: num(r.focused_minutes),
+  finished: bool(r.finished),
+  xp: num(r.xp),
+  combo: num(r.combo),
+});
+
 const toBoss = (r: Row): BossState => ({
   weekKey: String(r.week_key),
   name: String(r.name),
-  maxHpMinutes: num(r.max_hp_minutes),
-  damageMinutes: num(r.damage_minutes),
+  maxHpXp: num(r.max_hp_xp),
+  damageXp: num(r.damage_xp),
   defeatedAt: numOrNull(r.defeated_at),
   contributorIds: parseJson<string[]>(r.contributor_ids, []),
+});
+
+const toBadge = (r: Row): EarnedBadgeRecord => ({
+  userId: String(r.user_id),
+  badgeId: String(r.badge_id),
+  earnedAt: num(r.earned_at),
+});
+
+const toCard = (r: Row): CardRecord => ({
+  userId: String(r.user_id),
+  style: (r.style as string | null) ?? null,
+  showcase:
+    r.showcase === null || r.showcase === undefined ? null : parseJson<string[]>(r.showcase, []),
 });
 
 const ROOM_CYCLE_ID = 1;
@@ -110,6 +138,10 @@ export class KnexStore implements Store {
         "room_participants",
         "session_log",
         "daily_stats",
+        "leaderboard_opt_outs",
+        "quest_rewards",
+        "member_badges",
+        "member_cards",
       ]) {
         await db(table).where({ user_id: userId }).delete();
       }
@@ -272,10 +304,11 @@ export class KnexStore implements Store {
       (await this.db("room_participants").orderBy("joined_at", "asc")).map((r: Row) => ({
         userId: String(r.user_id),
         joinedAt: num(r.joined_at),
+        keepGoing: bool(r.keep_going),
       })),
     addParticipant: async (p: ParticipantRecord) => {
       await this.db("room_participants")
-        .insert({ user_id: p.userId, joined_at: p.joinedAt })
+        .insert({ user_id: p.userId, joined_at: p.joinedAt, keep_going: p.keepGoing })
         .onConflict("user_id")
         .merge();
     },
@@ -296,6 +329,49 @@ export class KnexStore implements Store {
         xp: log.xp,
         combo: log.combo,
       });
+    },
+    listForUser: async (userId: string, fromMs: number, toMs: number) =>
+      (
+        await this.db("session_log")
+          .where({ user_id: userId })
+          .andWhere("ended_at", ">=", fromMs)
+          .andWhere("ended_at", "<", toMs)
+          .orderBy("ended_at", "asc")
+      ).map(toSession),
+    countFinished: async (userId: string, kind: SessionLogRecord["kind"]) => {
+      const row = await this.db("session_log")
+        .where({ user_id: userId, kind, finished: true })
+        .count({ n: "*" })
+        .first();
+      return num(row?.n ?? 0);
+    },
+  };
+
+  quests = {
+    listRewarded: async (userId: string, weekKey: DayKey) =>
+      (
+        await this.db("quest_rewards")
+          .where({ user_id: userId, week_key: weekKey })
+          .select("quest_id")
+      ).map((r: Row) => String(r.quest_id)),
+    markRewarded: async (r: QuestRewardRecord) => {
+      await this.db("quest_rewards")
+        .insert({
+          user_id: r.userId,
+          week_key: r.weekKey,
+          quest_id: r.questId,
+          xp: r.xp,
+          rewarded_at: r.rewardedAt,
+        })
+        .onConflict(["user_id", "week_key", "quest_id"])
+        .ignore();
+    },
+    countRewarded: async (userId: string) => {
+      const row = await this.db("quest_rewards")
+        .where({ user_id: userId })
+        .count({ n: "*" })
+        .first();
+      return num(row?.n ?? 0);
     },
   };
 
@@ -348,6 +424,48 @@ export class KnexStore implements Store {
         activeMembers: num(row?.active_members ?? 0),
       };
     },
+    lifetime: async (userId: string) => {
+      const row = await this.db("daily_stats")
+        .where({ user_id: userId })
+        .select(
+          this.db.raw("COALESCE(SUM(focus_minutes), 0) AS focus_minutes"),
+          this.db.raw("COALESCE(SUM(goals_done), 0) AS goals_done"),
+          this.db.raw("COALESCE(SUM(sessions_finished), 0) AS sessions_finished"),
+        )
+        .first();
+      return {
+        focusMinutes: num(row?.focus_minutes ?? 0),
+        goalsDone: num(row?.goals_done ?? 0),
+        sessionsFinished: num(row?.sessions_finished ?? 0),
+      };
+    },
+  };
+
+  leaderboard = {
+    isHidden: async (userId: string) =>
+      (await this.db("leaderboard_opt_outs").where({ user_id: userId }).first()) !== undefined,
+    setHidden: async (userId: string, hidden: boolean) => {
+      if (hidden)
+        await this.db("leaderboard_opt_outs").insert({ user_id: userId }).onConflict().ignore();
+      else await this.db("leaderboard_opt_outs").where({ user_id: userId }).delete();
+    },
+    listHidden: async () =>
+      (await this.db("leaderboard_opt_outs").orderBy("user_id", "asc")).map((r: Row) =>
+        String(r.user_id),
+      ),
+    standings: async (fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]> =>
+      (
+        await this.db("daily_stats")
+          .whereBetween("day", [fromDay, toDay])
+          .whereNotIn("user_id", this.db("leaderboard_opt_outs").select("user_id"))
+          .groupBy("user_id")
+          .having(this.db.raw("SUM(focus_minutes) > 0"))
+          .select("user_id", this.db.raw("SUM(focus_minutes) AS focus_minutes"))
+          .orderBy([
+            { column: "focus_minutes", order: "desc" },
+            { column: "user_id", order: "asc" },
+          ])
+      ).map((r: Row) => ({ userId: String(r.user_id), focusMinutes: num(r.focus_minutes) })),
   };
 
   bosses = {
@@ -360,12 +478,54 @@ export class KnexStore implements Store {
         .insert({
           week_key: b.weekKey,
           name: b.name,
-          max_hp_minutes: b.maxHpMinutes,
-          damage_minutes: b.damageMinutes,
+          max_hp_xp: b.maxHpXp,
+          damage_xp: b.damageXp,
           defeated_at: b.defeatedAt,
           contributor_ids: JSON.stringify(b.contributorIds),
         })
         .onConflict("week_key")
+        .merge();
+    },
+    countDefeatedWith: async (userId: string) => {
+      // Contributor lists are JSON arrays: narrow with LIKE, then check exactly.
+      const rows = await this.db("bosses")
+        .whereNotNull("defeated_at")
+        .andWhere("contributor_ids", "like", `%${JSON.stringify(userId)}%`);
+      return rows.filter((r: Row) => parseJson<string[]>(r.contributor_ids, []).includes(userId))
+        .length;
+    },
+  };
+
+  badges = {
+    // Sorted here rather than in SQL, because chunks would each come back sorted on their own.
+    list: async (userIds: readonly string[]) =>
+      (await inChunks(userIds, (chunk) => this.db("member_badges").whereIn("user_id", chunk)))
+        .map(toBadge)
+        .sort(
+          (a, b) =>
+            a.earnedAt - b.earnedAt || (a.badgeId < b.badgeId ? -1 : a.badgeId > b.badgeId ? 1 : 0),
+        ),
+    award: async (b: EarnedBadgeRecord) => {
+      await this.db("member_badges")
+        .insert({ user_id: b.userId, badge_id: b.badgeId, earned_at: b.earnedAt })
+        .onConflict(["user_id", "badge_id"])
+        .ignore();
+    },
+  };
+
+  cards = {
+    list: async (userIds: readonly string[]) =>
+      (await inChunks(userIds, (chunk) => this.db("member_cards").whereIn("user_id", chunk))).map(
+        toCard,
+      ),
+    save: async (c: CardRecord) => {
+      await this.db("member_cards")
+        .insert({
+          user_id: c.userId,
+          style: c.style,
+          showcase: c.showcase === null ? null : JSON.stringify(c.showcase),
+        })
+        .onConflict("user_id")
         .merge();
     },
   };

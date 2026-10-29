@@ -13,6 +13,7 @@ describe("PushNotifier", () => {
     broadcastPhaseCompleted: vi.fn(),
     broadcastPersonalResult: vi.fn(),
     broadcastMyStatus: vi.fn(),
+    broadcastBadgesEarned: vi.fn(),
   });
 
   it("sends room events to everyone and personal events to one member", async () => {
@@ -28,6 +29,19 @@ describe("PushNotifier", () => {
     expect(b.broadcastRoomUpdated).toHaveBeenCalledWith({ room: expect.any(Object) }, "all");
     expect(b.broadcastMyStatus).toHaveBeenCalledTimes(1);
     expect(b.broadcastMyStatus).toHaveBeenCalledWith({ me: expect.any(Object) }, [
+      { id: "ana-client" },
+    ]);
+  });
+
+  it("sends earned badges only to the member who earned them", () => {
+    const b = broadcaster();
+    const notifier = new PushNotifier(b, (userId) =>
+      userId === "ana" ? { id: "ana-client" } : undefined,
+    );
+    notifier.badgesEarned("ana", ["night-owl"]);
+    notifier.badgesEarned("offline", ["leet"]);
+    expect(b.broadcastBadgesEarned).toHaveBeenCalledTimes(1);
+    expect(b.broadcastBadgesEarned).toHaveBeenCalledWith({ badgeIds: ["night-owl"] }, [
       { id: "ana-client" },
     ]);
   });
@@ -77,14 +91,17 @@ describe("ChannelAnnouncer", () => {
       focusMinutes: 120,
       goalsDone: 3,
       activeMembers: 2,
-      boss: { name: "<Midterms>", hpLeftMinutes: 60, daysLeft: 4, defeated: false },
+      boss: { name: "<Midterms>", hpLeftXp: 1200, daysLeft: 4, defeated: false },
       topStreaks: [{ userId: "ana", streak: 31 }],
+      topFocus: [{ userId: "ana", focusMinutes: 90 }],
     };
     await announcer.dailyRecap("c1", recap);
     await announcer.busyRoom("c1", 6, 1.5);
     await announcer.bossDefeated("c1", "Midterms", 9, 50);
     expect(posts[0]!.content).toContain("Top streaks: everyone Ana R. 31");
-    expect(posts[0]!.content).toContain("Midterms: down to 1 hr HP");
+    expect(posts[0]!.content).toContain("This week: 1. everyone Ana R. 1.5 hrs");
+    expect(channel.nickname).toHaveBeenCalledTimes(1);
+    expect(posts[0]!.content).toContain("Midterms: down to 1,200 HP");
     expect(posts[0]!.content).not.toContain("<");
     expect(posts[1]!.content).toContain("6 people are focusing");
     expect(posts[2]!.content).toContain("defeated Midterms");

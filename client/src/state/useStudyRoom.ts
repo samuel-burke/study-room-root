@@ -15,8 +15,10 @@ export interface StudyRoomActions {
   deleteGoal(goalId: string): Promise<boolean>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<boolean>;
   deleteMyData(): Promise<boolean>;
+  keepGoing(): Promise<boolean>;
   reload(): Promise<void>;
   dismissBreak(): void;
+  dismissBadge(): void;
   dismissError(): void;
 }
 
@@ -38,6 +40,7 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
       phaseCompleted: (event) => dispatch({ type: "phaseCompleted", event, at: Date.now() }),
       personalResult: (event) => dispatch({ type: "personalResult", event }),
       myStatus: (me) => dispatch({ type: "myStatus", me }),
+      badgesEarned: (badgeIds) => dispatch({ type: "badgesEarned", badgeIds }),
     });
     void reload();
     return unsubscribe;
@@ -79,8 +82,10 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
         if (ok) await reload();
         return ok;
       },
+      keepGoing: () => run(() => gateway.keepGoing()),
       reload,
       dismissBreak: () => dispatch({ type: "dismissBreak" }),
+      dismissBadge: () => dispatch({ type: "dismissBadge" }),
       dismissError: () => dispatch({ type: "dismissError" }),
     };
   }, [gateway, reload]);

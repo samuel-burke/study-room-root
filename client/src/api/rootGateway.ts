@@ -1,5 +1,7 @@
 import { ImageUriResolution, rootClient } from "@rootsdk/client-app";
 import {
+  leaderboardFromProto,
+  memberProfileFromProto,
   myStatusFromProto,
   personalResultFromProto,
   phaseCompletedFromProto,
@@ -92,13 +94,37 @@ export class RootGateway implements StudyRoomGateway {
     return myStatusFromProto(await call(() => client.deleteMyData({})));
   }
 
+  async keepGoing() {
+    return myStatusFromProto(await call(() => client.keepGoing({})));
+  }
+
   async getProgress() {
     return progressFromProto(await call(() => client.getProgress({})));
   }
 
+  async getLeaderboard() {
+    return leaderboardFromProto(await call(() => client.getLeaderboard({})));
+  }
+
+  async setLeaderboardHidden(hidden: boolean) {
+    return leaderboardFromProto(await call(() => client.setLeaderboardHidden({ hidden })));
+  }
+
+  async setCardStyle(style: string) {
+    return progressFromProto(await call(() => client.setCardStyle({ style })));
+  }
+
+  async setBadgeShowcase(badgeIds: string[]) {
+    return progressFromProto(await call(() => client.setBadgeShowcase({ badgeIds })));
+  }
+
+  async getMemberProfile(userId: string) {
+    return memberProfileFromProto(await call(() => client.getMemberProfile({ userId })));
+  }
+
   async getProfiles(userIds: string[]): Promise<Profile[]> {
     if (userIds.length === 0) return [];
-    const profiles = await rootClient.users.getUserProfiles(userIds);
+    const profiles = await call(() => rootClient.users.getUserProfiles(userIds));
     return profiles.map((p) => ({
       userId: p.id,
       name: p.nickname,
@@ -120,15 +146,18 @@ export class RootGateway implements StudyRoomGateway {
       handlers.personalResult(personalResultFromProto(e));
     const onStatus = (e: { me?: Parameters<typeof myStatusFromProto>[0] }) =>
       handlers.myStatus(myStatusFromProto(e.me));
+    const onBadges = (e: { badgeIds: string[] }) => handlers.badgesEarned(e.badgeIds);
     client.on(StudyRoomServiceClientEvent.RoomUpdated, onRoom);
     client.on(StudyRoomServiceClientEvent.PhaseCompleted, onPhase);
     client.on(StudyRoomServiceClientEvent.PersonalResult, onPersonal);
     client.on(StudyRoomServiceClientEvent.MyStatus, onStatus);
+    client.on(StudyRoomServiceClientEvent.BadgesEarned, onBadges);
     return () => {
       client.off(StudyRoomServiceClientEvent.RoomUpdated, onRoom);
       client.off(StudyRoomServiceClientEvent.PhaseCompleted, onPhase);
       client.off(StudyRoomServiceClientEvent.PersonalResult, onPersonal);
       client.off(StudyRoomServiceClientEvent.MyStatus, onStatus);
+      client.off(StudyRoomServiceClientEvent.BadgesEarned, onBadges);
     };
   }
 }

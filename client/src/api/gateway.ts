@@ -1,4 +1,6 @@
 import type {
+  LeaderboardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -23,6 +25,8 @@ export interface GatewayHandlers {
   phaseCompleted(event: PhaseCompletedDto): void;
   personalResult(event: PersonalResultDto): void;
   myStatus(me: MyStatusDto): void;
+  /** Badges the current member just earned. */
+  badgesEarned(badgeIds: string[]): void;
 }
 
 /** An error the UI can show as-is. */
@@ -55,8 +59,18 @@ export interface StudyRoomGateway {
   deleteGoal(goalId: string): Promise<MyStatusDto>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<MyStatusDto>;
   getProgress(): Promise<ProgressDto>;
+  getLeaderboard(): Promise<LeaderboardDto>;
+  setLeaderboardHidden(hidden: boolean): Promise<LeaderboardDto>;
+  /** "" goes back to the automatic style. */
+  setCardStyle(style: string): Promise<ProgressDto>;
+  /** Up to three earned badges for the card; empty shows the most recent. */
+  setBadgeShowcase(badgeIds: string[]): Promise<ProgressDto>;
   /** Erases everything stored about the current member. */
   deleteMyData(): Promise<MyStatusDto>;
+  /** Answers "Keep going?" so the member rolls into the next cycle. */
+  keepGoing(): Promise<MyStatusDto>;
+  /** Another member's public game stats, for their profile card. */
+  getMemberProfile(userId: string): Promise<MemberProfileDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;
   subscribe(handlers: GatewayHandlers): () => void;
 }
