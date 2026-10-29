@@ -91,4 +91,38 @@ describe("roomReducer", () => {
       error: "offline",
     });
   });
+
+  it("queues each new badge once, however many ways it arrives", async () => {
+    const snap = await snapshot();
+    let state = roomReducer(initialRoomViewState, { type: "snapshot", snapshot: snap });
+    // The reply to checking off a goal carries the badges.
+    state = roomReducer(state, {
+      type: "myStatus",
+      me: { ...snap.me, newBadges: ["first-goal", "speedrun"] },
+    });
+    expect(state.newBadges).toEqual(["first-goal", "speedrun"]);
+    // Then the badge push, and the status push, arrive with the same ones.
+    state = roomReducer(state, { type: "badgesEarned", badgeIds: ["speedrun", "first-goal"] });
+    state = roomReducer(state, {
+      type: "myStatus",
+      me: { ...snap.me, newBadges: ["first-goal", "speedrun"] },
+    });
+    expect(state.newBadges).toEqual(["first-goal", "speedrun"]);
+    state = roomReducer(state, { type: "dismissBadge" });
+    state = roomReducer(state, { type: "badgesEarned", badgeIds: ["first-goal"] });
+    expect(state.newBadges).toEqual(["speedrun"]);
+    // After "Delete my data", the same badges can be earned and shown again.
+    state = roomReducer(state, { type: "badgesReset" });
+    state = roomReducer(state, { type: "badgesEarned", badgeIds: ["first-goal"] });
+    expect(state.newBadges).toEqual(["first-goal"]);
+  });
+
+  it("queues badges carried by a break result or snapshot", async () => {
+    const snap = await snapshot();
+    const state = roomReducer(initialRoomViewState, {
+      type: "snapshot",
+      snapshot: { ...snap, me: { ...snap.me, newBadges: ["squad-up"] } },
+    });
+    expect(state.newBadges).toEqual(["squad-up"]);
+  });
 });

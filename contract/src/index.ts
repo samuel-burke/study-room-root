@@ -182,6 +182,7 @@ export function myStatusToProto(me: MyStatusDto): MyStatus {
     goals: me.goals.map(goalToProto),
     goalsPrivate: me.goalsPrivate,
     keepGoingEndsAtMs: me.keepGoingEndsAt,
+    newBadgeIds: me.newBadges ?? [],
   };
 }
 
@@ -368,6 +369,7 @@ export function myStatusFromProto(me: MyStatus | undefined): MyStatusDto {
     goals: (me?.goals ?? []).map(goalFromProto),
     goalsPrivate: me?.goalsPrivate ?? false,
     keepGoingEndsAt: me?.keepGoingEndsAtMs ?? 0,
+    ...(me?.newBadgeIds.length ? { newBadges: [...me.newBadgeIds] } : {}),
   };
 }
 

@@ -132,6 +132,8 @@ message MyStatus {
   bool goals_private = 13;
   // When the "Keep going?" prompt closes. 0 when it isn't showing.
   double keep_going_ends_at_ms = 14;
+  // Badges earned by the operation that produced this status. Empty otherwise.
+  repeated string new_badge_ids = 15;
 }
 
 message RoomSnapshot {

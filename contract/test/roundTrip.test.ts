@@ -13,6 +13,7 @@ import {
   Leaderboard,
   MemberProfile,
   type MemberStatus,
+  MyStatus,
   PersonalResultEvent,
   PhaseCompletedEvent,
   Progress,
@@ -23,6 +24,8 @@ import {
   leaderboardToProto,
   memberProfileFromProto,
   memberProfileToProto,
+  myStatusFromProto,
+  myStatusToProto,
   personalResultFromProto,
   personalResultToProto,
   phaseCompletedFromProto,
@@ -140,6 +143,15 @@ describe("contract round trip", () => {
     const snapshot: SnapshotDto = { room, me };
     const bytes = RoomSnapshot.toBinary(snapshotToProto(snapshot));
     expect(snapshotFromProto(RoomSnapshot.fromBinary(bytes))).toEqual(snapshot);
+  });
+
+  it("preserves newly earned badges on a status, and leaves them out when there are none", () => {
+    const earned: MyStatusDto = { ...me, newBadges: ["first-goal", "speedrun"] };
+    const bytes = MyStatus.toBinary(myStatusToProto(earned));
+    expect(myStatusFromProto(MyStatus.fromBinary(bytes))).toEqual(earned);
+    expect(
+      myStatusFromProto(MyStatus.fromBinary(MyStatus.toBinary(myStatusToProto(me)))),
+    ).not.toHaveProperty("newBadges");
   });
 
   it("covers every phase and preset", () => {
