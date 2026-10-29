@@ -128,7 +128,7 @@ test.describe("progress", () => {
   });
 
   test("shows the badge shelf and card styles", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?badges=first-session");
     await page.getByRole("button", { name: "Your progress" }).click();
     const shelf = page.getByRole("region", { name: "Badges" });
     await expect(shelf.getByRole("button", { name: "First Steps, earned" })).toBeVisible();

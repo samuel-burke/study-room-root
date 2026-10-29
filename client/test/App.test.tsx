@@ -188,7 +188,7 @@ describe("Study Squad app", () => {
   });
 
   it("shows badges, keeps secrets hidden, and lets you restyle your card", async () => {
-    const { user } = await renderApp();
+    const { user } = await renderApp({ badges: ["squad-up", "first-session"] });
     await user.click(screen.getByRole("button", { name: "Your progress" }));
     const shelf = await screen.findByRole("region", { name: "Badges" });
     expect(within(shelf).getByRole("button", { name: "First Steps, earned" })).toBeInTheDocument();
@@ -245,12 +245,15 @@ describe("Study Squad app", () => {
     expect(
       screen.getAllByRole("status").some((s) => s.textContent?.includes("Round 1 complete")),
     ).toBe(true);
-    // Finishing the round also earns badges, each with its own full-screen moment.
-    expect(await screen.findByText("Badge unlocked")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Nice!" }));
+    // Finishing your first round earns your first badges live, each with its
+    // own full-screen moment, on top of the break sheet.
+    const unlocked: string[] = [];
+    await screen.findByRole("button", { name: "Nice!" });
     while (screen.queryByRole("button", { name: "Nice!" })) {
+      unlocked.push(screen.getByRole("heading", { level: 2 }).textContent ?? "");
       await user.click(screen.getByRole("button", { name: "Nice!" }));
     }
+    expect(unlocked).toEqual(expect.arrayContaining(["First Steps", "Squad Up"]));
     await act(async () => {
       await user.click(within(breakSheet).getByRole("button", { name: /Done/ }));
     });
