@@ -12,6 +12,7 @@ Weekly goals and rewards: quests, a leaderboard, badges, named bosses, member pr
 
 - Tap anyone on the board or the weekly leaderboard to see their profile: level, XP, streak and the badges they've earned. Goals and focus history stay private, and someone else's secret badges don't say how they were found.
 - Sound cues when a focus block or break starts and ends, with a mute button that is remembered on your device
+- Sounds for a round celebration, a boss defeat and a level-up. They wait their turn instead of playing over each other, and the mute button silences them too.
 - The weekly boss gets a new random funny name each week from a built-in list when the "Boss name" setting is blank (now the default). A name set by an admin still wins.
 - Each boss has a strength from 0.5x to 2x that fits its name (a final exam is tougher than a pop quiz), and the list averages 1x. Its HP and its loot both scale with strength. This turns on the Giant Slayer and Survived Finals badges.
 - Weekly leaderboard on the progress screen, ranked by focus minutes and reset every Monday in the community time zone. Members can hide themselves, which also keeps them out of recap rankings.
