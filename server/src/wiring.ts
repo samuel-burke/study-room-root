@@ -9,20 +9,39 @@ import {
 const describeError = (error: unknown) =>
   error instanceof Error ? (error.stack ?? error.message) : String(error);
 
-/** Reads Root's settings and resolves the post channel's display name. */
+/** What loadConfig needs from Root to describe the picked channels. */
+export interface ChannelLookup {
+  name(channelId: string): Promise<string>;
+  /** A link that opens the channel in Root. */
+  link(channelId: string): Promise<string>;
+}
+
+/** Reads Root's settings and resolves the post and voice channels' names and link. */
 export async function loadConfig(
   settings: unknown,
-  channelName: (channelId: string) => Promise<string>,
+  channels: ChannelLookup,
   logger: Logger,
 ): Promise<AppConfig> {
-  const config = parseSettings(settings as RawSettings);
-  if (!config.postChannelId) return config;
-  try {
-    return { ...config, postChannelName: await channelName(config.postChannelId) };
-  } catch (error) {
-    logger.warn("could not read post channel", { error: String(error) });
-    return config;
+  let config = parseSettings(settings as RawSettings);
+  if (config.postChannelId) {
+    try {
+      config = { ...config, postChannelName: await channels.name(config.postChannelId) };
+    } catch (error) {
+      logger.warn("could not read post channel", { error: String(error) });
+    }
   }
+  if (config.voiceChannelId) {
+    try {
+      const [name, url] = await Promise.all([
+        channels.name(config.voiceChannelId),
+        channels.link(config.voiceChannelId),
+      ]);
+      config = { ...config, voiceChannelName: name, voiceChannelUrl: url };
+    } catch (error) {
+      logger.warn("could not read voice channel", { error: String(error) });
+    }
+  }
+  return config;
 }
 
 type PresenceEngine = Pick<StudyRoomEngine, "userAttached" | "userDetached">;

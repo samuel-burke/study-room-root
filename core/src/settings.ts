@@ -19,6 +19,7 @@ export const SETTINGS = {
     customFocus: "customFocusMinutes",
     customBreak: "customBreakMinutes",
     postChannel: "postChannel",
+    voiceChannel: "voiceChannel",
     recapEnabled: "recapEnabled",
     recapTime: "recapTime",
     recapLeaderboard: "recapLeaderboard",
@@ -48,6 +49,11 @@ export interface AppConfig {
   postChannelId: string | null;
   /** Display name of that channel, resolved by the server. Empty if unknown. */
   postChannelName: string;
+  /** Voice channel the "Join voice" button opens. null = no button. */
+  voiceChannelId: string | null;
+  /** Its display name and link, resolved by the server. Empty if unknown. */
+  voiceChannelName: string;
+  voiceChannelUrl: string;
   recap: { enabled: boolean; hours: number; minutes: number };
   /** List the week's top focusers in the daily recap. */
   recapLeaderboardEnabled: boolean;
@@ -70,6 +76,9 @@ export const DEFAULT_CONFIG: AppConfig = {
   timeZone: "America/New_York",
   postChannelId: null,
   postChannelName: "",
+  voiceChannelId: null,
+  voiceChannelName: "",
+  voiceChannelUrl: "",
   recap: { enabled: true, hours: 21, minutes: 0 },
   recapLeaderboardEnabled: true,
   goalsPublicByDefault: true,
@@ -133,6 +142,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
 
   const tz = firstString(room[r.timeZone]);
   const channel = firstString(room[r.postChannel]);
+  const voice = firstString(room[r.voiceChannel]);
 
   return {
     ...presetFrom(
@@ -143,6 +153,9 @@ export function parseSettings(raw: RawSettings): AppConfig {
     timeZone: tz && isValidTimeZone(tz) ? tz : d.timeZone,
     postChannelId: channel && channel.length > 0 ? channel : null,
     postChannelName: "",
+    voiceChannelId: voice && voice.length > 0 ? voice : null,
+    voiceChannelName: "",
+    voiceChannelUrl: "",
     recap: {
       enabled: bool(room[r.recapEnabled], d.recap.enabled),
       ...timeOfDay(room[r.recapTime], d.recap),

@@ -163,6 +163,11 @@ export function roomToProto(room: RoomStateDto): RoomState {
       dailyXpCap: room.features.dailyXpCap,
       postChannelName: room.features.postChannelName,
     },
+    voice: {
+      channelName: room.voice.channelName,
+      joinUrl: room.voice.joinUrl,
+      userIds: room.voice.userIds,
+    },
   };
 }
 
@@ -349,6 +354,11 @@ export function roomFromProto(room: RoomState | undefined): RoomStateDto {
       goalsPublicByDefault: features?.goalsPublicByDefault ?? true,
       dailyXpCap: features?.dailyXpCap ?? 0,
       postChannelName: features?.postChannelName ?? "",
+    },
+    voice: {
+      channelName: room?.voice?.channelName ?? "",
+      joinUrl: room?.voice?.joinUrl ?? "",
+      userIds: room?.voice?.userIds ?? [],
     },
   };
 }

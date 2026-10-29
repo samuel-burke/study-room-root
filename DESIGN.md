@@ -117,6 +117,10 @@ Earning a badge opens a full-screen moment (`BadgeUnlocked.tsx`) that grows with
 
 Display names come from Root nicknames and are stripped of markup and mention characters before they're posted.
 
+## Voice uses Root's voice channels
+
+Study Squad doesn't run calls. The SDK gives apps no microphone access, and Root's voice channels already work well. Admins pick one in the **Voice channel** setting. The server asks Root for a link to it (`communityLinks.communityChannelCreate`), and the room shows a Join voice button that opens the link. The server also follows who is in that channel (`channelWebRtcs.list` on start and on settings changes, then the attach and detach events), and the board shows headphones next to them. Someone counts as in voice until their last device leaves (`VoiceRoster`). The voice list is kept in memory only.
+
 ## Admin settings use Root's Global Settings
 
 Root already provides a settings UI restricted to people who can manage apps, so Study Squad doesn't build or secure its own. The mockup's admin setup screen maps to two groups in `root-manifest.json`: **Timer and room** and **Game layer**. The server validates and clamps every value (`parseSettings`), and a test checks that the manifest declares exactly the keys the server reads and that its defaults match the server's.
@@ -128,11 +132,12 @@ Numeric settings are `select` items, not `number` items: in `@rootsdk/dev-tools`
 - **Name**: the mockups say "Study Room"; the app is now called Study Squad. Internal code names (`StudyRoomEngine`, the `StudyRoomService` Protobuf service, `@studyroom/*` packages) keep the old name, because renaming the service would change the wire paths for no user benefit.
 - **Admin setup** is Root's App settings screen (see above). The room shows a read-only summary behind the settings button.
 - **Weekly quests and badges** came after v1. Quest rewards are smaller than the mockup's (+30 to +40 XP rather than +50 to +100) to keep them a bonus next to focus XP, and "Join 3 room timers" counts finished room rounds.
-- **"Chat in #study-hall"** on the break screen is a hint, not a link, because the SDK has no supported way to deep-link to a channel.
+- **"Chat in #study-hall"** on the break screen is a hint, not a link. The voice channel's Join voice button uses Root's channel links, so the post channel could get one too.
 - **Avatars** use Root profile pictures when a member has one, and the design's initials and colors otherwise.
 - Fonts (DM Sans, Space Grotesk) are bundled with the client instead of loaded from Google Fonts, to avoid third-party requests from inside Root.
 
 ## Known limits
 
 - One room per installed app instance (one Root server process serves one community).
+- The Join voice link and the voice events haven't been tried in a live Root community yet. If Root needs a permission to list a voice channel, the button still works but the headphones won't show.
 - Not yet run against a live Root community; that needs a developer token. The server compiles against the real SDK types and boots up to Root's environment check.

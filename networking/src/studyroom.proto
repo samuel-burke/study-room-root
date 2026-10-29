@@ -99,6 +99,16 @@ message RoomFeatures {
   string post_channel_name = 8;
 }
 
+// The community voice channel admins picked for studying together.
+message Voice {
+  // Empty when admins haven't picked one.
+  string channel_name = 1;
+  // Opens the channel in Root. Empty when no link could be made.
+  string join_url = 2;
+  // Members in that channel right now.
+  repeated string user_ids = 3;
+}
+
 message RoomState {
   double server_now_ms = 1;
   RoomTimer timer = 2;
@@ -108,6 +118,7 @@ message RoomState {
   double combo = 6;
   Boss boss = 7;
   RoomFeatures features = 8;
+  Voice voice = 9;
 }
 
 message Goal {
