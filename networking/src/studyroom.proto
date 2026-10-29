@@ -203,6 +203,22 @@ message Leaderboard {
   bool hidden = 6;
 }
 
+// What anyone can see about a member by tapping them: game stats only, never
+// goals, focus history or leaderboard minutes.
+message MemberProfile {
+  string user_id = 1;
+  int32 level = 2;
+  int32 xp_total = 3;
+  int32 xp_into_level = 4;
+  int32 xp_for_next_level = 5;
+  int32 streak = 6;
+  // Oldest first.
+  repeated EarnedBadge badges = 7;
+  // The badges on their card.
+  repeated string showcase = 8;
+  string card_style = 9;
+}
+
 // ---------------------------------------------------------------- requests
 
 message GetRoomRequest {}
@@ -243,6 +259,11 @@ message SetGoalsPrivateRequest {
 message GetProgressRequest {}
 
 message GetLeaderboardRequest {}
+
+// The member to look up. The caller still comes from the connection.
+message GetMemberProfileRequest {
+  string user_id = 1;
+}
 
 message SetLeaderboardHiddenRequest {
   bool hidden = 1;
@@ -326,6 +347,7 @@ service StudyRoomService {
   rpc KeepGoing(KeepGoingRequest) returns (MyStatus);
   rpc SetCardStyle(SetCardStyleRequest) returns (Progress);
   rpc SetBadgeShowcase(SetBadgeShowcaseRequest) returns (Progress);
+  rpc GetMemberProfile(GetMemberProfileRequest) returns (MemberProfile);
 
   // Server-to-client pushes.
   rpc BroadcastRoomUpdated(RoomUpdatedEvent) returns (rootsdk.Void);

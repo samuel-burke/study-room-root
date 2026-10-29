@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { StudyRoomGateway } from "./api/gateway";
 import { BadgeUnlocked } from "./components/BadgeUnlocked";
 import { KeepGoing } from "./components/KeepGoing";
+import { MemberProfileSheet } from "./components/MemberProfileSheet";
 import { BreakMoment } from "./components/BreakMoment";
 import { Celebration } from "./components/Celebration";
 import { GoalsSheet } from "./components/GoalsSheet";
@@ -17,7 +18,11 @@ import { useSoundCues } from "./state/useSoundCues";
 import { useStudyRoom } from "./state/useStudyRoom";
 
 type Overlay =
-  { kind: "start"; mode: "room" | "solo" } | { kind: "goals" } | { kind: "settings" } | null;
+  | { kind: "start"; mode: "room" | "solo" }
+  | { kind: "goals" }
+  | { kind: "settings" }
+  | { kind: "member"; userId: string }
+  | null;
 
 export function App({ gateway }: { gateway: StudyRoomGateway }) {
   const { state, actions } = useStudyRoom(gateway);
@@ -79,6 +84,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             freezesEnabled={room.features.streakFreezesEnabled}
             onBack={() => setScreen("room")}
             onDeleteData={actions.deleteMyData}
+            onOpenMember={(userId) => setOverlay({ kind: "member", userId })}
           />
         ) : (
           <RoomScreen
@@ -99,6 +105,7 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             onOpenGoals={() => setOverlay({ kind: "goals" })}
             onOpenProgress={() => setScreen("progress")}
             onOpenSettings={() => setOverlay({ kind: "settings" })}
+            onOpenMember={(userId) => setOverlay({ kind: "member", userId })}
           />
         )}
       </div>
@@ -123,6 +130,16 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
           onToggle={(id, done) => void actions.setGoalDone(id, done)}
           onDelete={(id) => void actions.deleteGoal(id)}
           onAdd={actions.addGoal}
+          onClose={() => setOverlay(null)}
+        />
+      )}
+      {overlay?.kind === "member" && (
+        <MemberProfileSheet
+          key={overlay.userId}
+          gateway={gateway}
+          userId={overlay.userId}
+          you={overlay.userId === me.userId}
+          xpEnabled={room.features.xpEnabled}
           onClose={() => setOverlay(null)}
         />
       )}

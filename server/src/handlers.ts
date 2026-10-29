@@ -1,5 +1,6 @@
 import {
   leaderboardToProto,
+  memberProfileToProto,
   myStatusToProto,
   progressToProto,
   snapshotToProto,
@@ -14,8 +15,10 @@ import {
 import type {
   AddGoalRequest,
   DeleteGoalRequest,
+  GetMemberProfileRequest,
   JoinRoomTimerRequest,
   Leaderboard,
+  MemberProfile,
   MyStatus,
   Progress,
   RoomSnapshot,
@@ -82,6 +85,12 @@ export class StudyRoomHandlers {
   getLeaderboard(userId: string): Promise<Leaderboard> {
     return this.handle("getLeaderboard", userId, "read", async () =>
       leaderboardToProto(await this.engine.getLeaderboard(userId)),
+    );
+  }
+
+  getMemberProfile(userId: string, request: GetMemberProfileRequest): Promise<MemberProfile> {
+    return this.handle("getMemberProfile", userId, "read", async () =>
+      memberProfileToProto(await this.engine.getMemberProfile(request.userId)),
     );
   }
 

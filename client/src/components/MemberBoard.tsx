@@ -11,6 +11,8 @@ interface BoardProps {
   youId: string;
   now: number;
   compact?: boolean;
+  /** Opens a member's profile. */
+  onOpenMember?(userId: string): void;
 }
 
 /** You first, then everyone else in the order they started. */
@@ -24,6 +26,19 @@ export function orderMembers(members: MemberCardDto[], youId: string): MemberCar
 function goalText(member: MemberCardDto) {
   if (member.goalPrivate) return null;
   return member.goalText || null;
+}
+
+/** Covers a card so tapping anywhere on it opens the member's profile. */
+export function OpenProfileButton({ name, onOpen }: { name: string; onOpen?(): void }) {
+  if (!onOpen) return null;
+  return (
+    <button
+      type="button"
+      className="open-profile"
+      aria-label={name === "You" ? "View your profile" : `View ${name}'s profile`}
+      onClick={onOpen}
+    />
+  );
 }
 
 /**
@@ -50,11 +65,13 @@ function MemberCard({
   profile,
   you,
   now,
+  onOpen,
 }: {
   member: MemberCardDto;
   profile?: Profile;
   you: boolean;
   now: number;
+  onOpen?(): void;
 }) {
   const chip = statusChip(member, now);
   const name = you ? "You" : (profile?.name ?? "Member");
@@ -66,6 +83,7 @@ function MemberCard({
       data-style={member.cardStyle}
       aria-label={`${name}, ${chip.label}`}
     >
+      <OpenProfileButton name={name} onOpen={onOpen} />
       <div className="member-top">
         <Avatar userId={member.userId} profile={profile} you={you} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -105,11 +123,13 @@ function MemberRow({
   profile,
   you,
   now,
+  onOpen,
 }: {
   member: MemberCardDto;
   profile?: Profile;
   you: boolean;
   now: number;
+  onOpen?(): void;
 }) {
   const chip = statusChip(member, now);
   const name = you ? "You" : (profile?.name ?? "Member");
@@ -117,6 +137,7 @@ function MemberRow({
   const time = rowTime(member, now);
   return (
     <li className="member-row" data-style={member.cardStyle} aria-label={`${name}, ${chip.label}`}>
+      <OpenProfileButton name={name} onOpen={onOpen} />
       <Avatar userId={member.userId} profile={profile} you={you} />
       <div className="body">
         <div
@@ -134,7 +155,7 @@ function MemberRow({
   );
 }
 
-export function MemberBoard({ members, profiles, youId, now, compact }: BoardProps) {
+export function MemberBoard({ members, profiles, youId, now, compact, onOpenMember }: BoardProps) {
   const ordered = orderMembers(members, youId);
   const focusing = members.filter(isFocusing).length;
   const onBreak = members.length - focusing;
@@ -151,6 +172,7 @@ export function MemberBoard({ members, profiles, youId, now, compact }: BoardPro
               profile={profiles.get(m.userId)}
               you={m.userId === youId}
               now={now}
+              onOpen={onOpenMember && (() => onOpenMember(m.userId))}
             />
           ))}
         </ul>
@@ -179,6 +201,7 @@ export function MemberBoard({ members, profiles, youId, now, compact }: BoardPro
               profile={profiles.get(m.userId)}
               you={m.userId === youId}
               now={now}
+              onOpen={onOpenMember && (() => onOpenMember(m.userId))}
             />
           ))}
         </ul>

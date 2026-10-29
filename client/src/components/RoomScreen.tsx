@@ -26,6 +26,7 @@ export interface RoomScreenProps {
   onOpenGoals(): void;
   onOpenProgress(): void;
   onOpenSettings(): void;
+  onOpenMember(userId: string): void;
 }
 
 function Header({
@@ -118,6 +119,7 @@ export function RoomScreen(props: RoomScreenProps) {
       youId={me.userId}
       now={now}
       compact={compact}
+      onOpenMember={props.onOpenMember}
     />
   );
 

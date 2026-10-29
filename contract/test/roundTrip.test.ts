@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   LeaderboardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   PhaseCompletedDto,
@@ -10,6 +11,7 @@ import type {
 } from "@studyroom/core";
 import {
   Leaderboard,
+  MemberProfile,
   type MemberStatus,
   PersonalResultEvent,
   PhaseCompletedEvent,
@@ -19,6 +21,8 @@ import {
 import {
   leaderboardFromProto,
   leaderboardToProto,
+  memberProfileFromProto,
+  memberProfileToProto,
   personalResultFromProto,
   personalResultToProto,
   phaseCompletedFromProto,
@@ -250,6 +254,25 @@ describe("contract round trip", () => {
     };
     const bytes = Leaderboard.toBinary(leaderboardToProto(board));
     expect(leaderboardFromProto(Leaderboard.fromBinary(bytes))).toEqual(board);
+  });
+
+  it("preserves a member profile", () => {
+    const profile: MemberProfileDto = {
+      userId: "priya",
+      level: 8,
+      xpTotal: 2460,
+      xpIntoLevel: 10,
+      xpForNextLevel: 400,
+      streak: 12,
+      badges: [
+        { id: "first-session", earnedAt: 1_793_000_000_000 },
+        { id: "leet", earnedAt: 1_793_100_000_000 },
+      ],
+      showcase: ["leet"],
+      cardStyle: "gold",
+    };
+    const bytes = MemberProfile.toBinary(memberProfileToProto(profile));
+    expect(memberProfileFromProto(MemberProfile.fromBinary(bytes))).toEqual(profile);
   });
 });
 

@@ -14,6 +14,7 @@ export function ProgressScreen({
   freezesEnabled,
   onBack,
   onDeleteData,
+  onOpenMember,
 }: {
   gateway: StudyRoomGateway;
   xpEnabled: boolean;
@@ -21,6 +22,8 @@ export function ProgressScreen({
   onBack(): void;
   /** Resolves true once the server has erased the member's data. */
   onDeleteData(): Promise<boolean>;
+  /** Opens a member's profile from the leaderboard. */
+  onOpenMember?(userId: string): void;
 }) {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +139,7 @@ export function ProgressScreen({
         </>
       )}
 
-      <WeeklyLeaderboard gateway={gateway} />
+      <WeeklyLeaderboard gateway={gateway} onOpenMember={onOpenMember} />
 
       <DeleteMyData onDelete={onDeleteData} onDone={onBack} />
     </main>

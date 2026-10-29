@@ -180,6 +180,25 @@ export interface ProgressDto {
   card: CardLookDto;
 }
 
+/**
+ * What any member can see about another by tapping them: game stats only.
+ * Goals, focus history and leaderboard minutes stay out, so nothing a member
+ * keeps private (or opted out of showing) leaks through a profile.
+ */
+export interface MemberProfileDto {
+  userId: string;
+  level: number;
+  xpTotal: number;
+  xpIntoLevel: number;
+  xpForNextLevel: number;
+  streak: number;
+  /** Earned badges, oldest first. */
+  badges: EarnedBadgeDto[];
+  /** The badges on their card, as the board shows them. */
+  showcase: string[];
+  cardStyle: string;
+}
+
 export interface LeaderboardEntryDto {
   userId: string;
   /** Whole focus minutes this week. */

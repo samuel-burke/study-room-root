@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Tap anyone on the board or the weekly leaderboard to see their profile: level, XP, streak and the badges they've earned. Goals and focus history stay private, and someone else's secret badges don't say how they were found.
+
 ## [0.2.0] - 2026-10-29
 
 Weekly goals and rewards: quests, a leaderboard, badges, named bosses and sounds.

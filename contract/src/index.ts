@@ -4,6 +4,7 @@ import type {
   GoalDto,
   LeaderboardDto,
   MemberCardDto,
+  MemberProfileDto,
   MemberStatus as MemberStatusDto,
   MyStatusDto,
   MyStatusKind,
@@ -30,6 +31,7 @@ import {
   type Goal,
   type Leaderboard,
   type MemberCard,
+  type MemberProfile,
   type MyStatus,
   type PersonalResultEvent,
   type PhaseCompletedEvent,
@@ -230,6 +232,20 @@ export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
   };
 }
 
+export function memberProfileToProto(profile: MemberProfileDto): MemberProfile {
+  return {
+    userId: profile.userId,
+    level: profile.level,
+    xpTotal: profile.xpTotal,
+    xpIntoLevel: profile.xpIntoLevel,
+    xpForNextLevel: profile.xpForNextLevel,
+    streak: profile.streak,
+    badges: profile.badges.map((b) => ({ id: b.id, earnedAtMs: b.earnedAt })),
+    showcase: profile.showcase,
+    cardStyle: profile.cardStyle,
+  };
+}
+
 export function phaseCompletedToProto(event: PhaseCompletedDto): PhaseCompletedEvent {
   return {
     kind: PHASE_TO_PROTO[event.kind],
@@ -397,6 +413,20 @@ export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
       rank: e.rank,
     })),
     me: { rank: board.myRank, focusMinutes: board.myFocusMinutes, hidden: board.hidden },
+  };
+}
+
+export function memberProfileFromProto(profile: MemberProfile): MemberProfileDto {
+  return {
+    userId: profile.userId,
+    level: profile.level,
+    xpTotal: profile.xpTotal,
+    xpIntoLevel: profile.xpIntoLevel,
+    xpForNextLevel: profile.xpForNextLevel,
+    streak: profile.streak,
+    badges: (profile.badges ?? []).map((b) => ({ id: b.id, earnedAt: b.earnedAtMs })),
+    showcase: profile.showcase ?? [],
+    cardStyle: profile.cardStyle || "classic",
   };
 }
 

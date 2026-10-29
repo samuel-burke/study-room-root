@@ -1733,6 +1733,79 @@ h3 {
   border: 1px solid var(--border);
 }
 
+/* ---------------------------------------------------------------- member profile */
+
+.member-card,
+.member-row {
+  position: relative;
+}
+
+/* Covers a member's card or row so tapping anywhere on it opens their profile. */
+.open-profile {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.open-profile:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.open-profile:focus-visible {
+  outline-offset: -2px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-head .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 15px;
+}
+
+.profile-sheet h1.profile-name {
+  font-size: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-level {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.profile-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ---------------------------------------------------------------- badge unlock */
 
 /*

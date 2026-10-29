@@ -5,6 +5,7 @@ import type {
   GoalDto,
   LeaderboardDto,
   MemberCardDto,
+  MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
   ProgressDto,
@@ -213,6 +214,36 @@ export class StudyRoomEngine {
 
   getProgress(userId: string): Promise<ProgressDto> {
     return this.run(async (tx, now) => this.buildProgress(tx, userId, now));
+  }
+
+  /**
+   * Another member's public stats, for the profile that opens when they're
+   * tapped. Anyone in the community can look anyone up, so this returns game
+   * stats only (see MemberProfileDto). Unknown members read as brand new.
+   */
+  async getMemberProfile(userIdInput: unknown): Promise<MemberProfileDto> {
+    const userId = validateId(userIdInput, "member");
+    return this.run(async (tx, now) => {
+      const member = await tx.members.get(userId);
+      const members = new Map(member ? [[userId, member]] : []);
+      const progress = levelFromXp(member?.xpTotal ?? 0);
+      const today = dayKey(now, this.config.timeZone);
+      const look = (await this.cardLooks(tx, [userId], members)).get(userId)!;
+      return {
+        userId,
+        level: progress.level,
+        xpTotal: member?.xpTotal ?? 0,
+        xpIntoLevel: progress.xpIntoLevel,
+        xpForNextLevel: progress.xpForNextLevel,
+        streak: member ? currentStreak(member.streak, today, this.config.streakFreezesEnabled) : 0,
+        badges: (await tx.badges.list([userId])).map((b) => ({
+          id: b.badgeId,
+          earnedAt: b.earnedAt,
+        })),
+        showcase: look.showcase,
+        cardStyle: look.style,
+      };
+    });
   }
 
   // ---------------------------------------------------------------- card looks
