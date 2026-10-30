@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.0] - unreleased
+
+Collecting changes for the next release.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.
