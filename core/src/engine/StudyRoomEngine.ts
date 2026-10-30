@@ -29,6 +29,7 @@ import {
   type BossState,
 } from "../game/boss";
 import {
+  badgeById,
   newlyEarnedBadges,
   type BadgeFacts,
   type QuestFacts,
@@ -67,6 +68,8 @@ import {
   phaseAt,
   type CyclePhase,
 } from "../timer/roomCycle";
+import { SECRET_BADGE_NAME, type SquadEvent } from "../squad/squadLines";
+import { pickSquadLine, type LastSquadLines } from "../squad/squadVoice";
 import {
   validateGoalText,
   validateId,
@@ -99,6 +102,8 @@ export interface EngineDeps {
   logger: Logger;
   config: AppConfig;
   newId: () => string;
+  /** Returns [0, 1) like Math.random. Picks the squad bot's lines. */
+  random: () => number;
 }
 
 export interface StartOptions {
@@ -115,6 +120,19 @@ const BUSY_KEY = "busyPost";
 /** A focus block that hasn't credited or dealt anything live yet. */
 const NO_LIVE_CREDIT = { bossXpDealt: 0, liveMinutes: 0, liveXp: 0 } as const;
 const LAST_RECAP_KEY = "lastRecapDay";
+/** The squad bot's last line per event, so it never says the same thing twice in a row. */
+const SQUAD_LAST_KEY = "squadLastLines";
+/** When the room last started from empty, for "studying together for 2 hours". */
+const SQUAD_SESSION_KEY = "squadSessionStartedAt";
+/** When each member's join was last announced. */
+const SQUAD_JOINS_KEY = "squadJoinPosts";
+/** A member's join is announced at most once in this long, so popping in and out stays quiet. */
+const SQUAD_JOIN_COOLDOWN_MS = 2 * 60 * MINUTE_MS;
+/**
+ * A timer switch older than this is old news, say after the server was down,
+ * so nobody gets pinged for a break that is nearly over.
+ */
+const SQUAD_STALE_MS = 2 * MINUTE_MS;
 /** How long to wait before retrying a wake-up whose tick failed. */
 const TICK_RETRY_MS = 30_000;
 
@@ -389,7 +407,8 @@ export class StudyRoomEngine {
       await this.applyStartOptions(tx, userId, goals, options.goalsPrivate, now);
       const participants = await tx.room.listParticipants();
       if (!participants.some((p) => p.userId === userId)) {
-        if (!(await tx.room.getCycle())) {
+        const cycle = await tx.room.getCycle();
+        if (!cycle) {
           await tx.room.saveCycle({
             cycleStartedAt: now,
             preset: this.config.preset,
@@ -402,6 +421,7 @@ export class StudyRoomEngine {
           keepGoing: false,
           ...NO_LIVE_CREDIT,
         });
+        await this.announceJoin(tx, effects, userId, !cycle, now);
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -655,6 +675,7 @@ export class StudyRoomEngine {
         }
         for (const [userId, badgeIds] of effects.badges) {
           effects.notifications.push((n) => n.badgesEarned(userId, badgeIds));
+          await this.announceBadges(tx, effects, userId, badgeIds, now);
         }
         attachNewBadges(result, effects);
         return { result, nextWake: await this.nextWakeAt(tx, now) };
@@ -825,11 +846,116 @@ export class StudyRoomEngine {
       effects.roomChanged = true;
     }
     if (settled < phases.length) {
-      if (settled !== cycle.settledCount)
+      if (settled !== cycle.settledCount) {
         await tx.room.saveCycle({ ...cycle, settledCount: settled });
+        await this.announcePhase(tx, phases[settled]!, now, effects);
+      }
       return;
     }
-    if (await this.finishCycle(tx, phases, effects)) await this.settleRoomCycle(tx, now, effects);
+    if (await this.finishCycle(tx, phases, effects)) {
+      const next = await tx.room.getCycle();
+      if (next) {
+        await this.announcePhase(
+          tx,
+          buildCycle(next.cycleStartedAt, next.preset)[0]!,
+          now,
+          effects,
+        );
+      }
+      await this.settleRoomCycle(tx, now, effects);
+    }
+  }
+
+  /** The squad bot tells everyone in the room that the clock just switched to `phase`. */
+  private async announcePhase(
+    tx: Store,
+    phase: CyclePhase,
+    now: number,
+    effects: Effects,
+  ): Promise<void> {
+    if (now - phase.startsAt >= SQUAD_STALE_MS || now >= phase.endsAt) return;
+    const event: SquadEvent =
+      phase.kind === "break"
+        ? "breakStarted"
+        : phase.kind === "longBreak"
+          ? "sessionCompleted"
+          : "studyResumed";
+    const userIds = (await tx.room.listParticipants()).map((p) => p.userId);
+    await this.squadMessage(tx, effects, event, userIds, phase.round, now);
+  }
+
+  /**
+   * Picks and queues a squad bot post. It goes out once from here, after the
+   * transaction commits, however many devices the members have connected.
+   */
+  private async squadMessage(
+    tx: Store,
+    effects: Effects,
+    event: SquadEvent,
+    userIds: string[],
+    round: number,
+    now: number,
+    badge?: string,
+  ): Promise<void> {
+    const channelId = this.config.postChannelId;
+    if (!this.config.squadBot.enabled || !channelId || userIds.length === 0) return;
+    const last = (await tx.kv.get<LastSquadLines>(SQUAD_LAST_KEY)) ?? {};
+    const startedAt = (await tx.kv.get<number>(SQUAD_SESSION_KEY)) ?? now;
+    const line = pickSquadLine(event, this.config.squadBot.personalities, last, this.deps.random, {
+      round,
+      togetherMinutes: Math.max(0, now - startedAt) / MINUTE_MS,
+      badge,
+    });
+    await tx.kv.set(SQUAD_LAST_KEY, {
+      ...last,
+      ...(line.rare ? { rare: line.id } : { [event]: line.id }),
+    });
+    effects.posts.push((a) => a.squadMessage(channelId, event, line.text, userIds));
+  }
+
+  /** The squad bot congratulates a member on badges they just earned, in one post. */
+  private async announceBadges(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    badgeIds: readonly string[],
+    now: number,
+  ): Promise<void> {
+    const names = [
+      ...new Set(
+        badgeIds.map((id) => {
+          const badge = badgeById(id);
+          return !badge || badge.secret ? SECRET_BADGE_NAME : badge.name;
+        }),
+      ),
+    ];
+    const badge =
+      names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+    await this.squadMessage(tx, effects, "badgeUnlocked", [userId], 0, now, badge);
+  }
+
+  /**
+   * Announces a member joining the room. Starting an empty room is always
+   * announced; joining a running one at most once per cool-down per member.
+   */
+  private async announceJoin(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    startedRoom: boolean,
+    now: number,
+  ): Promise<void> {
+    const joins = (await tx.kv.get<Record<string, number>>(SQUAD_JOINS_KEY)) ?? {};
+    const recentlyAnnounced = now - (joins[userId] ?? -Infinity) < SQUAD_JOIN_COOLDOWN_MS;
+    if (recentlyAnnounced && !startedRoom) return;
+    // Forget old entries so the record stays small.
+    const recent = Object.fromEntries(
+      Object.entries(joins).filter(([, at]) => now - at < SQUAD_JOIN_COOLDOWN_MS),
+    );
+    await tx.kv.set(SQUAD_JOINS_KEY, { ...recent, [userId]: now });
+    if (startedRoom) await tx.kv.set(SQUAD_SESSION_KEY, now);
+    const event = startedRoom ? "sessionStarted" : "memberJoined";
+    await this.squadMessage(tx, effects, event, [userId], 1, now);
   }
 
   /**

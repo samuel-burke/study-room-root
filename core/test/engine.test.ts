@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { bossNameFor, DomainError, ErrorCode, LIMITS, PRESETS, type RecapDto } from "../src";
-import { configWith, createHarness, MINUTE, T0 } from "./helpers";
+import {
+  bossNameFor,
+  DomainError,
+  ErrorCode,
+  LIMITS,
+  PRESETS,
+  SQUAD_LINES,
+  type RecapDto,
+} from "../src";
+import { configWith, createHarness, MINUTE, seededRandom, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
 const BREAK = 5 * MINUTE;
@@ -583,11 +591,11 @@ describe("channel posts", () => {
     const { engine, announcer, advance } = createHarness(busyConfig);
     await engine.joinRoomTimer("a");
     await engine.joinRoomTimer("b");
-    expect(announcer.posts).toEqual([]);
+    expect(announcer.posts.filter((p) => p.kind === "busy")).toEqual([]);
     await engine.startSolo("c", 25);
     await engine.joinRoomTimer("d");
     await engine.idle();
-    expect(announcer.posts).toEqual([
+    expect(announcer.posts.filter((p) => p.kind === "busy")).toEqual([
       { kind: "busy", channelId: "channel-1", detail: { focusingCount: 3, combo: 1.1 } },
     ]);
     // Drop below the threshold and come back quickly: still quiet.
@@ -609,6 +617,151 @@ describe("channel posts", () => {
     for (const id of ["a", "b", "c"]) await engine.joinRoomTimer(id);
     await engine.idle();
     expect(announcer.posts).toEqual([]);
+  });
+
+  describe("squad bot", () => {
+    interface SquadPost {
+      event: string;
+      text: string;
+      userIds: string[];
+    }
+    // Timer and join posts; badge posts are covered in badgesEngine.test.ts.
+    const squad = (posts: { kind: string; detail: unknown }[]) =>
+      posts
+        .filter((p) => p.kind === "squad")
+        .map((p) => p.detail as SquadPost)
+        .filter((p) => p.event !== "badgeUnlocked");
+    const events = (posts: { kind: string; detail: unknown }[]) =>
+      squad(posts).map((p) => `${p.event} ${p.userIds.join(",")}`);
+
+    it("maps each room timer event to its pool and mentions the right people", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await advance(MINUTE);
+      await engine.joinRoomTimer("kai");
+      await advance(FOCUS - MINUTE);
+      await advance(BREAK);
+      await advance(115 * MINUTE - FOCUS - BREAK);
+      await engine.keepGoing("ana");
+      await advance(15 * MINUTE);
+      expect(events(announcer.posts)).toEqual([
+        "sessionStarted ana",
+        "memberJoined kai",
+        "breakStarted ana,kai",
+        "studyResumed ana,kai",
+        "breakStarted ana,kai",
+        "studyResumed ana,kai",
+        "breakStarted ana,kai",
+        "studyResumed ana,kai",
+        "sessionCompleted ana,kai",
+        // Only Ana kept going into the next cycle.
+        "studyResumed ana",
+      ]);
+      expect(announcer.posts.find((p) => p.kind === "squad")?.channelId).toBe("channel-1");
+      for (const post of squad(announcer.posts)) {
+        expect(post.text).not.toMatch(/[{}]/);
+      }
+    });
+
+    it("never says the same line twice in a row", async () => {
+      const { engine, announcer, advance } = createHarness(configWith(), T0, seededRandom(7));
+      await engine.joinRoomTimer("ana");
+      for (let cycle = 0; cycle < 6; cycle++) {
+        await advance(115 * MINUTE);
+        await engine.keepGoing("ana");
+        await advance(15 * MINUTE);
+      }
+      const byEvent = new Map<string, string[]>();
+      for (const p of squad(announcer.posts)) {
+        byEvent.set(p.event, [...(byEvent.get(p.event) ?? []), p.text]);
+      }
+      for (const texts of byEvent.values()) {
+        for (let i = 1; i < texts.length; i++) expect(texts[i]).not.toBe(texts[i - 1]);
+      }
+    });
+
+    it("announces a member popping in and out only once per cool-down", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await engine.joinRoomTimer("kai");
+      await engine.leaveRoomTimer("kai");
+      await engine.joinRoomTimer("kai");
+      await advance(2 * 60 * MINUTE);
+      await engine.leaveRoomTimer("kai");
+      await engine.keepGoing("ana");
+      await engine.joinRoomTimer("kai");
+      expect(events(announcer.posts).filter((e) => e.startsWith("memberJoined"))).toEqual([
+        "memberJoined kai",
+        "memberJoined kai",
+      ]);
+    });
+
+    it("doesn't post again when someone already in the room rejoins, say from a second device", async () => {
+      const { engine, announcer } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await engine.joinRoomTimer("ana");
+      await engine.getSnapshot("ana");
+      await engine.idle();
+      expect(events(announcer.posts)).toEqual(["sessionStarted ana"]);
+    });
+
+    it("skips a switch that is old news after downtime, so nothing is replayed", async () => {
+      const { engine, announcer, clock } = createHarness();
+      await engine.joinRoomTimer("ana");
+      clock.current = T0 + FOCUS + 3 * MINUTE;
+      await engine.tick();
+      await engine.idle();
+      expect(events(announcer.posts)).toEqual(["sessionStarted ana"]);
+      clock.current = T0 + FOCUS + BREAK + MINUTE;
+      await engine.tick();
+      await engine.tick();
+      await engine.idle();
+      expect(events(announcer.posts)).toEqual(["sessionStarted ana", "studyResumed ana"]);
+    });
+
+    it("can say the rare two-hour line once the room has been going that long", async () => {
+      // 0.01 is always under the rare chance, so every timer post is a rare line.
+      const { engine, announcer, advance } = createHarness(configWith(), T0, () => 0.01);
+      await engine.joinRoomTimer("ana");
+      await advance(115 * MINUTE);
+      await engine.keepGoing("ana");
+      await advance(15 * MINUTE + FOCUS);
+      const texts = squad(announcer.posts).map((p) => p.text);
+      expect(texts.slice(0, 8).some((t) => t.includes("2 hours"))).toBe(false);
+      // The first post after two hours (the new cycle at 2h10m) is the two-hour line.
+      expect(texts[8]).toContain("studying together for 2 hours");
+    });
+
+    it("only uses the personalities admins picked", async () => {
+      const config = configWith({ squadBot: { enabled: true, personalities: ["drill"] } });
+      const { engine, announcer, advance } = createHarness(config, T0, () => 0.5);
+      await engine.joinRoomTimer("ana");
+      await advance(FOCUS);
+      expect(squad(announcer.posts).map((p) => p.text)).toEqual([
+        SQUAD_LINES.sessionStarted.drill[1],
+        SQUAD_LINES.breakStarted.drill[1],
+      ]);
+    });
+
+    it("stays quiet when turned off or without a post channel", async () => {
+      for (const config of [
+        configWith({ squadBot: { enabled: false, personalities: ["hype"] } }),
+        configWith({ postChannelId: null }),
+      ]) {
+        const { engine, announcer, advance } = createHarness(config);
+        await engine.joinRoomTimer("ana");
+        await engine.joinRoomTimer("kai");
+        await advance(FOCUS + BREAK);
+        expect(squad(announcer.posts)).toEqual([]);
+      }
+    });
+
+    it("never posts timer events for solo timers", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.startSolo("ana", 25);
+      await advance(30 * MINUTE);
+      expect(squad(announcer.posts)).toEqual([]);
+    });
   });
 
   it("posts a streak milestone on day 7", async () => {

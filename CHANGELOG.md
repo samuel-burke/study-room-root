@@ -10,6 +10,7 @@ Collecting changes for the next release.
 
 ### Added
 
+- Squad bot: Study Squad now chats in the updates channel like part of the study group. It posts when the room timer starts, at each break, when study resumes, when the four rounds are done, when someone joins, and when someone unlocks a badge (secret badges stay a surprise), and it mentions the people studying. It has six personalities (Hype Squad, Drill Sergeant, Chill Friend, Meme Lord, Gamer Mode and Chaos Mode), never repeats itself back to back, and now and then drops a rare surprise line. Admins can turn it off with **Squad bot** and choose its voices with **Squad bot personalities**. Study Squad now asks Root for permission to mention members.
 - Each card on the "Focusing now" board shows the member's place on this week's leaderboard (#1, #2…). Members with no minutes yet, or who hid themselves from the leaderboard, show no rank.
 - The leaderboard can rank by focus minutes or by XP (focus, goals and quest rewards), and covers this week, this month, this year or all time. Pick with the **Week | Month | Year | All time** and **Minutes | XP** switches above the standings. The rank on each card stays weekly.
 

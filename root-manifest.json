@@ -21,7 +21,8 @@
   "permissions": {
     "channel": {
       "channelView": true,
-      "channelCreateMessage": true
+      "channelCreateMessage": true,
+      "channelCreateMessageMention": true
     }
   },
   "settings": {
@@ -146,7 +147,7 @@
           {
             "key": "postChannel",
             "title": "Post updates in",
-            "description": "Daily recaps, busy-room and milestone posts go here. Leave empty to turn posts off.",
+            "description": "Daily recaps, busy-room, milestone and squad bot posts go here. Leave empty to turn posts off.",
             "channel": {
               "multiSelect": false
             }
@@ -339,6 +340,31 @@
                   "key": "20",
                   "value": "20 people"
                 }
+              ]
+            }
+          },
+          {
+            "key": "squadBot",
+            "title": "Squad bot",
+            "description": "Post a fun message in the updates channel when the room timer starts, switches between study and break, or finishes, when someone joins, and when someone unlocks a badge. Mentions the people in the room.",
+            "checkbox": {
+              "defaultValue": true
+            }
+          },
+          {
+            "key": "squadPersonalities",
+            "title": "Squad bot personalities",
+            "description": "Which voices the squad bot uses. It picks a random line from the ones you choose. Choose none to use them all.",
+            "select": {
+              "multiSelect": true,
+              "values": ["hype", "drill", "chill", "meme", "gamer", "chaos"],
+              "options": [
+                { "key": "hype", "value": "Hype Squad: energetic and encouraging" },
+                { "key": "drill", "value": "Drill Sergeant: commanding and competitive" },
+                { "key": "chill", "value": "Chill Friend: relaxed and supportive" },
+                { "key": "meme", "value": "Meme Lord: sarcastic internet humor" },
+                { "key": "gamer", "value": "Gamer Mode: XP, quests and achievements" },
+                { "key": "chaos", "value": "Chaos Mode: random and unexpected" }
               ]
             }
           }

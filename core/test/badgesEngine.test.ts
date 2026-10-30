@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DomainError, ErrorCode, EMPTY_STREAK, addDays } from "../src";
+import { DomainError, ErrorCode, EMPTY_STREAK, addDays, badgeById } from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
 /** Wednesday 2026-10-28 07:00 in New York. */
 const SEVEN_AM = Date.UTC(2026, 9, 28, 11, 0, 0);
+/** Wednesday 2026-10-28 03:00 in New York. */
+const THREE_AM = Date.UTC(2026, 9, 28, 7, 0, 0);
 /** XP that puts a member at the start of level 8. */
 const LEVEL_8_XP = 2450;
 
@@ -390,5 +392,43 @@ describe("member profiles", () => {
     await expectError(engine.getMemberProfile(""), ErrorCode.Validation);
     await expectError(engine.getMemberProfile("a b"), ErrorCode.Validation);
     await expectError(engine.getMemberProfile(42), ErrorCode.Validation);
+  });
+});
+
+describe("squad bot badge posts", () => {
+  const badgePosts = (posts: { kind: string; detail: unknown }[]) =>
+    posts
+      .map((p) => p.detail as { event?: string; text: string; userIds: string[] })
+      .filter((d) => d.event === "badgeUnlocked");
+
+  it("congratulates each member once, naming every badge they just earned", async () => {
+    const { engine, announcer, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await engine.joinRoomTimer("marcus");
+    await advance(FOCUS);
+    const posts = badgePosts(announcer.posts);
+    expect(posts.map((p) => p.userIds)).toEqual([["ana"], ["marcus"]]);
+    const names = ["first-session", "squad-up"].map((id) => badgeById(id)!.name);
+    expect(posts[0]!.text).toContain(`${names[0]} and ${names[1]}`);
+    // Nothing new next round, so no new post.
+    await advance(5 * MINUTE + FOCUS);
+    expect(badgePosts(announcer.posts)).toHaveLength(2);
+  });
+
+  it("keeps secret badges a surprise for everyone else", async () => {
+    const { engine, announcer, advance } = createHarness(configWith(), THREE_AM);
+    await engine.startSolo("ana", 30);
+    await advance(30 * MINUTE);
+    const text = badgePosts(announcer.posts)[0]!.text;
+    expect(text).toContain("a secret badge");
+    expect(text).not.toContain(badgeById("three-am")!.name);
+  });
+
+  it("stays quiet when the squad bot is off", async () => {
+    const config = configWith({ squadBot: { enabled: false, personalities: ["hype"] } });
+    const { engine, announcer, advance } = createHarness(config);
+    await engine.startSolo("ana", 30);
+    await advance(30 * MINUTE);
+    expect(badgePosts(announcer.posts)).toEqual([]);
   });
 });
