@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createShutdown, loadConfig, presenceHandlers } from "../src/wiring";
+import { PushNotifier } from "../src/adapters/pushNotifier";
+import { createShutdown, findAttachedClient, loadConfig, presenceHandlers } from "../src/wiring";
 
 const logger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
@@ -115,5 +116,33 @@ describe("createShutdown", () => {
     await createShutdown(engine, close, log)();
     expect(close).toHaveBeenCalled();
     expect(log.error).toHaveBeenCalledWith("shutdown drain failed", expect.anything());
+  });
+});
+
+describe("findAttachedClient", () => {
+  const ana = { userId: "ana", communityId: "c1", deviceIds: ["d1"] };
+  const kai = { userId: "kai", communityId: "c1", deviceIds: ["d2"] };
+
+  it("finds a member's client by user id", () => {
+    expect(findAttachedClient(() => [ana, kai], "kai")).toBe(kai);
+    expect(findAttachedClient(() => [ana], "kai")).toBeUndefined();
+  });
+
+  it("lets a background push (a timer finishing) reach the member", () => {
+    const broadcaster = {
+      broadcastRoomUpdated: vi.fn(),
+      broadcastPhaseCompleted: vi.fn(),
+      broadcastPersonalResult: vi.fn(),
+      broadcastMyStatus: vi.fn(),
+      broadcastBadgesEarned: vi.fn(),
+    };
+    const notifier = new PushNotifier(broadcaster, (userId) =>
+      findAttachedClient(() => [ana, kai], userId),
+    );
+    notifier.badgesEarned("ana", ["first-session"]);
+    expect(broadcaster.broadcastBadgesEarned).toHaveBeenCalledWith(
+      { badgeIds: ["first-session"] },
+      [ana],
+    );
   });
 });

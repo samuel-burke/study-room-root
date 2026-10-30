@@ -25,7 +25,7 @@ import { openDatabase } from "./persistence/database";
 import { KnexStore } from "./persistence/knexStore";
 import { migrateToLatest } from "./persistence/migrations";
 import { studyRoomService } from "./studyRoomService";
-import { createShutdown, loadConfig, presenceHandlers } from "./wiring";
+import { createShutdown, findAttachedClient, loadConfig, presenceHandlers } from "./wiring";
 
 const logger = createLogger();
 let shutdown: (() => Promise<void>) | null = null;
@@ -64,7 +64,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
     clock: { now: Date.now },
     scheduler: new TimeoutScheduler(),
     notifier: new PushNotifier(studyRoomService, (userId) =>
-      rootServer.clients.getClient(userId as UserGuid),
+      findAttachedClient(() => rootServer.clients.getClients(), userId),
     ),
     announcer: new ChannelAnnouncer({
       postMessage: async (channelId, content) => {
