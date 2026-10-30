@@ -287,14 +287,27 @@ describe("goals", () => {
     expect((await engine.setGoalDone("ana", id, true)).xpTotal).toBe(25);
   });
 
-  it("keeps finished goals visible for the rest of the day", async () => {
+  it("keeps finished goals visible until 4am, so late-night sessions keep theirs", async () => {
     const { engine, advance } = createHarness();
     const id = (await engine.addGoal("ana", "Essay intro draft")).goals[0]!.id;
     await engine.setGoalDone("ana", id, true);
     expect((await engine.getSnapshot("ana")).me.goals).toEqual([
       { id, text: "Essay intro draft", done: true },
     ]);
-    await advance(24 * 60 * MINUTE);
+    await advance((17 * 60 + 59) * MINUTE); // 3:59am the next night
+    expect((await engine.getSnapshot("ana")).me.goals).toHaveLength(1);
+    await advance(MINUTE); // 4:00am
+    expect((await engine.getSnapshot("ana")).me.goals).toEqual([]);
+  });
+
+  it("keeps a goal finished after midnight until the coming 4am", async () => {
+    const { engine, advance } = createHarness();
+    const id = (await engine.addGoal("ana", "Problem set 3")).goals[0]!.id;
+    await advance(15 * 60 * MINUTE); // 1am Thursday
+    await engine.setGoalDone("ana", id, true);
+    await advance(2 * 60 * MINUTE); // 3am
+    expect((await engine.getSnapshot("ana")).me.goals).toHaveLength(1);
+    await advance(60 * MINUTE); // 4am
     expect((await engine.getSnapshot("ana")).me.goals).toEqual([]);
   });
 
@@ -356,6 +369,21 @@ describe("XP rules", () => {
     const me = (await engine.getSnapshot("ana")).me;
     expect(me.xpTotal).toBe(0);
     expect(me.streak).toBe(1);
+  });
+
+  it("counts a session after midnight toward the day before, until 4am", async () => {
+    const { engine, advance } = createHarness();
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE); // Wednesday 10:25am
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(1);
+    await advance(15 * 60 * MINUTE + 10 * MINUTE); // 1:35am Thursday
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE); // 2am, still Wednesday's day
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(1);
+    await advance(2 * 60 * MINUTE); // 4am Thursday
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(2);
   });
 });
 
@@ -898,8 +926,8 @@ describe("weekly leaderboard", () => {
 
     const board = await engine.getLeaderboard("ana");
     expect(board.startDay).toBe("2026-10-26");
-    // Monday 2026-11-02 00:00 in New York (UTC-5 after DST ends).
-    expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 5, 0, 0));
+    // Monday 2026-11-02 04:00 in New York (UTC-5 after DST ends).
+    expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 9, 0, 0));
     expect(board.entries).toEqual([
       { userId: "ana", focusMinutes: 70, xp: 60, rank: 1 },
       { userId: "kai", focusMinutes: 70, xp: 0, rank: 1 },
@@ -1043,10 +1071,10 @@ describe("weekly leaderboard", () => {
 
     const month = await engine.getLeaderboard("ana", "minutes", "month");
     expect([month.period, month.startDay]).toEqual(["month", "2026-10-01"]);
-    // November 1 00:00 in New York (still daylight time).
-    expect(month.endsAt).toBe(Date.UTC(2026, 10, 1, 4));
+    // November 1 04:00 in New York (EST: daylight time ends at 2 AM that night).
+    expect(month.endsAt).toBe(Date.UTC(2026, 10, 1, 9));
     const year = await engine.getLeaderboard("ana", "minutes", "year");
-    expect([year.startDay, year.endsAt]).toEqual(["2026-01-01", Date.UTC(2027, 0, 1, 5)]);
+    expect([year.startDay, year.endsAt]).toEqual(["2026-01-01", Date.UTC(2027, 0, 1, 9)]);
     const all = await engine.getLeaderboard("ana", "minutes", "all");
     expect([all.startDay, all.endsAt]).toEqual(["", 0]);
 
@@ -1058,9 +1086,9 @@ describe("weekly leaderboard", () => {
     await expectError(engine.getLeaderboard("ana", "minutes", "decade"), ErrorCode.Validation);
   });
 
-  it("starts over on Monday in the community time zone", async () => {
-    // Sunday 2026-11-01 23:30 in New York.
-    const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 4, 30));
+  it("starts over at 4am Monday in the community time zone", async () => {
+    // Monday 2026-11-02 03:30 in New York still belongs to the old week.
+    const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 8, 30));
     await store.stats.add("ana", "2026-11-01", { focusMinutes: 60 });
     expect((await engine.getLeaderboard("ana")).entries).toHaveLength(1);
     clock.advance(31 * MINUTE);

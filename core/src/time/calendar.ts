@@ -5,6 +5,13 @@
 
 export type DayKey = string;
 
+/**
+ * The local hour a new day starts. Before 4am still counts as the previous day,
+ * so a late-night session keeps its goals, XP and streak on the day it began.
+ * Weeks, months and years start at this hour on their first day too.
+ */
+export const DAY_START_HOUR = 4;
+
 const DAY_MS = 86_400_000;
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -77,9 +84,11 @@ function parseDayKey(key: DayKey): [number, number, number] {
   return [y ?? 1970, m ?? 1, d ?? 1];
 }
 
+/** The community day `ms` falls in. It runs from DAY_START_HOUR to DAY_START_HOUR the next morning. */
 export function dayKey(ms: number, timeZone: string): DayKey {
   const p = zonedParts(ms, timeZone);
-  return toDayKey(p.year, p.month, p.day);
+  const date = toDayKey(p.year, p.month, p.day);
+  return p.hour < DAY_START_HOUR ? addDays(date, -1) : date;
 }
 
 /** Wall-clock time in the zone: the day plus hour (0-23) and minute. */
@@ -147,9 +156,9 @@ export function zonedTimeToUtc(
   return guess;
 }
 
-/** Start of the given day in the zone, as a UTC instant. */
+/** Start of the given day in the zone (DAY_START_HOUR on that date), as a UTC instant. */
 export function startOfDay(key: DayKey, timeZone: string): number {
-  return zonedTimeToUtc(key, 0, 0, timeZone);
+  return zonedTimeToUtc(key, DAY_START_HOUR, 0, timeZone);
 }
 
 /** Next instant strictly after `now` at which the zone's clock reads hours:minutes. */
@@ -159,12 +168,12 @@ export function nextOccurrence(
   minutes: number,
   timeZone: string,
 ): number {
-  const today = dayKey(now, timeZone);
+  const today = localTime(now, timeZone).day;
   const candidate = zonedTimeToUtc(today, hours, minutes, timeZone);
   return candidate > now ? candidate : zonedTimeToUtc(addDays(today, 1), hours, minutes, timeZone);
 }
 
-/** Start of next Monday in the zone. */
+/** Start of next Monday in the zone (at DAY_START_HOUR). */
 export function nextWeekStart(now: number, timeZone: string): number {
   return startOfDay(addDays(weekKey(dayKey(now, timeZone)), 7), timeZone);
 }

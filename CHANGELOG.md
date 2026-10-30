@@ -15,6 +15,7 @@ Collecting changes for the next release.
 
 ### Changed
 
+- A new day now starts at 4am in the community's time zone instead of midnight, so a late-night session counts toward the day it began. This moves streaks, the daily XP cap, daily stats and when finished goals leave your list. Weeks start at 4am on Monday, so weekly quests, the weekly boss and the leaderboard reset then too. The daily recap still posts at its set clock time.
 - The weekly boss takes damage live: every minute someone focuses, their XP hits the boss right away instead of when the session ends. The room's combo bonus still lands when the round ends.
 - All XP now counts as boss damage: finishing goals (up to the daily cap) and weekly quest rewards hit the boss too, not just focus.
 - Focus minutes and XP are credited every minute while you focus, not only when the session ends. Your XP bar, level, quests, the leaderboard and the rank on each card all move live, and the progress screen refreshes itself while it's open. The combo bonus still lands when the round ends, and totals are exactly what they were before.
