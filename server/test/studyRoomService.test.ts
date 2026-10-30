@@ -74,11 +74,11 @@ describe("StudyRoomService", () => {
         () => service.setBadgeShowcase({ badgeIds: ["podium"] }, client),
         { badgeIds: ["podium"] },
       ],
-      ["getLeaderboard", () => service.getLeaderboard({}, client)],
+      ["getLeaderboard", () => service.getLeaderboard({ by: 2 }, client), { by: 2 }],
       [
         "setLeaderboardHidden",
-        () => service.setLeaderboardHidden({ hidden: true }, client),
-        { hidden: true },
+        () => service.setLeaderboardHidden({ hidden: true, by: 1 }, client),
+        { hidden: true, by: 1 },
       ],
       ["keepGoing", () => service.keepGoing({}, client)],
     ];

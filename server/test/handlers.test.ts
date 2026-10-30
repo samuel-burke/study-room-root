@@ -49,6 +49,12 @@ describe("StudyRoomHandlers", () => {
     expect(error.message).toMatch(/between 5 and 180/);
   });
 
+  it("refuses a leaderboard metric it doesn't know", async () => {
+    const { handlers } = setup();
+    const error = await failure(handlers.getLeaderboard("ana", { by: 9 as never }));
+    expect(error.code).toBe(CoreErrorCode.Validation);
+  });
+
   it("rate limits writes per user without affecting others", async () => {
     const now = 0;
     const { handlers, logger } = setup({
@@ -99,8 +105,10 @@ describe("StudyRoomHandlers", () => {
     expect((await handlers.setGoalDone("priya", { goalId, done: true })).goals[0]!.done).toBe(true);
     expect((await handlers.deleteGoal("priya", { goalId })).goals).toEqual([]);
     expect((await handlers.getProgress("priya")).days).toHaveLength(35);
-    expect((await handlers.getLeaderboard("priya")).weekStart).toBe("2026-10-26");
-    expect((await handlers.setLeaderboardHidden("priya", { hidden: true })).hidden).toBe(true);
+    expect((await handlers.getLeaderboard("priya", { by: 0 })).weekStart).toBe("2026-10-26");
+    expect((await handlers.getLeaderboard("priya", { by: 2 })).by).toBe(2);
+    const hidden = await handlers.setLeaderboardHidden("priya", { hidden: true, by: 2 });
+    expect([hidden.hidden, hidden.by]).toEqual([true, 2]);
     expect((await handlers.getMemberProfile("ana", { userId: "priya" })).userId).toBe("priya");
   });
 

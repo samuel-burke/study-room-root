@@ -7,11 +7,13 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Each card on the "Focusing now" board shows the member's place on this week's leaderboard (#1, #2…). Members with no minutes yet, or who hid themselves from the leaderboard, show no rank.
+- The weekly leaderboard can rank by focus minutes or by XP earned this week (focus, goals and quest rewards). Tap **Minutes** or **XP** above the standings.
 
 ### Changed
 
 - The weekly boss takes damage live: every minute someone focuses, their XP hits the boss right away instead of when the session ends. The room's combo bonus still lands when the round ends.
 - All XP now counts as boss damage: finishing goals (up to the daily cap) and weekly quest rewards hit the boss too, not just focus.
+- Focus minutes and XP are credited every minute while you focus, not only when the session ends. Your XP bar, level, quests, the leaderboard and the rank on each card all move live, and the progress screen refreshes itself while it's open. The combo bonus still lands when the round ends, and totals are exactly what they were before.
 
 ## [0.2.1] - 2026-10-29
 

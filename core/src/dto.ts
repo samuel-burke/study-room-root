@@ -218,23 +218,30 @@ export interface MemberProfileDto {
   cardStyle: string;
 }
 
+/** What the weekly leaderboard ranks by. */
+export type LeaderboardMetric = "minutes" | "xp";
+
 export interface LeaderboardEntryDto {
   userId: string;
   /** Whole focus minutes this week. */
   focusMinutes: number;
-  /** 1-based. Members with the same minutes share a rank. */
+  /** XP earned this week from focus, goals and quests. */
+  xp: number;
+  /** 1-based, by the board's metric. Members with the same total share a rank. */
   rank: number;
 }
 
-/** This week's focus-minute standings. Members who opted out are never listed. */
+/** This week's standings by focus minutes or XP. Members who opted out are never listed. */
 export interface LeaderboardDto {
+  /** What `entries` and `me.rank` are ranked by. */
+  by: LeaderboardMetric;
   /** Monday of this week, in the community time zone. */
   weekStart: DayKey;
   /** When the board resets (next Monday 00:00 in the community time zone). */
   endsAt: number;
   entries: LeaderboardEntryDto[];
-  /** The caller's own week. rank is 0 when they're hidden or haven't focused yet. */
-  me: { rank: number; focusMinutes: number; hidden: boolean };
+  /** The caller's own week. rank is 0 when they're hidden or have nothing to rank yet. */
+  me: { rank: number; focusMinutes: number; xp: number; hidden: boolean };
 }
 
 export interface RecapDto {

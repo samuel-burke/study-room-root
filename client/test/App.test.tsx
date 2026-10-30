@@ -187,6 +187,21 @@ describe("Study Squad app", () => {
     expect(await screen.findByRole("timer")).toBeInTheDocument();
   });
 
+  it("keeps progress and the leaderboard live while the room updates", async () => {
+    const { gateway, user } = await renderApp();
+    const progress = vi.spyOn(gateway, "getProgress");
+    const leaderboard = vi.spyOn(gateway, "getLeaderboard");
+    await user.click(screen.getByRole("button", { name: "Your progress" }));
+    await screen.findByText("5 day streak");
+    await waitFor(() => expect(leaderboard).toHaveBeenCalledTimes(1));
+    expect(progress).toHaveBeenCalledTimes(1);
+    // Anything that changes the room, like a focus minute ticking by, reloads both.
+    await act(() => gateway.addGoal("Pushed from elsewhere"));
+    await waitFor(() => expect(progress).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(leaderboard).toHaveBeenCalledTimes(2));
+    expect(leaderboard).toHaveBeenLastCalledWith("minutes");
+  });
+
   it("shows badges, keeps secrets hidden, and lets you restyle your card", async () => {
     const { user } = await renderApp({ badges: ["squad-up", "first-session"] });
     await user.click(screen.getByRole("button", { name: "Your progress" }));

@@ -198,24 +198,36 @@ message Progress {
   CardLook card = 11;
 }
 
+// What the weekly leaderboard ranks by. Unspecified means minutes.
+enum LeaderboardMetric {
+  LEADERBOARD_METRIC_UNSPECIFIED = 0;
+  LEADERBOARD_METRIC_MINUTES = 1;
+  LEADERBOARD_METRIC_XP = 2;
+}
+
 message LeaderboardEntry {
   string user_id = 1;
   // Whole focus minutes this week.
   double focus_minutes = 2;
-  // 1-based. Equal minutes share a rank.
+  // 1-based, by the board's metric. Equal totals share a rank.
   int32 rank = 3;
+  // XP earned this week from focus, goals and quests.
+  int32 xp = 4;
 }
 
-// This week's focus-minute standings. Members who opted out are never listed.
+// This week's standings by focus minutes or XP. Members who opted out are never listed.
 message Leaderboard {
   // Monday of this week in the community time zone, "YYYY-MM-DD".
   string week_start = 1;
   double ends_at_ms = 2;
   repeated LeaderboardEntry entries = 3;
-  // 0 when the caller is hidden or hasn't focused this week.
+  // 0 when the caller is hidden or has nothing to rank this week.
   int32 my_rank = 4;
   double my_focus_minutes = 5;
   bool hidden = 6;
+  // What entries and my_rank are ranked by.
+  LeaderboardMetric by = 7;
+  int32 my_xp = 8;
 }
 
 // What anyone can see about a member by tapping them: game stats only, never
@@ -273,7 +285,9 @@ message SetGoalsPrivateRequest {
 
 message GetProgressRequest {}
 
-message GetLeaderboardRequest {}
+message GetLeaderboardRequest {
+  LeaderboardMetric by = 1;
+}
 
 // The member to look up. The caller still comes from the connection.
 message GetMemberProfileRequest {
@@ -282,6 +296,8 @@ message GetMemberProfileRequest {
 
 message SetLeaderboardHiddenRequest {
   bool hidden = 1;
+  // Which board to send back.
+  LeaderboardMetric by = 2;
 }
 
 // Empty style means automatic (the best style the caller's level unlocks).

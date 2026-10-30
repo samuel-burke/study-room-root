@@ -16,6 +16,7 @@ import type {
   Store,
   TimerPreset,
   WeekFocusRecord,
+  WeekXpRecord,
 } from "@studyroom/core";
 import type { Knex } from "knex";
 
@@ -67,6 +68,8 @@ const toSolo = (r: Row): SoloRecord => ({
   phase: r.phase === "break" ? "break" : "focus",
   breakEndsAt: num(r.break_ends_at),
   bossXpDealt: num(r.boss_xp_dealt),
+  liveMinutes: num(r.live_minutes),
+  liveXp: num(r.live_xp),
 });
 
 const toStat = (r: Row): DailyStatRecord => ({
@@ -263,6 +266,8 @@ export class KnexStore implements Store {
           phase: s.phase,
           break_ends_at: s.breakEndsAt,
           boss_xp_dealt: s.bossXpDealt,
+          live_minutes: s.liveMinutes,
+          live_xp: s.liveXp,
         })
         .onConflict("user_id")
         .merge();
@@ -308,6 +313,8 @@ export class KnexStore implements Store {
         joinedAt: num(r.joined_at),
         keepGoing: bool(r.keep_going),
         bossXpDealt: num(r.boss_xp_dealt),
+        liveMinutes: num(r.live_minutes),
+        liveXp: num(r.live_xp),
       })),
     addParticipant: async (p: ParticipantRecord) => {
       await this.db("room_participants")
@@ -316,6 +323,8 @@ export class KnexStore implements Store {
           joined_at: p.joinedAt,
           keep_going: p.keepGoing,
           boss_xp_dealt: p.bossXpDealt,
+          live_minutes: p.liveMinutes,
+          live_xp: p.liveXp,
         })
         .onConflict("user_id")
         .merge();
@@ -474,7 +483,38 @@ export class KnexStore implements Store {
             { column: "user_id", order: "asc" },
           ])
       ).map((r: Row) => ({ userId: String(r.user_id), focusMinutes: num(r.focus_minutes) })),
+    xpStandings: async (weekKey: DayKey, toDay: DayKey): Promise<WeekXpRecord[]> =>
+      (
+        await this.db
+          .from(this.weekXpRows(weekKey, toDay).as("x"))
+          .whereNotIn("user_id", this.db("leaderboard_opt_outs").select("user_id"))
+          .groupBy("user_id")
+          .having(this.db.raw("SUM(xp) > 0"))
+          .select("user_id", this.db.raw("SUM(xp) AS xp"))
+          .orderBy([
+            { column: "xp", order: "desc" },
+            { column: "user_id", order: "asc" },
+          ])
+      ).map((r: Row) => ({ userId: String(r.user_id), xp: num(r.xp) })),
+    weekXp: async (userId: string, weekKey: DayKey, toDay: DayKey): Promise<number> => {
+      const row = await this.db
+        .from(this.weekXpRows(weekKey, toDay).as("x"))
+        .where({ user_id: userId })
+        .sum({ xp: "xp" })
+        .first();
+      return num(row?.xp ?? 0);
+    },
   };
+
+  /** Daily XP in [weekKey, toDay] and that week's quest rewards, one row each. */
+  private weekXpRows(weekKey: DayKey, toDay: DayKey) {
+    return this.db("daily_stats")
+      .whereBetween("day", [weekKey, toDay])
+      .select("user_id", "xp")
+      .unionAll((q) =>
+        q.from("quest_rewards").where({ week_key: weekKey }).select("user_id", "xp"),
+      );
+  }
 
   bosses = {
     get: async (weekKey: DayKey) => {

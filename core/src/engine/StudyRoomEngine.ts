@@ -4,6 +4,7 @@ import type {
   CardLookDto,
   GoalDto,
   LeaderboardDto,
+  LeaderboardMetric,
   MemberCardDto,
   MemberProfileDto,
   MyStatusDto,
@@ -105,6 +106,8 @@ interface BusyPostState {
 }
 
 const BUSY_KEY = "busyPost";
+/** A focus block that hasn't credited or dealt anything live yet. */
+const NO_LIVE_CREDIT = { bossXpDealt: 0, liveMinutes: 0, liveXp: 0 } as const;
 const LAST_RECAP_KEY = "lastRecapDay";
 /** How long to wait before retrying a wake-up whose tick failed. */
 const TICK_RETRY_MS = 30_000;
@@ -337,17 +340,25 @@ export class StudyRoomEngine {
     });
   }
 
-  /** This week's focus-minute standings, plus where the caller stands. */
-  getLeaderboard(userId: string): Promise<LeaderboardDto> {
-    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now));
+  /** This week's standings by focus minutes or XP, plus where the caller stands. */
+  async getLeaderboard(userId: string, by: unknown = "minutes"): Promise<LeaderboardDto> {
+    const metric = validateMetric(by);
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now, metric));
   }
 
   /** Opting out hides the member from the leaderboard and from rankings in recaps. */
-  async setLeaderboardHidden(userId: string, hidden: unknown): Promise<LeaderboardDto> {
+  async setLeaderboardHidden(
+    userId: string,
+    hidden: unknown,
+    by: unknown = "minutes",
+  ): Promise<LeaderboardDto> {
     if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
-    return this.run(async (tx, now) => {
+    const metric = validateMetric(by);
+    return this.run(async (tx, now, effects) => {
       await tx.leaderboard.setHidden(userId, hidden);
-      return this.buildLeaderboard(tx, userId, now);
+      // Their rank chip on the board appears or goes away.
+      this.touch(effects, userId);
+      return this.buildLeaderboard(tx, userId, now, metric);
     });
   }
 
@@ -372,7 +383,12 @@ export class StudyRoomEngine {
             settledCount: 0,
           });
         }
-        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false, bossXpDealt: 0 });
+        await tx.room.addParticipant({
+          userId,
+          joinedAt: now,
+          keepGoing: false,
+          ...NO_LIVE_CREDIT,
+        });
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -400,6 +416,7 @@ export class StudyRoomEngine {
             finished: false,
             plannedMinutes: cycle.preset.focusMinutes,
             now,
+            live: me,
           });
           // The base XP already hit the boss minute by minute; this adds the rest.
           const rest = focusXp(minutes, combo) - me.bossXpDealt;
@@ -440,7 +457,7 @@ export class StudyRoomEngine {
         minutes,
         phase: "focus",
         breakEndsAt: endsAt + this.config.preset.breakMinutes * MINUTE_MS,
-        bossXpDealt: 0,
+        ...NO_LIVE_CREDIT,
       });
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -464,6 +481,7 @@ export class StudyRoomEngine {
           finished: false,
           plannedMinutes: solo.minutes,
           now,
+          live: solo,
         });
         const rest = focusXp(minutes, 1) - solo.bossXpDealt;
         await this.damageBoss(tx, effects, rest, [userId], now);
@@ -689,7 +707,62 @@ export class StudyRoomEngine {
   private async settleDue(tx: Store, now: number, effects: Effects): Promise<void> {
     await this.settleRoomCycle(tx, now, effects);
     await this.settleSolos(tx, now, effects);
+    await this.creditLiveFocus(tx, now, effects);
     await this.dealLiveDamage(tx, now, effects);
+  }
+
+  /**
+   * Study minutes and XP count as they happen: each whole minute of a running
+   * focus block adds its minutes and base XP (under the daily cap) right away,
+   * so the leaderboard, quests, levels and the board's ranks move every
+   * minute. The end of the block adds the rest, including the combo bonus.
+   */
+  private async creditLiveFocus(tx: Store, now: number, effects: Effects): Promise<void> {
+    const cycle = await tx.room.getCycle();
+    const phase = cycle ? phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now) : undefined;
+    if (phase?.kind === "focus") {
+      for (const p of await tx.room.listParticipants()) {
+        const minutes = overlapMs(p.joinedAt, now, phase.startsAt, phase.endsAt) / MINUTE_MS;
+        const credited = await this.creditLiveMinutes(tx, effects, p, minutes, now);
+        if (credited) await tx.room.addParticipant({ ...p, ...credited });
+      }
+    }
+    for (const solo of await tx.solos.list()) {
+      if (solo.phase !== "focus") continue;
+      const minutes = (Math.min(now, solo.endsAt) - solo.startedAt) / MINUTE_MS;
+      const credited = await this.creditLiveMinutes(tx, effects, solo, minutes, now);
+      if (credited) await tx.solos.save({ ...solo, ...credited });
+    }
+  }
+
+  /** Credits the block's new whole minutes. Returns its updated live totals, or null if none. */
+  private async creditLiveMinutes(
+    tx: Store,
+    effects: Effects,
+    block: { userId: string; liveMinutes: number; liveXp: number },
+    minutes: number,
+    now: number,
+  ): Promise<{ liveMinutes: number; liveXp: number } | null> {
+    const whole = Math.floor(minutes);
+    const newMinutes = whole - block.liveMinutes;
+    if (newMinutes <= 0) return null;
+    const { userId } = block;
+    const day = dayKey(now, this.config.timeZone);
+    const xpToday = (await tx.stats.get(userId, day))?.xp ?? 0;
+    const rawXp = this.config.xp.enabled ? baseFocusXp(whole) - baseFocusXp(block.liveMinutes) : 0;
+    const xp = applyDailyCap(rawXp, xpToday, this.config.xp.dailyCap);
+    if (xp > 0) {
+      const member = await this.loadMember(tx, userId);
+      await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+    }
+    await tx.stats.add(userId, day, { focusMinutes: newMinutes, xp });
+    const quests = await this.rewardQuests(tx, effects, userId, now);
+    await this.awardBadges(tx, effects, userId, now, {
+      quests,
+      ...(await this.activityFacts(tx, userId, day)),
+    });
+    this.touch(effects, userId);
+    return { liveMinutes: whole, liveXp: block.liveXp + xp };
   }
 
   /**
@@ -768,7 +841,7 @@ export class StudyRoomEngine {
         : null,
     );
     for (const p of carried) {
-      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false, bossXpDealt: 0 });
+      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false, ...NO_LIVE_CREDIT });
       effects.statusChanged.add(p.userId);
     }
     effects.roomChanged = true;
@@ -819,6 +892,7 @@ export class StudyRoomEngine {
           plannedMinutes: focusMinutes,
           fullCycle: fullCycle(share.participant.joinedAt),
           now: phase.endsAt,
+          live: share.participant,
         }),
       });
     }
@@ -837,7 +911,8 @@ export class StudyRoomEngine {
       phase.endsAt,
     );
     for (const p of participants) {
-      if (p.bossXpDealt !== 0) await tx.room.addParticipant({ ...p, bossXpDealt: 0 });
+      if (p.bossXpDealt !== 0 || p.liveMinutes !== 0 || p.liveXp !== 0)
+        await tx.room.addParticipant({ ...p, ...NO_LIVE_CREDIT });
     }
 
     const breakEndsAt = phases[phase.index + 1]?.endsAt ?? phase.endsAt;
@@ -888,12 +963,13 @@ export class StudyRoomEngine {
           finished: true,
           plannedMinutes: solo.minutes,
           now: solo.endsAt,
+          live: solo,
         });
         const damageXp = focusXp(solo.minutes, 1);
         const rest = damageXp - solo.bossXpDealt;
         await this.damageBoss(tx, effects, rest, [solo.userId], solo.endsAt);
         const stillOnBreak = solo.breakEndsAt > now;
-        if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break", bossXpDealt: 0 });
+        if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break", ...NO_LIVE_CREDIT });
         else await tx.solos.delete(solo.userId);
         const result: PersonalResultDto = {
           source: "solo",
@@ -935,8 +1011,8 @@ export class StudyRoomEngine {
     if (this.config.boss.enabled && candidates.length > 0) {
       candidates.push(nextWeekStart(now, this.config.timeZone));
     }
-    // While anyone is focusing, wake every minute so the boss takes live damage.
-    if (this.config.boss.enabled && (await this.anyoneFocusing(tx, now))) {
+    // While anyone is focusing, wake every minute so stats and the boss update live.
+    if (await this.anyoneFocusing(tx, now)) {
       candidates.push((Math.floor(now / MINUTE_MS) + 1) * MINUTE_MS);
     }
     return candidates.length > 0 ? Math.min(...candidates) : null;
@@ -966,14 +1042,21 @@ export class StudyRoomEngine {
       plannedMinutes: number;
       fullCycle?: boolean;
       now: number;
+      /** What this block already credited live, minute by minute. Only the rest is added. */
+      live?: { liveMinutes: number; liveXp: number };
     },
   ) {
     const { userId, minutes, combo, finished, now } = input;
+    const live = input.live ?? { liveMinutes: 0, liveXp: 0 };
     const day = dayKey(now, this.config.timeZone);
     const member = await this.loadMember(tx, userId);
     const xpToday = (await tx.stats.get(userId, day))?.xp ?? 0;
     const rawXp = this.config.xp.enabled ? focusXp(minutes, combo) : 0;
-    const xpEarned = applyDailyCap(rawXp, xpToday, this.config.xp.dailyCap);
+    // Live ticks paid base XP for whole minutes; the end pays the rest,
+    // including the combo bonus, under whatever room the daily cap has left.
+    const liveRawXp = this.config.xp.enabled ? baseFocusXp(live.liveMinutes) : 0;
+    const restXp = applyDailyCap(Math.max(0, rawXp - liveRawXp), xpToday, this.config.xp.dailyCap);
+    const xpEarned = live.liveXp + restXp;
 
     let streak = member.streak;
     let streakExtended = false;
@@ -989,10 +1072,10 @@ export class StudyRoomEngine {
       streakExtended && streak.streak === 1 && member.streak.lastActiveDay !== null
         ? member.streak.streak
         : 0;
-    await tx.members.save({ ...member, xpTotal: member.xpTotal + xpEarned, streak });
+    await tx.members.save({ ...member, xpTotal: member.xpTotal + restXp, streak });
     await tx.stats.add(userId, day, {
-      focusMinutes: minutes,
-      xp: xpEarned,
+      focusMinutes: Math.max(0, minutes - live.liveMinutes),
+      xp: restXp,
       sessionsFinished: finished ? 1 : 0,
     });
     await tx.sessions.insert({
@@ -1542,22 +1625,45 @@ export class StudyRoomEngine {
     };
   }
 
-  private async buildLeaderboard(tx: Store, userId: string, now: number): Promise<LeaderboardDto> {
+  private async buildLeaderboard(
+    tx: Store,
+    userId: string,
+    now: number,
+    by: LeaderboardMetric,
+  ): Promise<LeaderboardDto> {
     const tz = this.config.timeZone;
     const today = dayKey(now, tz);
     const weekStart = weekKey(today);
-    const ranked = rankByMinutes(await tx.leaderboard.standings(weekStart, today));
-    const hidden = await tx.leaderboard.isHidden(userId);
-    const mine = ranked.find((e) => e.userId === userId);
+    const minutes = new Map(
+      (await tx.leaderboard.standings(weekStart, today)).map((r) => [
+        r.userId,
+        Math.floor(r.focusMinutes),
+      ]),
+    );
+    const xp = new Map(
+      (await tx.leaderboard.xpStandings(weekStart, today)).map((r) => [r.userId, r.xp]),
+    );
+    const totals = (by === "xp" ? [...xp] : [...minutes]).map(([id, value]) => ({
+      userId: id,
+      value,
+    }));
+    const ranked = rankBy(totals).map(({ userId: id, rank }) => ({
+      userId: id,
+      focusMinutes: minutes.get(id) ?? 0,
+      xp: xp.get(id) ?? 0,
+      rank,
+    }));
     const myRows = await tx.stats.listForUser(userId, weekStart, today);
     return {
+      by,
       weekStart,
       endsAt: nextWeekStart(now, tz),
       entries: ranked.slice(0, LIMITS.leaderboardSize),
       me: {
-        rank: mine?.rank ?? 0,
+        rank: ranked.find((e) => e.userId === userId)?.rank ?? 0,
         focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
-        hidden,
+        xp: await tx.leaderboard.weekXp(userId, weekStart, today),
+        hidden: await tx.leaderboard.isHidden(userId),
       },
     };
   }
@@ -1622,16 +1728,25 @@ export class StudyRoomEngine {
  * first means two people shown with the same minutes never get different ranks.
  */
 function rankByMinutes(rows: readonly { userId: string; focusMinutes: number }[]) {
+  return rankBy(rows.map((r) => ({ userId: r.userId, value: r.focusMinutes }))).map(
+    ({ userId, value, rank }) => ({ userId, focusMinutes: value, rank }),
+  );
+}
+
+/** Ranks whole, positive values, most first, so ties share a place (1, 2, 2, 4). */
+function rankBy(rows: readonly { userId: string; value: number }[]) {
   const whole = rows
-    .map((r) => ({ userId: r.userId, focusMinutes: Math.floor(r.focusMinutes) }))
-    .filter((r) => r.focusMinutes > 0)
-    .sort(
-      (a, b) =>
-        b.focusMinutes - a.focusMinutes || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
-    );
+    .map((r) => ({ userId: r.userId, value: Math.floor(r.value) }))
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
   let rank = 0;
   return whole.map((r, i) => {
-    if (i === 0 || r.focusMinutes !== whole[i - 1]!.focusMinutes) rank = i + 1;
+    if (i === 0 || r.value !== whole[i - 1]!.value) rank = i + 1;
     return { ...r, rank };
   });
+}
+
+function validateMetric(by: unknown): LeaderboardMetric {
+  if (by === "minutes" || by === "xp") return by;
+  throw validationError("The leaderboard ranks by minutes or xp.");
 }

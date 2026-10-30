@@ -3,6 +3,7 @@ import type {
   CardLookDto,
   GoalDto,
   LeaderboardDto,
+  LeaderboardMetric as LeaderboardMetricDto,
   MemberCardDto,
   MemberProfileDto,
   MemberStatus as MemberStatusDto,
@@ -21,6 +22,7 @@ import type {
   TimerPreset as TimerPresetDto,
 } from "@studyroom/core";
 import {
+  LeaderboardMetric,
   MemberStatus,
   Phase,
   PresetKey,
@@ -84,6 +86,21 @@ const PHASE_FROM_PROTO = invert(PHASE_TO_PROTO);
 const STATUS_FROM_PROTO = invert(STATUS_TO_PROTO);
 const PRESET_FROM_PROTO = invert(PRESET_TO_PROTO);
 const QUEST_UNIT_FROM_PROTO = invert(QUEST_UNIT_TO_PROTO);
+
+const METRIC_TO_PROTO: Record<LeaderboardMetricDto, LeaderboardMetric> = {
+  minutes: LeaderboardMetric.MINUTES,
+  xp: LeaderboardMetric.XP,
+};
+const METRIC_FROM_PROTO = invert(METRIC_TO_PROTO);
+
+export function leaderboardMetricToProto(by: LeaderboardMetricDto): LeaderboardMetric {
+  return METRIC_TO_PROTO[by];
+}
+
+/** Unspecified means minutes, so older clients keep working. null for a value this build doesn't know. */
+export function leaderboardMetricFromProto(by: LeaderboardMetric): LeaderboardMetricDto | null {
+  return by === LeaderboardMetric.UNSPECIFIED ? "minutes" : (METRIC_FROM_PROTO.get(by) ?? null);
+}
 
 function phaseFromProto(phase: Phase): RoomPhase {
   return PHASE_FROM_PROTO.get(phase) ?? "idle";
@@ -232,10 +249,13 @@ export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
       userId: e.userId,
       focusMinutes: e.focusMinutes,
       rank: e.rank,
+      xp: e.xp,
     })),
     myRank: board.me.rank,
     myFocusMinutes: board.me.focusMinutes,
     hidden: board.me.hidden,
+    by: METRIC_TO_PROTO[board.by],
+    myXp: board.me.xp,
   };
 }
 
@@ -419,14 +439,21 @@ export function progressFromProto(progress: Progress): ProgressDto {
 
 export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
   return {
+    by: leaderboardMetricFromProto(board.by) ?? "minutes",
     weekStart: board.weekStart,
     endsAt: board.endsAtMs,
     entries: board.entries.map((e) => ({
       userId: e.userId,
       focusMinutes: e.focusMinutes,
+      xp: e.xp,
       rank: e.rank,
     })),
-    me: { rank: board.myRank, focusMinutes: board.myFocusMinutes, hidden: board.hidden },
+    me: {
+      rank: board.myRank,
+      focusMinutes: board.myFocusMinutes,
+      xp: board.myXp,
+      hidden: board.hidden,
+    },
   };
 }
 

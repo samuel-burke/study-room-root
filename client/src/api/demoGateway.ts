@@ -11,6 +11,7 @@ import {
   MemoryStore,
   StudyRoomEngine,
   type AppConfig,
+  type LeaderboardMetric,
   type MyStatusDto,
   type PersonalResultDto,
   type PhaseCompletedDto,
@@ -350,7 +351,10 @@ export class DemoGateway implements StudyRoomGateway {
                 ? 0
                 : (back * 29) % 140;
       if (minutes > 0)
-        await this.store.stats.add(DEMO_USER_ID, addDays(today, -back), { focusMinutes: minutes });
+        await this.store.stats.add(DEMO_USER_ID, addDays(today, -back), {
+          focusMinutes: minutes,
+          xp: Math.min(this.config.xp.dailyCap, minutes * 2),
+        });
     }
     await this.seedBoss();
     if (!this.options.bots) return;
@@ -358,7 +362,12 @@ export class DemoGateway implements StudyRoomGateway {
     for (const [i, bot] of BOTS.entries()) {
       for (let day = weekKey(today); day < today; day = addDays(day, 1)) {
         const focusMinutes = 30 + ((i * 47 + Number(day.slice(-2)) * 29) % 120);
-        await this.store.stats.add(bot.userId, day, { focusMinutes });
+        // Some goal XP on top, so ranking by XP doesn't just repeat the minutes.
+        const goalXp = ((i * 5 + Number(day.slice(-2))) % 3) * 25;
+        await this.store.stats.add(bot.userId, day, {
+          focusMinutes,
+          xp: Math.min(this.config.xp.dailyCap, focusMinutes * 2 + goalXp),
+        });
       }
     }
     for (const bot of BOTS) {
@@ -513,12 +522,12 @@ export class DemoGateway implements StudyRoomGateway {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
   }
 
-  getLeaderboard() {
-    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID));
+  getLeaderboard(by?: LeaderboardMetric) {
+    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID, by));
   }
 
-  setLeaderboardHidden(hidden: boolean) {
-    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden));
+  setLeaderboardHidden(hidden: boolean, by?: LeaderboardMetric) {
+    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden, by));
   }
 
   setCardStyle(style: string) {

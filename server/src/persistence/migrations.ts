@@ -212,6 +212,27 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    // Focus minutes and XP are now credited every minute too, so a block
+    // remembers what it has already credited and its end only adds the rest.
+    name: "008_live_stats",
+    async up(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.integer("live_minutes").notNullable().defaultTo(0);
+          t.integer("live_xp").notNullable().defaultTo(0);
+        });
+      }
+    },
+    async down(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.dropColumn("live_xp");
+          t.dropColumn("live_minutes");
+        });
+      }
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {

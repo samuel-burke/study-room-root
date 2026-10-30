@@ -40,6 +40,8 @@ The room timer is the default and the brighter button because joining it is what
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
+Focus is credited **live**. While anyone is focusing, the engine wakes every minute and credits each whole minute of a running block: the minutes go into `daily_stats`, and the base XP (2 per minute, under the daily cap) goes to the member's total and `daily_stats`. That's what makes the XP bar, level, minute-based quests, the leaderboard and the rank chips move during a session. Each room participant and solo timer remembers what it has already credited (`liveMinutes`, `liveXp`), so the end of a block (round end, leaving early, stopping a solo) adds only the rest, including the combo bonus, and a block's totals and session log are exactly what they'd be without live crediting. The counters are stored, so a server restart mid-block doesn't credit anything twice. Each minute pushes the room and the member's status, and the progress screen reloads on each room push while it's open.
+
 ## Anti-AFK guardrails
 
 The room timer never interrupts a focus round and never takes back anything earned. The only check is at the end of a cycle:
@@ -77,7 +79,8 @@ Admins can rename or resize the live boss; damage is never healed, and lowering 
 
 ## Weekly leaderboard
 
-- Ranked by focus **minutes**, not goals, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- Ranked by focus **minutes** by default, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- Members can switch the board to **XP** earned this week: the week's `daily_stats` XP (focus and goals, already under the daily cap) plus that week's `quest_rewards`. Boss loot isn't counted, because everyone who helped gets the same loot. Every entry carries both totals; only the ranking changes. Rank chips on cards, the recap's top 3 and the leaderboard badges stay minute-based, so the XP view is a second way to look, not a second competition.
 - The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
 - Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
 - The board lists the top 10. You always see your own rank and minutes, even below the top 10.

@@ -40,6 +40,9 @@ export interface SoloRecord {
   breakEndsAt: number;
   /** Base focus XP already dealt to the boss live, minute by minute, during this focus. */
   bossXpDealt: number;
+  /** Whole focus minutes, and the XP for them, already credited live during this focus. */
+  liveMinutes: number;
+  liveXp: number;
 }
 
 export interface RoomCycleRecord {
@@ -57,6 +60,9 @@ export interface ParticipantRecord {
   keepGoing: boolean;
   /** Base focus XP already dealt to the boss live, minute by minute, in the current focus round. */
   bossXpDealt: number;
+  /** Whole focus minutes, and the XP for them, already credited live in the current focus round. */
+  liveMinutes: number;
+  liveXp: number;
 }
 
 export interface SessionLogRecord {
@@ -84,6 +90,11 @@ export type DailyStatDelta = Partial<Omit<DailyStatRecord, "userId" | "day">>;
 export interface WeekFocusRecord {
   userId: string;
   focusMinutes: number;
+}
+
+export interface WeekXpRecord {
+  userId: string;
+  xp: number;
 }
 
 /** A weekly quest reward that has been paid, so it is paid only once. */
@@ -176,6 +187,14 @@ export interface Store {
      * by user id). Members who are hidden or have no minutes are left out.
      */
     standings(fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]>;
+    /**
+     * XP per member for the week starting `weekKey`: daily XP over
+     * [weekKey, toDay] plus that week's quest rewards, most first (ties by
+     * user id). Members who are hidden or have no XP are left out.
+     */
+    xpStandings(weekKey: DayKey, toDay: DayKey): Promise<WeekXpRecord[]>;
+    /** One member's XP for the week, counted like xpStandings, hidden or not. */
+    weekXp(userId: string, weekKey: DayKey, toDay: DayKey): Promise<number>;
   };
   quests: {
     /** Ids of the weekly quests whose reward the member has already received. */

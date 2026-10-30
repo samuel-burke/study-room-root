@@ -132,7 +132,14 @@ test.describe("progress", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Your progress" }).click();
     const board = page.getByRole("region", { name: "Weekly leaderboard" });
-    await expect(board.getByText("By focus minutes · resets Monday")).toBeVisible();
+    await expect(board.getByText("Resets Monday")).toBeVisible();
+    const minutes = board.getByRole("button", { name: "Minutes" });
+    const xp = board.getByRole("button", { name: "XP" });
+    await expect(minutes).toHaveAttribute("aria-pressed", "true");
+    await expect(board.getByRole("listitem").first()).toHaveAccessibleName(/(min|hrs?)$/);
+    await xp.click();
+    await expect(xp).toHaveAttribute("aria-pressed", "true");
+    await expect(board.getByRole("listitem").first()).toHaveAccessibleName(/\d+ XP$/);
     const show = board.getByRole("switch", { name: "Show me on the leaderboard" });
     await expect(show).toHaveAttribute("aria-checked", "true");
     await show.click();

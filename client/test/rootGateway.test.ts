@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  leaderboardMetricToProto,
   leaderboardToProto,
   memberProfileToProto,
   myStatusToProto,
@@ -149,8 +150,25 @@ describe("RootGateway", () => {
     const gateway = new RootGateway();
     await expect(gateway.getLeaderboard()).resolves.toEqual(board);
     await expect(gateway.setLeaderboardHidden(true)).resolves.toEqual(hidden);
-    expect(service.client.getLeaderboard).toHaveBeenCalledWith({});
-    expect(service.client.setLeaderboardHidden).toHaveBeenCalledWith({ hidden: true });
+    expect(service.client.getLeaderboard).toHaveBeenCalledWith({
+      by: leaderboardMetricToProto("minutes"),
+    });
+    expect(service.client.setLeaderboardHidden).toHaveBeenCalledWith({
+      hidden: true,
+      by: leaderboardMetricToProto("minutes"),
+    });
+
+    const byXp = await engine.getLeaderboard("kai", "xp");
+    vi.mocked(service.client.getLeaderboard).mockResolvedValue(leaderboardToProto(byXp));
+    await expect(gateway.getLeaderboard("xp")).resolves.toEqual(byXp);
+    await gateway.setLeaderboardHidden(false, "xp");
+    expect(service.client.getLeaderboard).toHaveBeenLastCalledWith({
+      by: leaderboardMetricToProto("xp"),
+    });
+    expect(service.client.setLeaderboardHidden).toHaveBeenLastCalledWith({
+      hidden: false,
+      by: leaderboardMetricToProto("xp"),
+    });
   });
 
   it("looks up another member's profile", async () => {
