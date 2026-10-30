@@ -194,4 +194,13 @@ describe("playCue", () => {
     expect(FakeAudioContext.instances).toHaveLength(2);
     expect(FakeAudioContext.instances[1]!.oscillators).toHaveLength(3);
   });
+
+  it("plays a short chirp, higher on the last second", async () => {
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+    const { playChirp } = await loadSounds();
+    playChirp("tick");
+    playChirp("lastTick");
+    const ctx = FakeAudioContext.instances[0]!;
+    expect(ctx.oscillators.map((o) => o.frequency.value)).toEqual([1318.51, 1760]);
+  });
 });

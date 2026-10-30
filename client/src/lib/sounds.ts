@@ -195,3 +195,26 @@ function scheduleNotes(ctx: AudioContext, { notes, wave }: (typeof MELODIES)[Sou
     osc.stop(t1 + 0.05);
   }
 }
+
+/** "tick" counts down; "lastTick" is the final second, pitched up a step. */
+export type Chirp = "tick" | "lastTick";
+
+const CHIRP_FREQ: Record<Chirp, number> = { tick: 1318.51, lastTick: 1760 };
+
+/** A short, bright blip for the countdown before a phase change. */
+export function playChirp(chirp: Chirp): void {
+  withAudio((ctx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = CHIRP_FREQ[chirp];
+    const t0 = ctx.currentTime + 0.01;
+    const t1 = t0 + 0.08;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(VOLUME * 0.8, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t1 + 0.02);
+  });
+}
