@@ -14,6 +14,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The weekly boss takes damage live: every minute someone focuses, their XP hits the boss right away instead of when the session ends. The room's combo bonus still lands when the round ends.
 - All XP now counts as boss damage: finishing goals (up to the daily cap) and weekly quest rewards hit the boss too, not just focus.
 - Focus minutes and XP are credited every minute while you focus, not only when the session ends. Your XP bar, level, quests, the leaderboard and the rank on each card all move live, and the progress screen refreshes itself while it's open. The combo bonus still lands when the round ends, and totals are exactly what they were before.
+- Your own avatar now shows your Root profile picture on the board, in the break moment and on your profile, instead of a "YOU" bubble, and the Focusing now board shows your Root name instead of "You". Members without a picture still see "YOU".
 
 ### Fixed
 
