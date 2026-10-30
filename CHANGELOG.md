@@ -8,6 +8,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - Each card on the "Focusing now" board shows the member's place on this week's leaderboard (#1, #2…). Members with no minutes yet, or who hid themselves from the leaderboard, show no rank.
 
+### Changed
+
+- The weekly boss takes damage live: every minute someone focuses, their XP hits the boss right away instead of when the session ends. The room's combo bonus still lands when the round ends.
+- All XP now counts as boss damage: finishing goals (up to the daily cap) and weekly quest rewards hit the boss too, not just focus.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.

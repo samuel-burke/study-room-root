@@ -4,6 +4,8 @@ import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
 const BREAK = 5 * MINUTE;
+/** Without the boss, wake-ups only come at phase boundaries. */
+const NO_BOSS = configWith({ boss: { enabled: false, name: "", baseHpXp: 10_000 } });
 
 async function expectError(promise: Promise<unknown>, code: ErrorCode) {
   const error = await promise.then(
@@ -185,10 +187,16 @@ describe("room timer", () => {
   });
 
   it("schedules a wake-up for the next phase boundary", async () => {
-    const { engine, scheduler } = createHarness();
+    const { engine, scheduler } = createHarness(NO_BOSS);
     expect(scheduler.at).toBeNull();
     await engine.joinRoomTimer("ana");
     expect(scheduler.at).toBe(T0 + FOCUS);
+  });
+
+  it("wakes every minute while someone focuses, so the boss takes live damage", async () => {
+    const { engine, scheduler } = createHarness();
+    await engine.joinRoomTimer("ana");
+    expect(scheduler.at).toBe(T0 + MINUTE);
   });
 });
 
@@ -346,6 +354,50 @@ describe("XP rules", () => {
 });
 
 describe("weekly boss", () => {
+  it("takes focus damage live, every minute, and the combo bonus when the round ends", async () => {
+    const { engine, notifier, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await engine.joinRoomTimer("kai");
+    await advance(10 * MINUTE);
+    // 2 people × 10 minutes × 2 XP, before anyone knows the round's combo.
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(40);
+    expect(notifier.lastRoom?.boss.damageXp).toBe(40);
+    await advance(15 * MINUTE);
+    // The round ends at 1.1x: 2 × 55 XP in total, no more and no less.
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(110);
+    expect(notifier.phases[0]!.roomDamageXp).toBe(110);
+    // Breaks deal nothing.
+    await advance(BREAK - MINUTE);
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(110);
+  });
+
+  it("deals only the rest when someone leaves a round or stops a solo early", async () => {
+    const { engine, advance } = createHarness();
+    await engine.joinRoomTimer("ana");
+    await engine.startSolo("kai", 30);
+    await advance(7 * MINUTE + 30_000);
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(28);
+    await engine.leaveRoomTimer("ana");
+    await engine.endSolo("kai");
+    // 7 whole minutes each: 14 + 14, nothing counted twice.
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(28);
+    await engine.startSolo("kai", 5);
+    await advance(5 * MINUTE);
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(38);
+  });
+
+  it("takes damage from goal XP, but not past the daily cap", async () => {
+    const { engine } = createHarness(configWith({ xp: { enabled: true, dailyCap: 30 } }));
+    await engine.addGoal("ana", "Read chapter 3");
+    await engine.addGoal("ana", "Read chapter 4");
+    const [first, second] = (await engine.getSnapshot("ana")).me.goals;
+    await engine.setGoalDone("ana", first!.id, true);
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(25);
+    await engine.setGoalDone("ana", second!.id, true);
+    // Only 5 XP was left under the cap.
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(30);
+  });
+
   it("is defeated by XP earned, pays out loot scaled by strength and posts once", async () => {
     // "Quiz" is a 0.75x boss: 200 base HP becomes 150, and loot is 75 XP.
     const config = configWith({ boss: { enabled: true, name: "Quiz", baseHpXp: 200 } });
@@ -502,7 +554,7 @@ describe("channel posts", () => {
 
 describe("failed wake-ups", () => {
   it("retries a tick that failed instead of letting the timer stall", async () => {
-    const { engine, store, scheduler, clock, advance, notifier } = createHarness();
+    const { engine, store, scheduler, clock, advance, notifier } = createHarness(NO_BOSS);
     await engine.joinRoomTimer("ana");
     const original = store.transaction.bind(store);
     const spy = vi
@@ -627,6 +679,8 @@ describe("weekly quests", () => {
     for (const goal of goals.slice(0, 5)) await engine.setGoalDone("ana", goal.id, true);
     // Two goals fill the 50 XP cap; the quest adds 40 on top.
     expect((await engine.getSnapshot("ana")).me.xpTotal).toBe(50 + 40);
+    // Goal XP after the cap and the quest reward both hit the boss.
+    expect((await engine.getSnapshot("ana")).room.boss.damageXp).toBe(50 + 40);
     await engine.setGoalDone("ana", goals[5]!.id, true);
     await engine.setGoalDone("ana", goals[0]!.id, false);
     await engine.setGoalDone("ana", goals[0]!.id, true);

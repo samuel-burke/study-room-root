@@ -372,7 +372,7 @@ export class StudyRoomEngine {
             settledCount: 0,
           });
         }
-        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false });
+        await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false, bossXpDealt: 0 });
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -401,7 +401,9 @@ export class StudyRoomEngine {
             plannedMinutes: cycle.preset.focusMinutes,
             now,
           });
-          await this.damageBoss(tx, effects, focusXp(minutes, combo), [userId], now);
+          // The base XP already hit the boss minute by minute; this adds the rest.
+          const rest = focusXp(minutes, combo) - me.bossXpDealt;
+          await this.damageBoss(tx, effects, rest, [userId], now);
         }
         await tx.room.removeParticipant(userId);
         if (participants.length === 1) await tx.room.saveCycle(null);
@@ -438,6 +440,7 @@ export class StudyRoomEngine {
         minutes,
         phase: "focus",
         breakEndsAt: endsAt + this.config.preset.breakMinutes * MINUTE_MS,
+        bossXpDealt: 0,
       });
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -462,7 +465,8 @@ export class StudyRoomEngine {
           plannedMinutes: solo.minutes,
           now,
         });
-        await this.damageBoss(tx, effects, focusXp(minutes, 1), [userId], now);
+        const rest = focusXp(minutes, 1) - solo.bossXpDealt;
+        await this.damageBoss(tx, effects, rest, [userId], now);
       }
       if (solo) await tx.solos.delete(userId);
       this.touch(effects, userId);
@@ -519,7 +523,10 @@ export class StudyRoomEngine {
           const member = await this.loadMember(tx, userId);
           await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
           await tx.stats.add(userId, day, { xp, goalsDone: 1 });
-          const quests = await this.rewardQuests(tx, userId, now);
+          // Goal XP hits the boss as earned, after the daily cap, so the boss
+          // can't be farmed with tiny goals.
+          await this.damageBoss(tx, effects, xp, [userId], now);
+          const quests = await this.rewardQuests(tx, effects, userId, now);
           await this.awardBadges(tx, effects, userId, now, {
             goal: { secondsOpen: Math.floor((now - goal.createdAt) / 1000) },
             quests,
@@ -682,6 +689,36 @@ export class StudyRoomEngine {
   private async settleDue(tx: Store, now: number, effects: Effects): Promise<void> {
     await this.settleRoomCycle(tx, now, effects);
     await this.settleSolos(tx, now, effects);
+    await this.dealLiveDamage(tx, now, effects);
+  }
+
+  /**
+   * Focus hits the boss as it happens: each whole minute of a running focus
+   * block deals its base XP. The combo bonus lands when the round ends, since
+   * the combo depends on who finishes. Each block remembers what it has dealt,
+   * so the end of the block only deals the rest.
+   */
+  private async dealLiveDamage(tx: Store, now: number, effects: Effects): Promise<void> {
+    if (!this.config.boss.enabled) return;
+    const cycle = await tx.room.getCycle();
+    const phase = cycle ? phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now) : undefined;
+    if (phase?.kind === "focus") {
+      for (const p of await tx.room.listParticipants()) {
+        const minutes = overlapMs(p.joinedAt, now, phase.startsAt, phase.endsAt) / MINUTE_MS;
+        const hit = baseFocusXp(minutes) - p.bossXpDealt;
+        if (hit <= 0) continue;
+        await tx.room.addParticipant({ ...p, bossXpDealt: p.bossXpDealt + hit });
+        await this.damageBoss(tx, effects, hit, [p.userId], now);
+      }
+    }
+    for (const solo of await tx.solos.list()) {
+      if (solo.phase !== "focus") continue;
+      const minutes = (Math.min(now, solo.endsAt) - solo.startedAt) / MINUTE_MS;
+      const hit = baseFocusXp(minutes) - solo.bossXpDealt;
+      if (hit <= 0) continue;
+      await tx.solos.save({ ...solo, bossXpDealt: solo.bossXpDealt + hit });
+      await this.damageBoss(tx, effects, hit, [solo.userId], now);
+    }
   }
 
   private async settleRoomCycle(tx: Store, now: number, effects: Effects): Promise<void> {
@@ -731,7 +768,7 @@ export class StudyRoomEngine {
         : null,
     );
     for (const p of carried) {
-      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false });
+      await tx.room.addParticipant({ ...p, joinedAt: end, keepGoing: false, bossXpDealt: 0 });
       effects.statusChanged.add(p.userId);
     }
     effects.roomChanged = true;
@@ -785,13 +822,23 @@ export class StudyRoomEngine {
         }),
       });
     }
+    // Base XP already hit the boss minute by minute; the round's end deals the
+    // rest, including the combo bonus, then each participant starts the next
+    // round at zero.
+    const rest = minuteShares.reduce(
+      (sum, s) => sum + Math.max(0, focusXp(s.minutes, combo) - s.participant.bossXpDealt),
+      0,
+    );
     await this.damageBoss(
       tx,
       effects,
-      roomDamageXp,
+      rest,
       minuteShares.map((s) => s.participant.userId),
       phase.endsAt,
     );
+    for (const p of participants) {
+      if (p.bossXpDealt !== 0) await tx.room.addParticipant({ ...p, bossXpDealt: 0 });
+    }
 
     const breakEndsAt = phases[phase.index + 1]?.endsAt ?? phase.endsAt;
     const room = await this.buildRoomState(tx, phase.endsAt);
@@ -843,9 +890,10 @@ export class StudyRoomEngine {
           now: solo.endsAt,
         });
         const damageXp = focusXp(solo.minutes, 1);
-        await this.damageBoss(tx, effects, damageXp, [solo.userId], solo.endsAt);
+        const rest = damageXp - solo.bossXpDealt;
+        await this.damageBoss(tx, effects, rest, [solo.userId], solo.endsAt);
         const stillOnBreak = solo.breakEndsAt > now;
-        if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break" });
+        if (stillOnBreak) await tx.solos.save({ ...solo, phase: "break", bossXpDealt: 0 });
         else await tx.solos.delete(solo.userId);
         const result: PersonalResultDto = {
           source: "solo",
@@ -887,7 +935,18 @@ export class StudyRoomEngine {
     if (this.config.boss.enabled && candidates.length > 0) {
       candidates.push(nextWeekStart(now, this.config.timeZone));
     }
+    // While anyone is focusing, wake every minute so the boss takes live damage.
+    if (this.config.boss.enabled && (await this.anyoneFocusing(tx, now))) {
+      candidates.push((Math.floor(now / MINUTE_MS) + 1) * MINUTE_MS);
+    }
     return candidates.length > 0 ? Math.min(...candidates) : null;
+  }
+
+  private async anyoneFocusing(tx: Store, now: number): Promise<boolean> {
+    if ((await tx.solos.list()).some((s) => s.phase === "focus")) return true;
+    const cycle = await tx.room.getCycle();
+    if (!cycle || (await tx.room.listParticipants()).length === 0) return false;
+    return phaseAt(buildCycle(cycle.cycleStartedAt, cycle.preset), now)?.kind === "focus";
   }
 
   // ---------------------------------------------------------------- rewards
@@ -946,7 +1005,7 @@ export class StudyRoomEngine {
       xp: xpEarned,
       combo,
     });
-    const quests = await this.rewardQuests(tx, userId, now);
+    const quests = await this.rewardQuests(tx, effects, userId, now);
 
     const tz = this.config.timeZone;
     const session: SessionFacts = {
@@ -997,7 +1056,9 @@ export class StudyRoomEngine {
     if (!this.config.boss.enabled || xp <= 0) return;
     const boss = await this.loadBoss(tx, now);
     const result = applyDamage(boss, xp, contributorIds, now);
+    if (result.boss === boss) return;
     await tx.bosses.save(result.boss);
+    effects.roomChanged = true;
     if (result.defeatedNow) await this.onBossDefeated(tx, result.boss, effects, contributorIds);
   }
 
@@ -1043,10 +1104,15 @@ export class StudyRoomEngine {
   /**
    * Pays the reward for every quest the member has just finished this week.
    * Like boss loot it is outside the daily cap: it comes at most three times
-   * a week, and a capped reward would often be zero. Returns the quest facts
-   * badges look at.
+   * a week, and a capped reward would often be zero. The reward also hits the
+   * boss. Returns the quest facts badges look at.
    */
-  private async rewardQuests(tx: Store, userId: string, now: number): Promise<QuestFacts> {
+  private async rewardQuests(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    now: number,
+  ): Promise<QuestFacts> {
     const week = weekKey(dayKey(now, this.config.timeZone));
     const rewarded = new Set(await tx.quests.listRewarded(userId, week));
     let xp = 0;
@@ -1066,6 +1132,7 @@ export class StudyRoomEngine {
     if (xp > 0) {
       const member = await this.loadMember(tx, userId);
       await tx.members.save({ ...member, xpTotal: member.xpTotal + xp });
+      await this.damageBoss(tx, effects, xp, [userId], now);
     }
     return {
       doneThisWeek: rewarded.size,
