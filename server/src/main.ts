@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  ChannelType,
   ChannelWebRtcEvent,
   ClientEvent,
   GlobalSettingsEvent,
@@ -40,6 +41,13 @@ function loadRootConfig(settings: GlobalSettings | undefined): Promise<AppConfig
             channelId: id as ChannelGuid,
           })
         ).url,
+      voiceChannels: async () => {
+        const groups = await rootServer.community.channelGroups.list();
+        const channels = await Promise.all(
+          groups.map((g) => rootServer.community.channels.list({ channelGroupId: g.id })),
+        );
+        return channels.flat().filter((c) => c.channelType === ChannelType.Voice);
+      },
     },
     logger,
   );

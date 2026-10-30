@@ -119,7 +119,7 @@ Display names come from Root nicknames and are stripped of markup and mention ch
 
 ## Voice uses Root's voice channels
 
-Study Squad doesn't run calls. The SDK gives apps no microphone access, and Root's voice channels already work well. Admins pick one in the **Voice channel** setting. The server asks Root for a link to it (`communityLinks.communityChannelCreate`), and the room shows a Join voice button that opens the link. The server also follows who is in that channel (`channelWebRtcs.list` on start and on settings changes, then the attach and detach events), and the board shows headphones next to them. Someone counts as in voice until their last device leaves (`VoiceRoster`). The voice list is kept in memory only.
+Study Squad doesn't run calls. The SDK gives apps no microphone access, and Root's voice channels already work well. Admins type its name in the **Voice channel name** setting, because Root's channel picker only offers text channels and has no way to ask for voice ones. The server looks through the community's voice channels for that name (ignoring case, extra spaces and a leading #) and asks Root for a link to it (`communityLinks.communityChannelCreate`), and the room shows a Join voice button that opens the link. The server also follows who is in that channel (`channelWebRtcs.list` on start and on settings changes, then the attach and detach events), and the board shows headphones next to them. Someone counts as in voice until their last device leaves (`VoiceRoster`). The voice list is kept in memory only.
 
 ## Admin settings use Root's Global Settings
 

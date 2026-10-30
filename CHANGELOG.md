@@ -10,7 +10,7 @@ Study together out loud: voice channel support, plus more reliable badge unlocks
 
 ### Added
 
-- Voice channel support: admins pick a voice channel in the new **Voice channel** setting. The room then shows a Join voice button with how many people are in there, and headphones next to anyone in the channel. The talking itself happens in Root's own voice channel.
+- Voice channel support: admins type a voice channel's name in the new **Voice channel name** setting. The room then shows a Join voice button with how many people are in there, and headphones next to anyone in the channel. The talking itself happens in Root's own voice channel.
 
 ### Fixed
 
