@@ -101,6 +101,11 @@ test.describe("the break moment", () => {
     // The board flips to Break for everyone at the same moment.
     await expect(page.locator(".phase-pill")).toHaveAttribute("data-phase", "break");
 
+    // The demo starts with no badges, so this round's unlocks sit on top of the moment.
+    const unlock = page.locator(".unlock");
+    while (await unlock.isVisible()) {
+      await unlock.getByRole("button", { name: "Nice!" }).click();
+    }
     await moment.getByRole("button", { name: "Done, +25 XP" }).click();
     await expect(moment).toBeHidden();
   });
