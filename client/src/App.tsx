@@ -112,6 +112,8 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
             onBack={() => setScreen("room")}
             onDeleteData={actions.deleteMyData}
             onOpenMember={(userId) => setOverlay({ kind: "member", userId })}
+            // The room is pushed every focus minute, so stats stay live while this is open.
+            refreshKey={room}
           />
         ) : (
           <RoomScreen

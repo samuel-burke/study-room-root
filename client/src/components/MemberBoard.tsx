@@ -63,6 +63,22 @@ function FeaturedBadge({ ids }: { ids: string[] }) {
   );
 }
 
+/** The member's place on this week's leaderboard. Nothing when unranked or hidden. */
+export function RankChip({ rank }: { rank: number }) {
+  if (rank <= 0) return null;
+  return (
+    <span
+      className="rank-chip"
+      data-top={rank <= 3}
+      role="img"
+      aria-label={`#${rank} on this week's leaderboard`}
+      title={`#${rank} on this week's leaderboard`}
+    >
+      #{rank}
+    </span>
+  );
+}
+
 function MemberCard({
   member,
   profile,
@@ -97,6 +113,7 @@ function MemberCard({
           <div className="streak-line">
             <FlameIcon size={13} stroke="var(--flame)" />
             {member.streak} day streak
+            <RankChip rank={member.weeklyRank} />
           </div>
         </div>
       </div>
@@ -149,6 +166,7 @@ function MemberRow({
           style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
         >
           {name}
+          <RankChip rank={member.weeklyRank} />
           {voice && <InVoiceMark />}
           <FeaturedBadge ids={member.badges} />
         </div>

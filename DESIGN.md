@@ -40,6 +40,8 @@ The room timer is the default and the brighter button because joining it is what
 
 The live combo on screen counts everyone on the room timer, as a preview. The combo actually paid out counts finishers.
 
+Focus is credited **live**. While anyone is focusing, the engine wakes every minute and credits each whole minute of a running block: the minutes go into `daily_stats`, and the base XP (2 per minute, under the daily cap) goes to the member's total and `daily_stats`. That's what makes the XP bar, level, minute-based quests, the leaderboard and the rank chips move during a session. Each room participant and solo timer remembers what it has already credited (`liveMinutes`, `liveXp`), so the end of a block (round end, leaving early, stopping a solo) adds only the rest, including the combo bonus, and a block's totals and session log are exactly what they'd be without live crediting. The counters are stored, so a server restart mid-block doesn't credit anything twice. Each minute pushes the room and the member's status, and the progress screen reloads on each room push while it's open.
+
 ## Anti-AFK guardrails
 
 The room timer never interrupts a focus round and never takes back anything earned. The only check is at the end of a cycle:
@@ -67,17 +69,24 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 A boss spawns lazily each Monday (community time zone) with the admin's name (or the week's built-in name) and HP in XP. Each boss has a strength from 0.5x to 2x that fits its name, so "The Final Final Exam" is tougher than "Professor Pop Quiz". The built-in list averages exactly 1x, with weaker bosses below and stronger ones above. Its HP (the XP it takes to defeat) is the admin's base HP times its strength, and so is its loot. Names an admin types get strength from keywords: finals, thesis and boards are 2x; midterms, exams, deadlines and projects 1.5x; quizzes and homework 0.75x; anything else 1x.
 
-Damage is the focus XP a session earns, combo included, counted **before** the daily cap. The cap limits what a member earns, not how much they help the room, so the people studying most still hit the boss. Goal XP doesn't count, because checking off goals is too easy to farm. Damage is dealt even with XP turned off; there's just no loot then.
+All XP counts as damage except boss loot:
+
+- **Focus** hits the boss live. While anyone is focusing the engine wakes every minute, and each whole minute of a running block deals its base XP (2 per minute). The combo bonus lands when the round ends, because the combo depends on who finishes. Each room participant and solo timer remembers what it has already dealt (`bossXpDealt`), so the end of a round, leaving early or stopping a solo only deals the rest, and the total always equals the block's focus XP. Focus damage is counted **before** the daily cap: the cap limits what a member earns, not how much they help the room. It's dealt even with XP turned off; there's just no loot then.
+- **Goals** deal the XP they actually pay, **after** the daily cap. Goals are cheap to add and check off, so without the cap one person could farm the boss down alone.
+- **Quest rewards** deal their XP. They're outside the cap already and come at most three times a week.
 
 Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
-## Weekly leaderboard
+## Leaderboard
 
-- Ranked by focus **minutes**, not goals, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- Ranked by focus **minutes** by default, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
+- Members can switch the board to **XP**: `daily_stats` XP for the period (focus and goals, already under the daily cap) plus the `quest_rewards` paid in it (by `rewarded_at`, so a reward lands in the month or year it was earned). Boss loot isn't counted, because everyone who helped gets the same loot. Every entry carries both totals; only the ranking changes. Rank chips on cards, the recap's top 3 and the leaderboard badges stay minute-based, so the XP view is a second way to look, not a second competition.
 - The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
 - Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
+- Members can also switch the period to **this month**, **this year** or **all time** (calendar month and year in the community time zone). Every period runs the same queries over a different day range, so there are no extra totals to keep in sync; all time is just a range starting at `0000-01-01`. Each period starts over at its own boundary (all time never does). Opt-outs apply to every period. The weekly view stays the default, and the card rank chips, badges and recap remain weekly, since a weekly race gives newcomers a fresh chance every Monday.
 - The board lists the top 10. You always see your own rank and minutes, even below the top 10.
-- Members can hide themselves. Hidden members are left out of the board and out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
+- Every card on the room's "Focusing now" board shows that member's rank (#1, #2…), including ranks below the top 10, so the room can see who's leading without opening the progress screen. Members with no minutes this week, or who hid themselves, show no rank. The rank is computed with the room state, so it updates whenever the board does.
+- Members can hide themselves. Hidden members are left out of the board, get no rank on their room card, and are left out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
 - The daily recap lists the week's top 3 when the admin setting **Leaderboard in recap** is on (default).
 - The Podium and Pole Position badges use the rank at the end of each focus block. A place only counts once at least 3 members are ranked that week, so the first person to focus on a Monday doesn't win by default.
 

@@ -171,6 +171,19 @@ describe("delivering every unlock", () => {
     expect(result?.event.me.newBadges).toEqual(expect.arrayContaining(ids));
   }
 
+  /**
+   * XP and boss damage now land minute by minute, so a level or a boss
+   * defeat can happen mid-timer, with no break result yet. Those unlocks ride
+   * on the minute's status push and the badge push.
+   */
+  function expectPushedLive(notifier: Harness["notifier"], userId: string, ids: string[]) {
+    expect(notifier.badgesFor(userId)).toEqual(expect.arrayContaining(ids));
+    const carried = notifier.statuses
+      .filter((s) => s.userId === userId)
+      .flatMap((s) => s.me.newBadges ?? []);
+    expect(carried).toEqual(expect.arrayContaining(ids));
+  }
+
   it("when a room round finishes", async () => {
     const { engine, notifier, advance } = createHarness();
     await engine.joinRoomTimer("ana");
@@ -187,15 +200,15 @@ describe("delivering every unlock", () => {
     expectPushedEveryWay(notifier, "ana", ["first-session", "early-bird"]);
   });
 
-  it("when a finished timer defeats the boss", async () => {
+  it("when focus defeats the boss mid-timer", async () => {
     const config = configWith({ boss: { enabled: true, name: "Calc II", baseHpXp: 50 } });
     const { engine, notifier, advance } = createHarness(config);
     await engine.startSolo("ana", 30);
     await advance(30 * MINUTE);
-    expectPushedEveryWay(notifier, "ana", ["first-boss", "final-blow", "one-person-army"]);
+    expectPushedLive(notifier, "ana", ["first-boss", "final-blow", "one-person-army"]);
   });
 
-  it("when a finished timer crosses a level or saves a streak", async () => {
+  it("when focus crosses a level mid-timer, and a finished timer saves a streak", async () => {
     const config = configWith({ streakFreezesEnabled: false });
     const { engine, notifier, store, advance } = createHarness(config);
     await store.members.save({
@@ -206,7 +219,9 @@ describe("delivering every unlock", () => {
     });
     await engine.startSolo("ana", 25);
     await advance(25 * MINUTE);
-    expectPushedEveryWay(notifier, "ana", ["level-5", "comeback"]);
+    expectPushedLive(notifier, "ana", ["level-5"]);
+    // A streak day only counts once the timer finishes.
+    expectPushedEveryWay(notifier, "ana", ["comeback"]);
   });
 
   it("when ending a solo early finishes an already-due timer", async () => {
