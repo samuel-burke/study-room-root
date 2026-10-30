@@ -7,7 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Each card on the "Focusing now" board shows the member's place on this week's leaderboard (#1, #2…). Members with no minutes yet, or who hid themselves from the leaderboard, show no rank.
-- The weekly leaderboard can rank by focus minutes or by XP earned this week (focus, goals and quest rewards). Tap **Minutes** or **XP** above the standings.
+- The leaderboard can rank by focus minutes or by XP (focus, goals and quest rewards), and covers this week, this month, this year or all time. Pick with the **Week | Month | Year | All time** and **Minutes | XP** switches above the standings. The rank on each card stays weekly.
 
 ### Changed
 

@@ -4,6 +4,7 @@ import type {
   GoalDto,
   LeaderboardDto,
   LeaderboardMetric as LeaderboardMetricDto,
+  LeaderboardPeriod as LeaderboardPeriodDto,
   MemberCardDto,
   MemberProfileDto,
   MemberStatus as MemberStatusDto,
@@ -23,6 +24,7 @@ import type {
 } from "@studyroom/core";
 import {
   LeaderboardMetric,
+  LeaderboardPeriod,
   MemberStatus,
   Phase,
   PresetKey,
@@ -92,6 +94,25 @@ const METRIC_TO_PROTO: Record<LeaderboardMetricDto, LeaderboardMetric> = {
   xp: LeaderboardMetric.XP,
 };
 const METRIC_FROM_PROTO = invert(METRIC_TO_PROTO);
+
+const PERIOD_TO_PROTO: Record<LeaderboardPeriodDto, LeaderboardPeriod> = {
+  week: LeaderboardPeriod.WEEK,
+  month: LeaderboardPeriod.MONTH,
+  year: LeaderboardPeriod.YEAR,
+  all: LeaderboardPeriod.ALL,
+};
+const PERIOD_FROM_PROTO = invert(PERIOD_TO_PROTO);
+
+export function leaderboardPeriodToProto(period: LeaderboardPeriodDto): LeaderboardPeriod {
+  return PERIOD_TO_PROTO[period];
+}
+
+/** Unspecified means this week, so older clients keep working. null for a value this build doesn't know. */
+export function leaderboardPeriodFromProto(period: LeaderboardPeriod): LeaderboardPeriodDto | null {
+  return period === LeaderboardPeriod.UNSPECIFIED
+    ? "week"
+    : (PERIOD_FROM_PROTO.get(period) ?? null);
+}
 
 export function leaderboardMetricToProto(by: LeaderboardMetricDto): LeaderboardMetric {
   return METRIC_TO_PROTO[by];
@@ -243,7 +264,7 @@ export function progressToProto(progress: ProgressDto): Progress {
 
 export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
   return {
-    weekStart: board.weekStart,
+    startDay: board.startDay,
     endsAtMs: board.endsAt,
     entries: board.entries.map((e) => ({
       userId: e.userId,
@@ -256,6 +277,7 @@ export function leaderboardToProto(board: LeaderboardDto): Leaderboard {
     hidden: board.me.hidden,
     by: METRIC_TO_PROTO[board.by],
     myXp: board.me.xp,
+    period: PERIOD_TO_PROTO[board.period],
   };
 }
 
@@ -440,7 +462,8 @@ export function progressFromProto(progress: Progress): ProgressDto {
 export function leaderboardFromProto(board: Leaderboard): LeaderboardDto {
   return {
     by: leaderboardMetricFromProto(board.by) ?? "minutes",
-    weekStart: board.weekStart,
+    period: leaderboardPeriodFromProto(board.period) ?? "week",
+    startDay: board.startDay,
     endsAt: board.endsAtMs,
     entries: board.entries.map((e) => ({
       userId: e.userId,

@@ -897,7 +897,7 @@ describe("weekly leaderboard", () => {
     await advance(30 * MINUTE);
 
     const board = await engine.getLeaderboard("ana");
-    expect(board.weekStart).toBe("2026-10-26");
+    expect(board.startDay).toBe("2026-10-26");
     // Monday 2026-11-02 00:00 in New York (UTC-5 after DST ends).
     expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 5, 0, 0));
     expect(board.entries).toEqual([
@@ -967,7 +967,7 @@ describe("weekly leaderboard", () => {
       weekKey: "2026-10-19",
       questId: "goals",
       xp: 100,
-      rewardedAt: T0,
+      rewardedAt: T0 - 7 * 24 * 60 * MINUTE,
     });
     await store.stats.add("devon", "2026-10-27", { xp: 240 });
 
@@ -994,6 +994,70 @@ describe("weekly leaderboard", () => {
     await expectError(engine.setLeaderboardHidden("kai", false, 2), ErrorCode.Validation);
   });
 
+  it("covers this month, this year and all time too, in the community time zone", async () => {
+    const { engine, store } = createHarness();
+    await store.stats.add("ana", "2026-10-26", { focusMinutes: 60, xp: 120 });
+    await store.stats.add("kai", "2026-10-05", { focusMinutes: 90, xp: 180 });
+    await store.stats.add("lena", "2026-03-01", { focusMinutes: 200, xp: 300 });
+    await store.stats.add("priya", "2025-12-31", { focusMinutes: 500, xp: 300 });
+    // A quest paid on New Year's Eve evening in New York counts for last year.
+    await store.quests.markRewarded({
+      userId: "priya",
+      weekKey: "2025-12-29",
+      questId: "goals",
+      xp: 40,
+      rewardedAt: Date.UTC(2026, 0, 1, 3),
+    });
+    const order = async (period: string, by = "minutes") =>
+      (await engine.getLeaderboard("ana", by, period)).entries.map((e) => [e.userId, e.rank]);
+
+    expect(await order("week")).toEqual([["ana", 1]]);
+    expect(await order("month")).toEqual([
+      ["kai", 1],
+      ["ana", 2],
+    ]);
+    expect(await order("year")).toEqual([
+      ["lena", 1],
+      ["kai", 2],
+      ["ana", 3],
+    ]);
+    expect(await order("all")).toEqual([
+      ["priya", 1],
+      ["lena", 2],
+      ["kai", 3],
+      ["ana", 4],
+    ]);
+    expect(await order("all", "xp")).toEqual([
+      ["priya", 1],
+      ["lena", 2],
+      ["kai", 3],
+      ["ana", 4],
+    ]);
+    expect((await engine.getLeaderboard("priya", "xp", "year")).me).toEqual({
+      rank: 0,
+      focusMinutes: 0,
+      xp: 0,
+      hidden: false,
+    });
+    expect((await engine.getLeaderboard("priya", "xp", "all")).me.xp).toBe(340);
+
+    const month = await engine.getLeaderboard("ana", "minutes", "month");
+    expect([month.period, month.startDay]).toEqual(["month", "2026-10-01"]);
+    // November 1 00:00 in New York (still daylight time).
+    expect(month.endsAt).toBe(Date.UTC(2026, 10, 1, 4));
+    const year = await engine.getLeaderboard("ana", "minutes", "year");
+    expect([year.startDay, year.endsAt]).toEqual(["2026-01-01", Date.UTC(2027, 0, 1, 5)]);
+    const all = await engine.getLeaderboard("ana", "minutes", "all");
+    expect([all.startDay, all.endsAt]).toEqual(["", 0]);
+
+    // Opting out applies to every period, and the reply keeps the period asked for.
+    const hidden = await engine.setLeaderboardHidden("priya", true, "xp", "all");
+    expect([hidden.by, hidden.period]).toEqual(["xp", "all"]);
+    expect(hidden.entries.map((e) => e.userId)).toEqual(["lena", "kai", "ana"]);
+    expect(hidden.me).toEqual({ rank: 0, focusMinutes: 500, xp: 340, hidden: true });
+    await expectError(engine.getLeaderboard("ana", "minutes", "decade"), ErrorCode.Validation);
+  });
+
   it("starts over on Monday in the community time zone", async () => {
     // Sunday 2026-11-01 23:30 in New York.
     const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 4, 30));
@@ -1001,7 +1065,7 @@ describe("weekly leaderboard", () => {
     expect((await engine.getLeaderboard("ana")).entries).toHaveLength(1);
     clock.advance(31 * MINUTE);
     const board = await engine.getLeaderboard("ana");
-    expect(board.weekStart).toBe("2026-11-02");
+    expect(board.startDay).toBe("2026-11-02");
     expect(board.entries).toEqual([]);
   });
 

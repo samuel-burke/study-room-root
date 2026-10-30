@@ -168,3 +168,25 @@ export function nextOccurrence(
 export function nextWeekStart(now: number, timeZone: string): number {
   return startOfDay(addDays(weekKey(dayKey(now, timeZone)), 7), timeZone);
 }
+
+/** The first day of the key's month. */
+export function monthKey(key: DayKey): DayKey {
+  const [y, m] = parseDayKey(key);
+  return toDayKey(y, m, 1);
+}
+
+/** The first day of the key's year. */
+export function yearKey(key: DayKey): DayKey {
+  return toDayKey(parseDayKey(key)[0], 1, 1);
+}
+
+/** Start of the 1st of next month in the zone. */
+export function nextMonthStart(now: number, timeZone: string): number {
+  const [y, m] = parseDayKey(dayKey(now, timeZone));
+  return startOfDay(m === 12 ? toDayKey(y + 1, 1, 1) : toDayKey(y, m + 1, 1), timeZone);
+}
+
+/** Start of January 1 next year in the zone. */
+export function nextYearStart(now: number, timeZone: string): number {
+  return startOfDay(toDayKey(parseDayKey(dayKey(now, timeZone))[0] + 1, 1, 1), timeZone);
+}

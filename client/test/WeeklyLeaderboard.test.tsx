@@ -7,7 +7,8 @@ import { WeeklyLeaderboard } from "../src/components/WeeklyLeaderboard";
 
 const board = (overrides: Partial<LeaderboardDto> = {}): LeaderboardDto => ({
   by: "minutes",
-  weekStart: "2026-10-26",
+  period: "week",
+  startDay: "2026-10-26",
   endsAt: Date.UTC(2026, 10, 2, 5),
   entries: [
     { userId: "priya", focusMinutes: 312, xp: 640, rank: 1 },
@@ -39,7 +40,7 @@ function fakeGateway(overrides: Partial<StudyRoomGateway> = {}) {
 function renderBoard(gateway: StudyRoomGateway) {
   const user = userEvent.setup();
   const view = render(<WeeklyLeaderboard gateway={gateway} />);
-  const region = screen.getByRole("region", { name: "Weekly leaderboard" });
+  const region = screen.getByRole("region", { name: "Leaderboard" });
   return { user, region, view };
 }
 
@@ -144,12 +145,12 @@ describe("WeeklyLeaderboard", () => {
     expect(toggle).toHaveAttribute("aria-checked", "true");
 
     await user.click(toggle);
-    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(true, "minutes");
+    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(true, "minutes", "week");
     await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"));
     expect(within(region).getByText(/You're hidden. Your 15 min this week still count/));
 
     await user.click(toggle);
-    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(false, "minutes");
+    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(false, "minutes", "week");
     await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
     expect(within(region).queryByText(/You're hidden/)).not.toBeInTheDocument();
   });
@@ -206,11 +207,11 @@ describe("WeeklyLeaderboard", () => {
     expect(xp).toHaveAttribute("aria-pressed", "true");
     expect(await within(region).findByRole("listitem", { name: "Rank 3, Kai, 120 XP" }));
     expect(within(region).getByRole("listitem", { name: "Rank 1, Priya, 640 XP" }));
-    expect(getLeaderboard).toHaveBeenLastCalledWith("xp");
+    expect(getLeaderboard).toHaveBeenLastCalledWith("xp", "week");
 
     // Hiding yourself keeps the board you're looking at.
     await user.click(within(region).getByRole("switch", { name: "Show me on the leaderboard" }));
-    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(true, "xp");
+    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(true, "xp", "week");
 
     await user.click(minutes);
     expect(await within(region).findByRole("listitem", { name: "Rank 1, Priya, 5.2 hrs" }));
@@ -265,8 +266,57 @@ describe("WeeklyLeaderboard", () => {
 
     await user.click(within(region).getByRole("button", { name: "Try again" }));
     expect(await within(region).findByRole("listitem", { name: "Rank 1, Priya, 640 XP" }));
-    expect(getLeaderboard).toHaveBeenLastCalledWith("xp");
+    expect(getLeaderboard).toHaveBeenLastCalledWith("xp", "week");
     expect(within(region).queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("switches between this week, month, year and all time", async () => {
+    const getLeaderboard = vi.fn(
+      async (by: "minutes" | "xp" = "minutes", period: LeaderboardDto["period"] = "week") =>
+        period === "all"
+          ? board({
+              by,
+              period,
+              startDay: "",
+              endsAt: 0,
+              entries: [{ userId: "kai", focusMinutes: 6000, xp: 9000, rank: 1 }],
+              me: { rank: 0, focusMinutes: 30, xp: 60, hidden: true },
+            })
+          : board({ by, period }),
+    );
+    const gateway = fakeGateway({ getLeaderboard });
+    const { user, region } = renderBoard(gateway);
+    const periods = within(region).getByRole("group", { name: "Period" });
+    expect(within(periods).getByRole("button", { name: "Week" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(await within(region).findByRole("heading", { name: "This week" }));
+    expect(within(region).getByText("Resets Monday"));
+
+    await user.click(within(periods).getByRole("button", { name: "Month" }));
+    expect(await within(region).findByRole("heading", { name: "This month" }));
+    expect(within(region).getByText("Resets on the 1st"));
+    expect(getLeaderboard).toHaveBeenLastCalledWith("minutes", "month");
+
+    await user.click(within(region).getByRole("button", { name: "XP" }));
+    await user.click(within(periods).getByRole("button", { name: "All time" }));
+    expect(await within(region).findByRole("heading", { name: "All time" }));
+    expect(getLeaderboard).toHaveBeenLastCalledWith("xp", "all");
+    expect(within(region).getByRole("listitem", { name: "Rank 1, Kai, 9000 XP" }));
+    expect(within(region).getByText("You're hidden. Your 60 XP still count for you and the boss."));
+
+    // Saving the opt-out keeps the board you're looking at.
+    await user.click(within(region).getByRole("switch", { name: "Show me on the leaderboard" }));
+    expect(gateway.setLeaderboardHidden).toHaveBeenLastCalledWith(false, "xp", "all");
+  });
+
+  it("names the period in the empty state", async () => {
+    const gateway = fakeGateway({
+      getLeaderboard: vi.fn(async () => board({ period: "year", entries: [] })),
+    });
+    const { region } = renderBoard(gateway);
+    expect(await within(region).findByText("Nobody has focused yet this year. Start a timer!"));
   });
 
   it("ignores a response that arrives after it has gone away", async () => {

@@ -1,5 +1,6 @@
 import {
   leaderboardMetricFromProto,
+  leaderboardPeriodFromProto,
   leaderboardToProto,
   memberProfileToProto,
   myStatusToProto,
@@ -87,7 +88,11 @@ export class StudyRoomHandlers {
   getLeaderboard(userId: string, request: GetLeaderboardRequest): Promise<Leaderboard> {
     return this.handle("getLeaderboard", userId, "read", async () =>
       leaderboardToProto(
-        await this.engine.getLeaderboard(userId, leaderboardMetricFromProto(request.by)),
+        await this.engine.getLeaderboard(
+          userId,
+          leaderboardMetricFromProto(request.by),
+          leaderboardPeriodFromProto(request.period),
+        ),
       ),
     );
   }
@@ -105,6 +110,7 @@ export class StudyRoomHandlers {
           userId,
           request.hidden,
           leaderboardMetricFromProto(request.by),
+          leaderboardPeriodFromProto(request.period),
         ),
       ),
     );

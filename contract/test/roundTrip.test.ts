@@ -12,6 +12,7 @@ import type {
 import {
   Leaderboard,
   LeaderboardMetric,
+  LeaderboardPeriod,
   MemberProfile,
   type MemberStatus,
   MyStatus,
@@ -24,6 +25,8 @@ import {
   leaderboardFromProto,
   leaderboardMetricFromProto,
   leaderboardMetricToProto,
+  leaderboardPeriodFromProto,
+  leaderboardPeriodToProto,
   leaderboardToProto,
   memberProfileFromProto,
   memberProfileToProto,
@@ -262,10 +265,16 @@ describe("contract round trip", () => {
   });
 
   it("preserves the leaderboard", () => {
-    for (const by of ["minutes", "xp"] as const) {
+    for (const [by, period, startDay] of [
+      ["minutes", "week", "2026-10-26"],
+      ["xp", "month", "2026-10-01"],
+      ["xp", "year", "2026-01-01"],
+      ["minutes", "all", ""],
+    ] as const) {
       const board: LeaderboardDto = {
         by,
-        weekStart: "2026-10-26",
+        period,
+        startDay,
         endsAt: 1_793_592_000_000,
         entries: [
           { userId: "priya", focusMinutes: 312, xp: 640, rank: 1 },
@@ -279,11 +288,15 @@ describe("contract round trip", () => {
     }
   });
 
-  it("reads an unset leaderboard metric as minutes, and refuses one it doesn't know", () => {
+  it("reads an unset metric as minutes and period as this week, and refuses unknown ones", () => {
     expect(leaderboardMetricFromProto(LeaderboardMetric.UNSPECIFIED)).toBe("minutes");
     expect(leaderboardMetricFromProto(LeaderboardMetric.XP)).toBe("xp");
     expect(leaderboardMetricFromProto(9 as LeaderboardMetric)).toBeNull();
     expect(leaderboardMetricToProto("xp")).toBe(LeaderboardMetric.XP);
+    expect(leaderboardPeriodFromProto(LeaderboardPeriod.UNSPECIFIED)).toBe("week");
+    expect(leaderboardPeriodFromProto(LeaderboardPeriod.ALL)).toBe("all");
+    expect(leaderboardPeriodFromProto(9 as LeaderboardPeriod)).toBeNull();
+    expect(leaderboardPeriodToProto("year")).toBe(LeaderboardPeriod.YEAR);
   });
 
   it("preserves a member profile", () => {

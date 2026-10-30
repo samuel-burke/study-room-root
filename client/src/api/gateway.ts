@@ -1,6 +1,7 @@
 import type {
   LeaderboardDto,
   LeaderboardMetric,
+  LeaderboardPeriod,
   MemberProfileDto,
   MyStatusDto,
   PersonalResultDto,
@@ -60,9 +61,13 @@ export interface StudyRoomGateway {
   deleteGoal(goalId: string): Promise<MyStatusDto>;
   setGoalsPrivate(goalsPrivate: boolean): Promise<MyStatusDto>;
   getProgress(): Promise<ProgressDto>;
-  /** Ranked by focus minutes unless `by` says XP. */
-  getLeaderboard(by?: LeaderboardMetric): Promise<LeaderboardDto>;
-  setLeaderboardHidden(hidden: boolean, by?: LeaderboardMetric): Promise<LeaderboardDto>;
+  /** This week by focus minutes unless `by` and `period` say otherwise. */
+  getLeaderboard(by?: LeaderboardMetric, period?: LeaderboardPeriod): Promise<LeaderboardDto>;
+  setLeaderboardHidden(
+    hidden: boolean,
+    by?: LeaderboardMetric,
+    period?: LeaderboardPeriod,
+  ): Promise<LeaderboardDto>;
   /** "" goes back to the automatic style. */
   setCardStyle(style: string): Promise<ProgressDto>;
   /** Up to three earned badges for the card; empty shows the most recent. */

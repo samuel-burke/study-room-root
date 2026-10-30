@@ -2,6 +2,7 @@ import { ImageUriResolution, rootClient } from "@rootsdk/client-app";
 import {
   leaderboardFromProto,
   leaderboardMetricToProto,
+  leaderboardPeriodToProto,
   memberProfileFromProto,
   myStatusFromProto,
   personalResultFromProto,
@@ -10,7 +11,12 @@ import {
   roomFromProto,
   snapshotFromProto,
 } from "@studyroom/contract";
-import { ClockSync, type LeaderboardMetric, type SnapshotDto } from "@studyroom/core";
+import {
+  ClockSync,
+  type LeaderboardMetric,
+  type LeaderboardPeriod,
+  type SnapshotDto,
+} from "@studyroom/core";
 import { studyRoomServiceClient, StudyRoomServiceClientEvent } from "@studyroom/gen-client";
 import type { RoomSnapshot } from "@studyroom/gen-shared";
 import {
@@ -103,15 +109,30 @@ export class RootGateway implements StudyRoomGateway {
     return progressFromProto(await call(() => client.getProgress({})));
   }
 
-  async getLeaderboard(by: LeaderboardMetric = "minutes") {
+  async getLeaderboard(by: LeaderboardMetric = "minutes", period: LeaderboardPeriod = "week") {
     return leaderboardFromProto(
-      await call(() => client.getLeaderboard({ by: leaderboardMetricToProto(by) })),
+      await call(() =>
+        client.getLeaderboard({
+          by: leaderboardMetricToProto(by),
+          period: leaderboardPeriodToProto(period),
+        }),
+      ),
     );
   }
 
-  async setLeaderboardHidden(hidden: boolean, by: LeaderboardMetric = "minutes") {
+  async setLeaderboardHidden(
+    hidden: boolean,
+    by: LeaderboardMetric = "minutes",
+    period: LeaderboardPeriod = "week",
+  ) {
     return leaderboardFromProto(
-      await call(() => client.setLeaderboardHidden({ hidden, by: leaderboardMetricToProto(by) })),
+      await call(() =>
+        client.setLeaderboardHidden({
+          hidden,
+          by: leaderboardMetricToProto(by),
+          period: leaderboardPeriodToProto(period),
+        }),
+      ),
     );
   }
 

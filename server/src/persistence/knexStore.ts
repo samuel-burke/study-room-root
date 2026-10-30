@@ -16,7 +16,8 @@ import type {
   Store,
   TimerPreset,
   WeekFocusRecord,
-  WeekXpRecord,
+  XpTotalRecord,
+  StandingsRange,
 } from "@studyroom/core";
 import type { Knex } from "knex";
 
@@ -483,10 +484,10 @@ export class KnexStore implements Store {
             { column: "user_id", order: "asc" },
           ])
       ).map((r: Row) => ({ userId: String(r.user_id), focusMinutes: num(r.focus_minutes) })),
-    xpStandings: async (weekKey: DayKey, toDay: DayKey): Promise<WeekXpRecord[]> =>
+    xpStandings: async (range: StandingsRange): Promise<XpTotalRecord[]> =>
       (
         await this.db
-          .from(this.weekXpRows(weekKey, toDay).as("x"))
+          .from(this.xpRows(range).as("x"))
           .whereNotIn("user_id", this.db("leaderboard_opt_outs").select("user_id"))
           .groupBy("user_id")
           .having(this.db.raw("SUM(xp) > 0"))
@@ -496,9 +497,9 @@ export class KnexStore implements Store {
             { column: "user_id", order: "asc" },
           ])
       ).map((r: Row) => ({ userId: String(r.user_id), xp: num(r.xp) })),
-    weekXp: async (userId: string, weekKey: DayKey, toDay: DayKey): Promise<number> => {
+    xpFor: async (userId: string, range: StandingsRange): Promise<number> => {
       const row = await this.db
-        .from(this.weekXpRows(weekKey, toDay).as("x"))
+        .from(this.xpRows(range).as("x"))
         .where({ user_id: userId })
         .sum({ xp: "xp" })
         .first();
@@ -506,13 +507,17 @@ export class KnexStore implements Store {
     },
   };
 
-  /** Daily XP in [weekKey, toDay] and that week's quest rewards, one row each. */
-  private weekXpRows(weekKey: DayKey, toDay: DayKey) {
+  /** Daily XP and quest rewards paid in the range, one row each. */
+  private xpRows(range: StandingsRange) {
     return this.db("daily_stats")
-      .whereBetween("day", [weekKey, toDay])
+      .whereBetween("day", [range.fromDay, range.toDay])
       .select("user_id", "xp")
       .unionAll((q) =>
-        q.from("quest_rewards").where({ week_key: weekKey }).select("user_id", "xp"),
+        q
+          .from("quest_rewards")
+          .where("rewarded_at", ">=", range.fromMs)
+          .where("rewarded_at", "<", range.toMs)
+          .select("user_id", "xp"),
       );
   }
 

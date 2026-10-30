@@ -92,9 +92,20 @@ export interface WeekFocusRecord {
   focusMinutes: number;
 }
 
-export interface WeekXpRecord {
+export interface XpTotalRecord {
   userId: string;
   xp: number;
+}
+
+/**
+ * A leaderboard period: daily stats for [fromDay, toDay], and quest rewards
+ * paid in [fromMs, toMs).
+ */
+export interface StandingsRange {
+  fromDay: DayKey;
+  toDay: DayKey;
+  fromMs: number;
+  toMs: number;
 }
 
 /** A weekly quest reward that has been paid, so it is paid only once. */
@@ -188,13 +199,13 @@ export interface Store {
      */
     standings(fromDay: DayKey, toDay: DayKey): Promise<WeekFocusRecord[]>;
     /**
-     * XP per member for the week starting `weekKey`: daily XP over
-     * [weekKey, toDay] plus that week's quest rewards, most first (ties by
-     * user id). Members who are hidden or have no XP are left out.
+     * XP per member over the range: daily XP plus quest rewards paid in it,
+     * most first (ties by user id). Members who are hidden or have no XP are
+     * left out.
      */
-    xpStandings(weekKey: DayKey, toDay: DayKey): Promise<WeekXpRecord[]>;
-    /** One member's XP for the week, counted like xpStandings, hidden or not. */
-    weekXp(userId: string, weekKey: DayKey, toDay: DayKey): Promise<number>;
+    xpStandings(range: StandingsRange): Promise<XpTotalRecord[]>;
+    /** One member's XP over the range, counted like xpStandings, hidden or not. */
+    xpFor(userId: string, range: StandingsRange): Promise<number>;
   };
   quests: {
     /** Ids of the weekly quests whose reward the member has already received. */

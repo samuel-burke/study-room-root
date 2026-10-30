@@ -199,7 +199,7 @@ describe("Study Squad app", () => {
     await act(() => gateway.addGoal("Pushed from elsewhere"));
     await waitFor(() => expect(progress).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(leaderboard).toHaveBeenCalledTimes(2));
-    expect(leaderboard).toHaveBeenLastCalledWith("minutes");
+    expect(leaderboard).toHaveBeenLastCalledWith("minutes", "week");
   });
 
   it("shows badges, keeps secrets hidden, and lets you restyle your card", async () => {

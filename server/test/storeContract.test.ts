@@ -247,36 +247,41 @@ describe.each(implementations)("%s", (_name, open) => {
     expect(await store.leaderboard.listHidden()).toEqual(["kai"]);
   });
 
-  it("sums this week's XP with its quest rewards for the leaderboard", async () => {
+  it("sums XP and the quest rewards paid in a range for the leaderboard", async () => {
+    const week = { fromDay: "2026-10-26", toDay: "2026-11-01", fromMs: 1_000, toMs: 2_000 };
     await store.stats.add("ana", "2026-10-26", { focusMinutes: 30, xp: 60 });
     await store.stats.add("ana", "2026-10-28", { xp: 20, goalsDone: 1 });
     await store.stats.add("kai", "2026-10-27", { focusMinutes: 10, xp: 20 });
     await store.stats.add("lena", "2026-10-27", { focusMinutes: 5 });
     await store.stats.add("priya", "2026-10-25", { xp: 500 });
     await store.stats.add("priya", "2026-11-02", { xp: 500 });
-    const reward = (userId: string, weekKey: string, questId: string, xp: number) =>
-      store.quests.markRewarded({ userId, weekKey, questId, xp, rewardedAt: 1 });
-    await reward("kai", "2026-10-26", "goals", 40);
-    await reward("kai", "2026-10-26", "roomRounds", 20);
-    await reward("devon", "2026-10-26", "goals", 80);
-    await reward("priya", "2026-10-19", "goals", 40);
+    const reward = (userId: string, questId: string, xp: number, rewardedAt: number) =>
+      store.quests.markRewarded({ userId, weekKey: "2026-10-26", questId, xp, rewardedAt });
+    await reward("kai", "goals", 40, 1_000);
+    await reward("kai", "roomRounds", 20, 1_999);
+    await reward("devon", "goals", 80, 1_500);
+    // Paid just before and just after the range.
+    await reward("priya", "goals", 40, 999);
+    await reward("priya", "roomRounds", 40, 2_000);
 
     // Ties by user id; Lena has minutes but no XP.
-    expect(await store.leaderboard.xpStandings("2026-10-26", "2026-11-01")).toEqual([
+    expect(await store.leaderboard.xpStandings(week)).toEqual([
       { userId: "ana", xp: 80 },
       { userId: "devon", xp: 80 },
       { userId: "kai", xp: 80 },
     ]);
-    expect(await store.leaderboard.weekXp("kai", "2026-10-26", "2026-11-01")).toBe(80);
-    // Only days so far count; the week's rewards always do.
-    expect(await store.leaderboard.weekXp("ana", "2026-10-26", "2026-10-27")).toBe(60);
-    expect(await store.leaderboard.weekXp("nobody", "2026-10-26", "2026-11-01")).toBe(0);
+    expect(await store.leaderboard.xpFor("kai", week)).toBe(80);
+    expect(await store.leaderboard.xpFor("ana", { ...week, toDay: "2026-10-27" })).toBe(60);
+    expect(await store.leaderboard.xpFor("nobody", week)).toBe(0);
+    const allTime = { fromDay: "0000-01-01", toDay: "2026-11-02", fromMs: 0, toMs: 3_000 };
+    expect(await store.leaderboard.xpFor("priya", allTime)).toBe(1080);
 
     await store.leaderboard.setHidden("kai", true);
-    expect(
-      (await store.leaderboard.xpStandings("2026-10-26", "2026-11-01")).map((r) => r.userId),
-    ).toEqual(["ana", "devon"]);
-    expect(await store.leaderboard.weekXp("kai", "2026-10-26", "2026-11-01")).toBe(80);
+    expect((await store.leaderboard.xpStandings(week)).map((r) => r.userId)).toEqual([
+      "ana",
+      "devon",
+    ]);
+    expect(await store.leaderboard.xpFor("kai", week)).toBe(80);
   });
 
   it("stores bosses and key-values", async () => {

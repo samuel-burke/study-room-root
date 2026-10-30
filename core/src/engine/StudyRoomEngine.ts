@@ -5,6 +5,7 @@ import type {
   GoalDto,
   LeaderboardDto,
   LeaderboardMetric,
+  LeaderboardPeriod,
   MemberCardDto,
   MemberProfileDto,
   MyStatusDto,
@@ -50,10 +51,14 @@ import {
   dayKey,
   daysBetween,
   localTime,
+  monthKey,
+  nextMonthStart,
   nextWeekStart,
+  nextYearStart,
   startOfDay,
   weekdayName,
   weekKey,
+  yearKey,
 } from "../time/calendar";
 import {
   buildCycle,
@@ -77,6 +82,7 @@ import type {
   Logger,
   MemberRecord,
   Notifier,
+  StandingsRange,
   ParticipantRecord,
   RoomCycleRecord,
   Store,
@@ -340,10 +346,15 @@ export class StudyRoomEngine {
     });
   }
 
-  /** This week's standings by focus minutes or XP, plus where the caller stands. */
-  async getLeaderboard(userId: string, by: unknown = "minutes"): Promise<LeaderboardDto> {
+  /** Standings for this week, month, year or all time by minutes or XP, plus where the caller stands. */
+  async getLeaderboard(
+    userId: string,
+    by: unknown = "minutes",
+    period: unknown = "week",
+  ): Promise<LeaderboardDto> {
     const metric = validateMetric(by);
-    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now, metric));
+    const range = validatePeriod(period);
+    return this.run(async (tx, now) => this.buildLeaderboard(tx, userId, now, metric, range));
   }
 
   /** Opting out hides the member from the leaderboard and from rankings in recaps. */
@@ -351,14 +362,16 @@ export class StudyRoomEngine {
     userId: string,
     hidden: unknown,
     by: unknown = "minutes",
+    period: unknown = "week",
   ): Promise<LeaderboardDto> {
     if (typeof hidden !== "boolean") throw validationError("Expected true or false.");
     const metric = validateMetric(by);
+    const range = validatePeriod(period);
     return this.run(async (tx, now, effects) => {
       await tx.leaderboard.setHidden(userId, hidden);
       // Their rank chip on the board appears or goes away.
       this.touch(effects, userId);
-      return this.buildLeaderboard(tx, userId, now, metric);
+      return this.buildLeaderboard(tx, userId, now, metric, range);
     });
   }
 
@@ -1630,19 +1643,24 @@ export class StudyRoomEngine {
     userId: string,
     now: number,
     by: LeaderboardMetric,
+    period: LeaderboardPeriod,
   ): Promise<LeaderboardDto> {
     const tz = this.config.timeZone;
     const today = dayKey(now, tz);
-    const weekStart = weekKey(today);
+    const { startDay, endsAt } = periodBounds(period, today, now, tz);
+    const range: StandingsRange = {
+      fromDay: startDay || EARLIEST_DAY,
+      toDay: today,
+      fromMs: startDay ? startOfDay(startDay, tz) : 0,
+      toMs: startOfDay(addDays(today, 1), tz),
+    };
     const minutes = new Map(
-      (await tx.leaderboard.standings(weekStart, today)).map((r) => [
+      (await tx.leaderboard.standings(range.fromDay, today)).map((r) => [
         r.userId,
         Math.floor(r.focusMinutes),
       ]),
     );
-    const xp = new Map(
-      (await tx.leaderboard.xpStandings(weekStart, today)).map((r) => [r.userId, r.xp]),
-    );
+    const xp = new Map((await tx.leaderboard.xpStandings(range)).map((r) => [r.userId, r.xp]));
     const totals = (by === "xp" ? [...xp] : [...minutes]).map(([id, value]) => ({
       userId: id,
       value,
@@ -1653,16 +1671,17 @@ export class StudyRoomEngine {
       xp: xp.get(id) ?? 0,
       rank,
     }));
-    const myRows = await tx.stats.listForUser(userId, weekStart, today);
+    const myRows = await tx.stats.listForUser(userId, range.fromDay, today);
     return {
       by,
-      weekStart,
-      endsAt: nextWeekStart(now, tz),
+      period,
+      startDay,
+      endsAt,
       entries: ranked.slice(0, LIMITS.leaderboardSize),
       me: {
         rank: ranked.find((e) => e.userId === userId)?.rank ?? 0,
         focusMinutes: Math.floor(myRows.reduce((sum, r) => sum + r.focusMinutes, 0)),
-        xp: await tx.leaderboard.weekXp(userId, weekStart, today),
+        xp: await tx.leaderboard.xpFor(userId, range),
         hidden: await tx.leaderboard.isHidden(userId),
       },
     };
@@ -1744,6 +1763,29 @@ function rankBy(rows: readonly { userId: string; value: number }[]) {
     if (i === 0 || r.value !== whole[i - 1]!.value) rank = i + 1;
     return { ...r, rank };
   });
+}
+
+/** Before any day the app could have data for, so "all time" can share the range queries. */
+const EARLIEST_DAY = "0000-01-01";
+
+/** First day of the period ("" for all time) and when it ends (0 for all time). */
+function periodBounds(period: LeaderboardPeriod, today: string, now: number, tz: string) {
+  switch (period) {
+    case "week":
+      return { startDay: weekKey(today), endsAt: nextWeekStart(now, tz) };
+    case "month":
+      return { startDay: monthKey(today), endsAt: nextMonthStart(now, tz) };
+    case "year":
+      return { startDay: yearKey(today), endsAt: nextYearStart(now, tz) };
+    case "all":
+      return { startDay: "", endsAt: 0 };
+  }
+}
+
+function validatePeriod(period: unknown): LeaderboardPeriod {
+  if (period === "week" || period === "month" || period === "year" || period === "all")
+    return period;
+  throw validationError("The leaderboard covers a week, month, year or all time.");
 }
 
 function validateMetric(by: unknown): LeaderboardMetric {

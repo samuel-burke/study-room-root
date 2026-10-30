@@ -77,12 +77,13 @@ All XP counts as damage except boss loot:
 
 Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
-## Weekly leaderboard
+## Leaderboard
 
 - Ranked by focus **minutes** by default, so it can't be gamed with tiny tasks. It sums `daily_stats` for the current week; there's no separate counter to drift.
-- Members can switch the board to **XP** earned this week: the week's `daily_stats` XP (focus and goals, already under the daily cap) plus that week's `quest_rewards`. Boss loot isn't counted, because everyone who helped gets the same loot. Every entry carries both totals; only the ranking changes. Rank chips on cards, the recap's top 3 and the leaderboard badges stay minute-based, so the XP view is a second way to look, not a second competition.
+- Members can switch the board to **XP**: `daily_stats` XP for the period (focus and goals, already under the daily cap) plus the `quest_rewards` paid in it (by `rewarded_at`, so a reward lands in the month or year it was earned). Boss loot isn't counted, because everyone who helped gets the same loot. Every entry carries both totals; only the ranking changes. Rank chips on cards, the recap's top 3 and the leaderboard badges stay minute-based, so the XP view is a second way to look, not a second competition.
 - The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
 - Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
+- Members can also switch the period to **this month**, **this year** or **all time** (calendar month and year in the community time zone). Every period runs the same queries over a different day range, so there are no extra totals to keep in sync; all time is just a range starting at `0000-01-01`. Each period starts over at its own boundary (all time never does). Opt-outs apply to every period. The weekly view stays the default, and the card rank chips, badges and recap remain weekly, since a weekly race gives newcomers a fresh chance every Monday.
 - The board lists the top 10. You always see your own rank and minutes, even below the top 10.
 - Every card on the room's "Focusing now" board shows that member's rank (#1, #2…), including ranks below the top 10, so the room can see who's leading without opening the progress screen. Members with no minutes this week, or who hid themselves, show no rank. The rank is computed with the room state, so it updates whenever the board does.
 - Members can hide themselves. Hidden members are left out of the board, get no rank on their room card, and are left out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.

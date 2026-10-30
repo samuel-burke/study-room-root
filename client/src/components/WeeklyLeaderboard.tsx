@@ -3,6 +3,7 @@ import {
   type LeaderboardDto,
   type LeaderboardEntryDto,
   type LeaderboardMetric,
+  type LeaderboardPeriod,
 } from "@studyroom/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toGatewayError, type Profile, type StudyRoomGateway } from "../api/gateway";
@@ -16,10 +17,48 @@ const METRICS: { by: LeaderboardMetric; label: string }[] = [
   { by: "xp", label: "XP" },
 ];
 
+const PERIODS: {
+  period: LeaderboardPeriod;
+  label: string;
+  title: string;
+  resets: string;
+  /** Finishes "…yet" and "Your 2 hrs…", so all time just leaves it off. */
+  when: string;
+}[] = [
+  {
+    period: "week",
+    label: "Week",
+    title: "This week",
+    resets: "Resets Monday",
+    when: " this week",
+  },
+  {
+    period: "month",
+    label: "Month",
+    title: "This month",
+    resets: "Resets on the 1st",
+    when: " this month",
+  },
+  {
+    period: "year",
+    label: "Year",
+    title: "This year",
+    resets: "Resets January 1",
+    when: " this year",
+  },
+  { period: "all", label: "All time", title: "All time", resets: "Never resets", when: "" },
+];
+
+const periodInfo = (period: LeaderboardPeriod) =>
+  PERIODS.find((p) => p.period === period) ?? PERIODS[0]!;
+
 const amount = (by: LeaderboardMetric, entry: Pick<LeaderboardEntryDto, "focusMinutes" | "xp">) =>
   by === "xp" ? `${entry.xp} XP` : formatHours(entry.focusMinutes);
 
-/** This week's standings by focus minutes or XP, with the member's own opt-out switch. */
+/**
+ * Standings for this week, month, year or all time, by focus minutes or XP,
+ * with the member's own opt-out switch.
+ */
 export function WeeklyLeaderboard({
   gateway,
   onOpenMember,
@@ -32,6 +71,7 @@ export function WeeklyLeaderboard({
   refreshKey?: unknown;
 }) {
   const [by, setBy] = useState<LeaderboardMetric>("minutes");
+  const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [board, setBoard] = useState<LeaderboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,14 +79,14 @@ export function WeeklyLeaderboard({
   const [attempt, setAttempt] = useState(0);
   const youId = gateway.currentUserId();
 
-  // The first load, a switch of metric and "Try again" are things the member
+  // The first load, a switch of metric or period and "Try again" are things the member
   // asked for, so their failures show. A refresh in the background keeps the
   // board on screen and tries again on the next update.
   const asked = useRef(true);
   useEffect(() => {
     let cancelled = false;
     gateway
-      .getLeaderboard(by)
+      .getLeaderboard(by, period)
       .then((b) => {
         if (cancelled) return;
         asked.current = false;
@@ -59,7 +99,7 @@ export function WeeklyLeaderboard({
     return () => {
       cancelled = true;
     };
-  }, [gateway, attempt, by, refreshKey]);
+  }, [gateway, attempt, by, period, refreshKey]);
 
   const userIds = useMemo(() => board?.entries.map((e) => e.userId) ?? [], [board]);
   const profiles = useProfiles(gateway, userIds);
@@ -68,7 +108,7 @@ export function WeeklyLeaderboard({
     setSaving(true);
     setError(null);
     try {
-      setBoard(await gateway.setLeaderboardHidden(!shown, by));
+      setBoard(await gateway.setLeaderboardHidden(!shown, by, period));
     } catch (e) {
       setError(toGatewayError(e).message);
     } finally {
@@ -76,15 +116,33 @@ export function WeeklyLeaderboard({
     }
   }
 
-  // Until the new metric arrives, the rows on screen still belong to the old one.
+  // Until the new board arrives, the rows on screen still belong to the old one.
   const shownBy = board?.by ?? by;
+  const shown = periodInfo(board?.period ?? period);
   const youListed = board?.entries.some((e) => e.userId === youId) ?? false;
+  const pick = (change: () => void) => {
+    asked.current = true;
+    setError(null);
+    change();
+  };
 
   return (
-    <section className="card" aria-label="Weekly leaderboard">
+    <section className="card" aria-label="Leaderboard">
       <div className="row-between">
-        <h2 style={{ fontSize: 16 }}>This week</h2>
-        <span className="tiny dim">Resets Monday</span>
+        <h2 style={{ fontSize: 16 }}>{shown.title}</h2>
+        <span className="tiny dim">{shown.resets}</span>
+      </div>
+      <div className="segmented" role="group" aria-label="Period">
+        {PERIODS.map((p) => (
+          <button
+            key={p.period}
+            type="button"
+            aria-pressed={period === p.period}
+            onClick={() => p.period !== period && pick(() => setPeriod(p.period))}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
       <div className="segmented" role="group" aria-label="Rank by">
         {METRICS.map((m) => (
@@ -92,12 +150,7 @@ export function WeeklyLeaderboard({
             key={m.by}
             type="button"
             aria-pressed={by === m.by}
-            onClick={() => {
-              if (m.by === by) return;
-              asked.current = true;
-              setError(null);
-              setBy(m.by);
-            }}
+            onClick={() => m.by !== by && pick(() => setBy(m.by))}
           >
             {m.label}
           </button>
@@ -110,7 +163,7 @@ export function WeeklyLeaderboard({
         </div>
       )}
       {!board && !error && <div className="muted small">Loading…</div>}
-      {error && (!board || board.by !== by) && (
+      {error && (!board || board.by !== by || board.period !== period) && (
         <button
           type="button"
           className="btn btn-quiet"
@@ -128,9 +181,7 @@ export function WeeklyLeaderboard({
         <>
           {board.entries.length === 0 ? (
             <div className="small muted">
-              {shownBy === "xp"
-                ? "Nobody has earned XP yet this week. Start a timer!"
-                : "Nobody has focused yet this week. Start a timer!"}
+              {`${shownBy === "xp" ? "Nobody has earned XP" : "Nobody has focused"} yet${shown.when}. Start a timer!`}
             </div>
           ) : (
             <ol className="goal-list leaderboard" style={{ gap: 6 }}>
@@ -161,8 +212,7 @@ export function WeeklyLeaderboard({
           )}
           {board.me.hidden && (
             <div className="small muted">
-              You&apos;re hidden. Your {amount(shownBy, board.me)} this week still count for you and
-              the boss.
+              {`You're hidden. Your ${amount(shownBy, board.me)}${shown.when} still count for you and the boss.`}
             </div>
           )}
           <div className="setting-row">

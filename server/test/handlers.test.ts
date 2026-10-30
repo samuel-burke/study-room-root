@@ -49,10 +49,12 @@ describe("StudyRoomHandlers", () => {
     expect(error.message).toMatch(/between 5 and 180/);
   });
 
-  it("refuses a leaderboard metric it doesn't know", async () => {
+  it("refuses a leaderboard metric or period it doesn't know", async () => {
     const { handlers } = setup();
-    const error = await failure(handlers.getLeaderboard("ana", { by: 9 as never }));
+    const error = await failure(handlers.getLeaderboard("ana", { by: 9 as never, period: 0 }));
     expect(error.code).toBe(CoreErrorCode.Validation);
+    const period = await failure(handlers.getLeaderboard("ana", { by: 0, period: 9 as never }));
+    expect(period.code).toBe(CoreErrorCode.Validation);
   });
 
   it("rate limits writes per user without affecting others", async () => {
@@ -105,10 +107,17 @@ describe("StudyRoomHandlers", () => {
     expect((await handlers.setGoalDone("priya", { goalId, done: true })).goals[0]!.done).toBe(true);
     expect((await handlers.deleteGoal("priya", { goalId })).goals).toEqual([]);
     expect((await handlers.getProgress("priya")).days).toHaveLength(35);
-    expect((await handlers.getLeaderboard("priya", { by: 0 })).weekStart).toBe("2026-10-26");
-    expect((await handlers.getLeaderboard("priya", { by: 2 })).by).toBe(2);
-    const hidden = await handlers.setLeaderboardHidden("priya", { hidden: true, by: 2 });
-    expect([hidden.hidden, hidden.by]).toEqual([true, 2]);
+    expect((await handlers.getLeaderboard("priya", { by: 0, period: 0 })).startDay).toBe(
+      "2026-10-26",
+    );
+    const month = await handlers.getLeaderboard("priya", { by: 2, period: 2 });
+    expect([month.by, month.period, month.startDay]).toEqual([2, 2, "2026-10-01"]);
+    const hidden = await handlers.setLeaderboardHidden("priya", {
+      hidden: true,
+      by: 2,
+      period: 4,
+    });
+    expect([hidden.hidden, hidden.by, hidden.period, hidden.startDay]).toEqual([true, 2, 4, ""]);
     expect((await handlers.getMemberProfile("ana", { userId: "priya" })).userId).toBe("priya");
   });
 

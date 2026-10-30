@@ -12,6 +12,7 @@ import {
   StudyRoomEngine,
   type AppConfig,
   type LeaderboardMetric,
+  type LeaderboardPeriod,
   type MyStatusDto,
   type PersonalResultDto,
   type PhaseCompletedDto,
@@ -358,6 +359,18 @@ export class DemoGateway implements StudyRoomGateway {
     }
     await this.seedBoss();
     if (!this.options.bots) return;
+    // Some earlier weeks, so month, year and all time rank differently from this week.
+    for (const [i, bot] of BOTS.entries()) {
+      for (let back = 120; back > 0; back--) {
+        const day = addDays(weekKey(today), -back);
+        if ((i * 7 + back * 3) % 5 >= 2) continue;
+        const focusMinutes = 20 + ((i * 31 + back * 17) % 110);
+        await this.store.stats.add(bot.userId, day, {
+          focusMinutes,
+          xp: Math.min(this.config.xp.dailyCap, focusMinutes * 2),
+        });
+      }
+    }
     // Earlier days this week, so the weekly leaderboard has standings to show.
     for (const [i, bot] of BOTS.entries()) {
       for (let day = weekKey(today); day < today; day = addDays(day, 1)) {
@@ -522,12 +535,12 @@ export class DemoGateway implements StudyRoomGateway {
     return this.call(() => this.engine.getProgress(DEMO_USER_ID));
   }
 
-  getLeaderboard(by?: LeaderboardMetric) {
-    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID, by));
+  getLeaderboard(by?: LeaderboardMetric, period?: LeaderboardPeriod) {
+    return this.call(() => this.engine.getLeaderboard(DEMO_USER_ID, by, period));
   }
 
-  setLeaderboardHidden(hidden: boolean, by?: LeaderboardMetric) {
-    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden, by));
+  setLeaderboardHidden(hidden: boolean, by?: LeaderboardMetric, period?: LeaderboardPeriod) {
+    return this.call(() => this.engine.setLeaderboardHidden(DEMO_USER_ID, hidden, by, period));
   }
 
   setCardStyle(style: string) {
