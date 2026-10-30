@@ -19,7 +19,7 @@ export const SETTINGS = {
     customFocus: "customFocusMinutes",
     customBreak: "customBreakMinutes",
     postChannel: "postChannel",
-    voiceChannel: "voiceChannel",
+    voiceChannel: "voiceChannelName",
     recapEnabled: "recapEnabled",
     recapTime: "recapTime",
     recapLeaderboard: "recapLeaderboard",
@@ -49,10 +49,14 @@ export interface AppConfig {
   postChannelId: string | null;
   /** Display name of that channel, resolved by the server. Empty if unknown. */
   postChannelName: string;
-  /** Voice channel the "Join voice" button opens. null = no button. */
+  /**
+   * Voice channel the "Join voice" button opens, found by the server from
+   * voiceChannelName. null = no button.
+   */
   voiceChannelId: string | null;
-  /** Its display name and link, resolved by the server. Empty if unknown. */
+  /** The name the admin typed, then the channel's own name once found. "" = off. */
   voiceChannelName: string;
+  /** A link that opens the channel in Root, resolved by the server. */
   voiceChannelUrl: string;
   recap: { enabled: boolean; hours: number; minutes: number };
   /** List the week's top focusers in the daily recap. */
@@ -142,7 +146,6 @@ export function parseSettings(raw: RawSettings): AppConfig {
 
   const tz = firstString(room[r.timeZone]);
   const channel = firstString(room[r.postChannel]);
-  const voice = firstString(room[r.voiceChannel]);
 
   return {
     ...presetFrom(
@@ -153,8 +156,8 @@ export function parseSettings(raw: RawSettings): AppConfig {
     timeZone: tz && isValidTimeZone(tz) ? tz : d.timeZone,
     postChannelId: channel && channel.length > 0 ? channel : null,
     postChannelName: "",
-    voiceChannelId: voice && voice.length > 0 ? voice : null,
-    voiceChannelName: "",
+    voiceChannelId: null,
+    voiceChannelName: text(room[r.voiceChannel], "", 100).replace(/^#\s*/, ""),
     voiceChannelUrl: "",
     recap: {
       enabled: bool(room[r.recapEnabled], d.recap.enabled),

@@ -152,11 +152,12 @@
             }
           },
           {
-            "key": "voiceChannel",
-            "title": "Voice channel",
-            "description": "Shows a Join voice button and a headphones icon on members in this voice channel. Leave empty to hide them.",
-            "channel": {
-              "multiSelect": false
+            "key": "voiceChannelName",
+            "title": "Voice channel name",
+            "description": "Type the name of a voice channel to show a Join voice button and a headphones icon on members in it. Leave blank to hide them.",
+            "text": {
+              "defaultValue": "",
+              "regex": "^.{0,100}$"
             }
           },
           {
