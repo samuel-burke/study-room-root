@@ -188,7 +188,7 @@ describe("Study Squad app", () => {
   });
 
   it("shows badges, keeps secrets hidden, and lets you restyle your card", async () => {
-    const { user } = await renderApp();
+    const { user } = await renderApp({ badges: ["squad-up", "first-session"] });
     await user.click(screen.getByRole("button", { name: "Your progress" }));
     const shelf = await screen.findByRole("region", { name: "Badges" });
     expect(within(shelf).getByRole("button", { name: "First Steps, earned" })).toBeInTheDocument();
@@ -245,12 +245,15 @@ describe("Study Squad app", () => {
     expect(
       screen.getAllByRole("status").some((s) => s.textContent?.includes("Round 1 complete")),
     ).toBe(true);
-    // Finishing the round also earns badges, each with its own full-screen moment.
-    expect(await screen.findByText("Badge unlocked")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Nice!" }));
+    // Finishing your first round earns your first badges live, each with its
+    // own full-screen moment, on top of the break sheet.
+    const unlocked: string[] = [];
+    await screen.findByRole("button", { name: "Nice!" });
     while (screen.queryByRole("button", { name: "Nice!" })) {
+      unlocked.push(screen.getByRole("heading", { level: 2 }).textContent ?? "");
       await user.click(screen.getByRole("button", { name: "Nice!" }));
     }
+    expect(unlocked).toEqual(expect.arrayContaining(["First Steps", "Squad Up"]));
     await act(async () => {
       await user.click(within(breakSheet).getByRole("button", { name: /Done/ }));
     });
@@ -266,6 +269,31 @@ describe("Study Squad app", () => {
         name: "Read ch. 4",
       }),
     ).toBeChecked();
+  });
+
+  it("still plays the unlock when the badge push never arrives", async () => {
+    const gateway = await DemoGateway.create({ bots: false, elapsedMinutes: 0 });
+    // Like a Root connection that drops the separate badge and status pushes:
+    // only the reply to your own action gets through.
+    const subscribe = gateway.subscribe.bind(gateway);
+    vi.spyOn(gateway, "subscribe").mockImplementation((handlers) =>
+      subscribe({ ...handlers, badgesEarned: () => {}, myStatus: () => {} }),
+    );
+    const user = userEvent.setup();
+    render(<App gateway={gateway} />);
+    await screen.findByRole("timer");
+    const panel = screen.getByRole("region", { name: "Your session" });
+    await user.click(within(panel).getByRole("button", { name: "Add a goal" }));
+    await user.type(within(panel).getByLabelText("New goal"), "Answer one email{Enter}");
+    await user.click(await within(panel).findByRole("checkbox", { name: "Answer one email" }));
+    const unlocked: string[] = [];
+    await screen.findByRole("button", { name: "Nice!" });
+    while (screen.queryByRole("button", { name: "Nice!" })) {
+      const moment = screen.getByRole("button", { name: "Nice!" }).closest("[role=dialog]");
+      unlocked.push(moment?.querySelector("h2")?.textContent ?? "");
+      await user.click(screen.getByRole("button", { name: "Nice!" }));
+    }
+    expect(unlocked).toEqual(expect.arrayContaining(["Checked Off", "Speedrun"]));
   });
 
   it("deletes my data after a confirmation and starts fresh", async () => {

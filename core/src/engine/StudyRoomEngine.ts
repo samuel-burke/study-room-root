@@ -122,6 +122,40 @@ class Effects {
   readonly badges = new Map<string, string[]>();
 }
 
+/** `me` with the badges its member earned in this operation, if any. */
+function withNewBadges(me: MyStatusDto, effects: Effects): MyStatusDto {
+  const earned = effects.badges.get(me.userId);
+  return earned && earned.length > 0 ? { ...me, newBadges: [...earned] } : me;
+}
+
+function isMyStatus(value: unknown): value is MyStatusDto {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "userId" in value &&
+    "status" in value &&
+    "goals" in value
+  );
+}
+
+/**
+ * Adds newly earned badges to an operation's own reply (a status or a
+ * snapshot), so the caller sees them even if the separate push never arrives.
+ */
+function attachNewBadges(result: unknown, effects: Effects): void {
+  if (effects.badges.size === 0) return;
+  if (isMyStatus(result)) {
+    const earned = effects.badges.get(result.userId);
+    if (earned?.length) result.newBadges = [...earned];
+  } else if (typeof result === "object" && result !== null && "me" in result) {
+    const me = (result as { me: unknown }).me;
+    if (isMyStatus(me)) {
+      const earned = effects.badges.get(me.userId);
+      if (earned?.length) me.newBadges = [...earned];
+    }
+  }
+}
+
 /**
  * All Study Squad behaviour lives here, behind ports for storage, time,
  * scheduling, real-time pushes and channel posts. The Root server and the
@@ -131,6 +165,7 @@ export class StudyRoomEngine {
   private readonly queue = new SerialQueue();
   private readonly pendingPosts = new Set<Promise<void>>();
   private readonly present = new Set<string>();
+  private readonly inVoice = new Set<string>();
   private config: AppConfig;
   private stopped = false;
 
@@ -198,6 +233,15 @@ export class StudyRoomEngine {
 
   userDetached(userId: string): Promise<void> {
     this.present.delete(userId);
+    return this.run(async (_tx, _now, effects) => {
+      effects.roomChanged = true;
+    });
+  }
+
+  /** Who is in the configured voice channel. The server keeps this current. */
+  setVoiceMembers(userIds: readonly string[]): Promise<void> {
+    this.inVoice.clear();
+    for (const id of userIds) this.inVoice.add(id);
     return this.run(async (_tx, _now, effects) => {
       effects.roomChanged = true;
     });
@@ -568,12 +612,13 @@ export class StudyRoomEngine {
           effects.notifications.push((n) => n.roomUpdated(room));
         }
         for (const userId of effects.statusChanged) {
-          const me = await this.buildMyStatus(tx, userId, now);
+          const me = withNewBadges(await this.buildMyStatus(tx, userId, now), effects);
           effects.notifications.push((n) => n.myStatusUpdated(userId, me));
         }
         for (const [userId, badgeIds] of effects.badges) {
           effects.notifications.push((n) => n.badgesEarned(userId, badgeIds));
         }
+        attachNewBadges(result, effects);
         return { result, nextWake: await this.nextWakeAt(tx, now) };
       });
       this.release(effects);
@@ -1290,6 +1335,13 @@ export class StudyRoomEngine {
         dailyXpCap: this.config.xp.dailyCap,
         postChannelName: this.config.postChannelId ? this.config.postChannelName : "",
       },
+      voice: this.config.voiceChannelId
+        ? {
+            channelName: this.config.voiceChannelName,
+            joinUrl: this.config.voiceChannelUrl,
+            userIds: [...this.inVoice],
+          }
+        : { channelName: "", joinUrl: "", userIds: [] },
     };
   }
 

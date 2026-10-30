@@ -152,6 +152,14 @@
             }
           },
           {
+            "key": "voiceChannel",
+            "title": "Voice channel",
+            "description": "Shows a Join voice button and a headphones icon on members in this voice channel. Leave empty to hide them.",
+            "channel": {
+              "multiSelect": false
+            }
+          },
+          {
             "key": "recapEnabled",
             "title": "Daily recap",
             "description": "Post community hours, goals finished and top streaks once a day.",

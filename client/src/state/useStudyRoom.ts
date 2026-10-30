@@ -79,6 +79,7 @@ export function useStudyRoom(gateway: StudyRoomGateway) {
       setGoalsPrivate: (goalsPrivate) => run(() => gateway.setGoalsPrivate(goalsPrivate)),
       deleteMyData: async () => {
         const ok = await run(() => gateway.deleteMyData());
+        if (ok) dispatch({ type: "badgesReset" });
         if (ok) await reload();
         return ok;
       },

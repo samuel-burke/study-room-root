@@ -547,6 +547,27 @@ describe("presence and notifications", () => {
     expect((await engine.getSnapshot("ana")).room.presentCount).toBe(2);
   });
 
+  it("shows who is in the voice channel, and nothing when none is picked", async () => {
+    const voiceConfig = configWith({
+      voiceChannelId: "voice-1",
+      voiceChannelName: "Study voice",
+      voiceChannelUrl: "https://rootapp.com/voice-1",
+    });
+    const { engine, notifier } = createHarness(voiceConfig);
+    await engine.setVoiceMembers(["ana", "kai"]);
+    expect(notifier.lastRoom?.voice).toEqual({
+      channelName: "Study voice",
+      joinUrl: "https://rootapp.com/voice-1",
+      userIds: ["ana", "kai"],
+    });
+    await engine.setConfig(configWith());
+    expect((await engine.getSnapshot("ana")).room.voice).toEqual({
+      channelName: "",
+      joinUrl: "",
+      userIds: [],
+    });
+  });
+
   it("pushes the room to everyone and status to the member after a change", async () => {
     const { engine, notifier } = createHarness();
     await engine.joinRoomTimer("ana");

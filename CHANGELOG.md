@@ -4,6 +4,19 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-29
+
+Study together out loud: voice channel support, plus more reliable badge unlocks.
+
+### Added
+
+- Voice channel support: admins pick a voice channel in the new **Voice channel** setting. The room then shows a Join voice button with how many people are in there, and headphones next to anyone in the channel. The talking itself happens in Root's own voice channel.
+
+### Fixed
+
+- A badge you earned could arrive without its unlock moment. Each new badge now plays its unlock once, however the app hears about it.
+- The demo starts you with no badges, so your first ones unlock live
+
 ## [0.2.0] - 2026-10-29
 
 Weekly goals and rewards: quests, a leaderboard, badges, named bosses, member profiles and sounds.

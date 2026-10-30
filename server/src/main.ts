@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  ChannelWebRtcEvent,
   ClientEvent,
   GlobalSettingsEvent,
   JobInterval,
@@ -16,6 +17,7 @@ import { ChannelAnnouncer } from "./adapters/channelAnnouncer";
 import { createLogger } from "./adapters/logger";
 import { PushNotifier } from "./adapters/pushNotifier";
 import { TimeoutScheduler } from "./adapters/timeoutScheduler";
+import { VoiceRoster } from "./adapters/voiceRoster";
 import { StudyRoomHandlers } from "./handlers";
 import { RecapScheduler } from "./jobs/recapScheduler";
 import { openDatabase } from "./persistence/database";
@@ -30,7 +32,15 @@ let shutdown: (() => Promise<void>) | null = null;
 function loadRootConfig(settings: GlobalSettings | undefined): Promise<AppConfig> {
   return loadConfig(
     settings,
-    async (id) => (await rootServer.community.channels.get({ id: id as ChannelGuid })).name,
+    {
+      name: async (id) => (await rootServer.community.channels.get({ id: id as ChannelGuid })).name,
+      link: async (id) =>
+        (
+          await rootServer.community.communityLinks.communityChannelCreate({
+            channelId: id as ChannelGuid,
+          })
+        ).url,
+    },
     logger,
   );
 }
@@ -78,6 +88,24 @@ async function onStarting(state: RootAppStartState): Promise<void> {
     (client) => void presence.detached(client.userId),
   );
 
+  // Who is in the admin's voice channel, for the headphones on member cards.
+  const voice = new VoiceRoster(
+    async (channelId) =>
+      (await rootServer.community.channelWebRtcs.list({ channelId: channelId as ChannelGuid }))
+        .members,
+    (userIds) => engine.setVoiceMembers(userIds),
+    logger,
+  );
+  await voice.watch(engine.getConfig().voiceChannelId);
+  rootServer.community.channelWebRtcs.on(
+    ChannelWebRtcEvent.ChannelWebRtcUserAttach,
+    (event) => void voice.attached(event),
+  );
+  rootServer.community.channelWebRtcs.on(
+    ChannelWebRtcEvent.ChannelWebRtcUserDetach,
+    (event) => void voice.detached(event),
+  );
+
   const recap = new RecapScheduler(
     {
       scheduleOnce: async (tag, at) => {
@@ -104,7 +132,9 @@ async function onStarting(state: RootAppStartState): Promise<void> {
   // Admins edit settings in Root's App settings; apply them live.
   rootServer.globalSettings?.on(GlobalSettingsEvent.Update, (event) => {
     void (async () => {
-      await engine.setConfig(await loadRootConfig(event.current));
+      const config = await loadRootConfig(event.current);
+      await engine.setConfig(config);
+      await voice.watch(config.voiceChannelId);
       await recap.reschedule();
       logger.info("settings updated");
     })().catch((error: unknown) =>

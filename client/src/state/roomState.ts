@@ -24,6 +24,12 @@ export interface RoomViewState {
   celebration: Celebration | null;
   /** Badges you just earned, shown one at a time, oldest first. */
   newBadges: string[];
+  /**
+   * Every badge already queued this session. A new badge can arrive several
+   * ways (its own push, your status push, the reply to your action), and
+   * its unlock moment should play once.
+   */
+  shownBadges: string[];
   error: string | null;
   /** Number of requests in flight. Buttons disable while > 0. */
   pending: number;
@@ -36,9 +42,21 @@ export const initialRoomViewState: RoomViewState = {
   breakMoment: null,
   celebration: null,
   newBadges: [],
+  shownBadges: [],
   error: null,
   pending: 0,
 };
+
+/** Queues badges for their unlock moment, skipping any already queued or shown. */
+function queueBadges(state: RoomViewState, badgeIds: readonly string[] | undefined): RoomViewState {
+  const fresh = [...new Set(badgeIds ?? [])].filter((id) => !state.shownBadges.includes(id));
+  if (fresh.length === 0) return state;
+  return {
+    ...state,
+    newBadges: [...state.newBadges, ...fresh],
+    shownBadges: [...state.shownBadges, ...fresh],
+  };
+}
 
 export type RoomAction =
   | { type: "snapshot"; snapshot: SnapshotDto }
@@ -49,6 +67,8 @@ export type RoomAction =
   | { type: "personalResult"; event: PersonalResultDto }
   | { type: "badgesEarned"; badgeIds: string[] }
   | { type: "dismissBadge" }
+  /** After "Delete my data", every badge can be earned (and shown) again. */
+  | { type: "badgesReset" }
   | { type: "requestStarted" }
   | { type: "requestFinished" }
   | { type: "requestFailed"; message: string }
@@ -64,13 +84,16 @@ function newerRoom(current: RoomStateDto | null, next: RoomStateDto): RoomStateD
 export function roomReducer(state: RoomViewState, action: RoomAction): RoomViewState {
   switch (action.type) {
     case "snapshot":
-      return {
-        ...state,
-        status: "ready",
-        room: newerRoom(state.room, action.snapshot.room),
-        me: action.snapshot.me,
-        error: null,
-      };
+      return queueBadges(
+        {
+          ...state,
+          status: "ready",
+          room: newerRoom(state.room, action.snapshot.room),
+          me: action.snapshot.me,
+          error: null,
+        },
+        action.snapshot.me.newBadges,
+      );
     case "loadFailed":
       return state.status === "ready"
         ? { ...state, error: action.message }
@@ -78,7 +101,7 @@ export function roomReducer(state: RoomViewState, action: RoomAction): RoomViewS
     case "roomUpdated":
       return state.room ? { ...state, room: newerRoom(state.room, action.room) } : state;
     case "myStatus":
-      return state.me ? { ...state, me: action.me } : state;
+      return state.me ? queueBadges({ ...state, me: action.me }, action.me.newBadges) : state;
     case "phaseCompleted":
       if (action.event.kind !== "focus")
         return {
@@ -96,15 +119,14 @@ export function roomReducer(state: RoomViewState, action: RoomAction): RoomViewS
         },
       };
     case "personalResult":
-      return { ...state, breakMoment: action.event, me: action.event.me };
+      return queueBadges(
+        { ...state, breakMoment: action.event, me: action.event.me },
+        action.event.me.newBadges,
+      );
     case "badgesEarned":
-      return {
-        ...state,
-        newBadges: [
-          ...state.newBadges,
-          ...action.badgeIds.filter((id) => !state.newBadges.includes(id)),
-        ],
-      };
+      return queueBadges(state, action.badgeIds);
+    case "badgesReset":
+      return { ...state, newBadges: [], shownBadges: [] };
     case "dismissBadge":
       return { ...state, newBadges: state.newBadges.slice(1) };
     case "requestStarted":

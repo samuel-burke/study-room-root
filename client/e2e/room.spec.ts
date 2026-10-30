@@ -19,6 +19,15 @@ test.describe("focus room", () => {
     }
   });
 
+  test("links to the voice channel and marks who is in it", async ({ page }) => {
+    await page.goto("/");
+    const join = page.getByRole("link", { name: "Join voice #Study voice, 2 in there" });
+    await expect(join).toHaveAttribute("href", "https://rootapp.com");
+    await expect(join).toHaveAttribute("target", "_blank");
+    await expect(page.getByRole("listitem", { name: /^Ana R\., .*, in voice$/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: "In voice" })).toHaveCount(2);
+  });
+
   test("joining adds your card and raises the combo", async ({ page }) => {
     await page.goto("/");
     const sheet = await openStartSheet(page);
@@ -128,7 +137,7 @@ test.describe("progress", () => {
   });
 
   test("shows the badge shelf and card styles", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?badges=first-session");
     await page.getByRole("button", { name: "Your progress" }).click();
     const shelf = page.getByRole("region", { name: "Badges" });
     await expect(shelf.getByRole("button", { name: "First Steps, earned" })).toBeVisible();

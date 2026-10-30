@@ -80,6 +80,18 @@ describe("earning badges", () => {
     expect(notifier.badgesFor("ana")).toEqual(["first-goal", "speedrun"]);
   });
 
+  it("puts new badges in the reply and the status push too, in case a push is lost", async () => {
+    const { engine, notifier, advance } = createHarness();
+    const me = await engine.addGoal("ana", "Answer one email");
+    expect(me).not.toHaveProperty("newBadges");
+    await advance(30_000);
+    const done = await engine.setGoalDone("ana", me.goals[0]!.id, true);
+    expect(done.newBadges).toEqual(["first-goal", "speedrun"]);
+    expect(notifier.statuses.at(-1)?.me.newBadges).toEqual(["first-goal", "speedrun"]);
+    const again = await engine.setGoalDone("ana", me.goals[0]!.id, false);
+    expect(again).not.toHaveProperty("newBadges");
+  });
+
   it("gives boss badges to everyone who helped, and Final Blow to whoever finished it", async () => {
     // A 1x boss with 100 HP: each 30-minute solo deals 60 XP of damage.
     const config = configWith({ boss: { enabled: true, name: "Calc II", baseHpXp: 100 } });

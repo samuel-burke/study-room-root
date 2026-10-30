@@ -39,6 +39,8 @@ The contract is `networking/src/studyroom.proto`. `npm run generate` turns it in
 | `MyStatus`                  | that member's devices | After a change to your status, goals or XP (keeps your other devices in sync) |
 | `BadgesEarned`              | that member's devices | Badge ids you just earned (the catalog lives in `@studyroom/core`)            |
 
+Badges are also carried in `MyStatus.new_badge_ids`, on the reply to the action that earned them and on the status push, so the unlock still plays if the `BadgesEarned` push is lost. The client shows each badge once however many ways it arrives.
+
 `RoomState` never contains another member's private goal text, XP total or goal list.
 
 ## Errors

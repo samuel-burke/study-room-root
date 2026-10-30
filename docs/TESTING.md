@@ -19,6 +19,7 @@ Run `npm run demo` and add these to the printed URL. They only exist in the demo
 | `missed`         | `missed=1`                      | Days missed since you were last active. 1 is covered by the week's freeze; 3 always breaks the streak.                                                                           |
 | `xp`             | `xp=2440`                       | Your starting lifetime XP, for level-ups, Jackpot (777) and Over 9000.                                                                                                           |
 | `unlock`         | `unlock=giant-slayer,blitz`     | Plays those badges' unlock animations, without awarding them, after your first click on the page (browsers only allow sound after a click). `unlock=all` plays one of each tier. |
+| `badges`         | `badges=first-session,squad-up` | Starts you holding those badges. Without it you start with none, so your first round and goal earn badges live with their unlock moments.                                        |
 
 Useful combinations:
 

@@ -47,6 +47,8 @@ export interface DemoOptions {
   missedDays?: number;
   /** Badges whose unlock animation plays when the page opens, without earning them. */
   unlock?: string[];
+  /** Badges you already hold when the page opens. You start with none otherwise. */
+  badges?: string[];
 }
 
 interface Bot {
@@ -126,11 +128,14 @@ const BOTS: Bot[] = [
   },
 ];
 
-/** You start at level 7 on a 5-day streak, so finishing a round makes it 6. */
+/**
+ * You start at level 7 on a 5-day streak, so finishing a round makes it 6.
+ * You start with no badges, so your first round, goal and streak earn them
+ * live, with their unlock moments, the way a new member would.
+ */
 const YOU = {
   xp: 2315,
   streak: 5,
-  badges: ["first-session", "squad-up", "first-goal", "streak-3", "level-5"],
 };
 /** The weekly boss starts 39% down. */
 const BOSS_DAMAGE_SHARE = 0.39;
@@ -144,7 +149,7 @@ function onePerTier(): string[] {
 /**
  * Reads demo knobs from the URL, e.g. `?focus=0.2&break=0.1&bots=0`. Test
  * knobs (`bossLeft`, `bossName`, `bossHp`, `cap`, `streak`, `xp`, `missed`,
- * `unlock`) set up states that take days or hours to reach for real. See
+ * `unlock`, `badges`) set up states that take days or hours to reach for real. See
  * docs/TESTING.md.
  */
 export function demoOptionsFromSearch(search: string): DemoOptions {
@@ -183,6 +188,14 @@ export function demoOptionsFromSearch(search: string): DemoOptions {
   if (xp !== undefined) options.xp = xp;
   const missedDays = whole("missed", 30);
   if (missedDays !== undefined) options.missedDays = missedDays;
+  const held = params.get("badges");
+  if (held) {
+    const known = held
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => badgeById(id) !== undefined);
+    if (known.length > 0) options.badges = known;
+  }
   if (unlock) {
     const ids = unlock === "all" ? onePerTier() : unlock.split(",").map((id) => id.trim());
     const known = ids.filter((id) => badgeById(id) !== undefined);
@@ -222,6 +235,9 @@ function demoConfig(options: DemoOptions): AppConfig {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     postChannelId: "demo-channel",
     postChannelName: "study-hall",
+    voiceChannelId: "demo-voice",
+    voiceChannelName: "Study voice",
+    voiceChannelUrl: "https://rootapp.com",
   };
 }
 
@@ -295,6 +311,7 @@ export class DemoGateway implements StudyRoomGateway {
       DEMO_USER_ID,
       ...(this.options.bots ? BOTS.map((b) => b.userId) : []),
     ]);
+    if (this.options.bots) await this.engine.setVoiceMembers(["bot-ana", "bot-priya"]);
     await this.engine.start();
   }
 
@@ -317,7 +334,7 @@ export class DemoGateway implements StudyRoomGateway {
       for (const [i, badgeId] of badges.entries())
         await this.store.badges.award({ userId, badgeId, earnedAt: earnedAt + i * MINUTE });
     };
-    await award(DEMO_USER_ID, YOU.badges);
+    await award(DEMO_USER_ID, this.options.badges ?? []);
     // Five weeks of history: any missed days, then the streak's active days,
     // a gap before that, then a mixed record.
     for (let back = 1; back < 35; back++) {

@@ -163,6 +163,11 @@ export function roomToProto(room: RoomStateDto): RoomState {
       dailyXpCap: room.features.dailyXpCap,
       postChannelName: room.features.postChannelName,
     },
+    voice: {
+      channelName: room.voice.channelName,
+      joinUrl: room.voice.joinUrl,
+      userIds: room.voice.userIds,
+    },
   };
 }
 
@@ -182,6 +187,7 @@ export function myStatusToProto(me: MyStatusDto): MyStatus {
     goals: me.goals.map(goalToProto),
     goalsPrivate: me.goalsPrivate,
     keepGoingEndsAtMs: me.keepGoingEndsAt,
+    newBadgeIds: me.newBadges ?? [],
   };
 }
 
@@ -349,6 +355,11 @@ export function roomFromProto(room: RoomState | undefined): RoomStateDto {
       dailyXpCap: features?.dailyXpCap ?? 0,
       postChannelName: features?.postChannelName ?? "",
     },
+    voice: {
+      channelName: room?.voice?.channelName ?? "",
+      joinUrl: room?.voice?.joinUrl ?? "",
+      userIds: room?.voice?.userIds ?? [],
+    },
   };
 }
 
@@ -368,6 +379,7 @@ export function myStatusFromProto(me: MyStatus | undefined): MyStatusDto {
     goals: (me?.goals ?? []).map(goalFromProto),
     goalsPrivate: me?.goalsPrivate ?? false,
     keepGoingEndsAt: me?.keepGoingEndsAtMs ?? 0,
+    ...(me?.newBadgeIds.length ? { newBadges: [...me.newBadgeIds] } : {}),
   };
 }
 
