@@ -4,8 +4,8 @@ import { toGatewayError, type StudyRoomGateway } from "../api/gateway";
 import { Sheet } from "./Sheet";
 
 /**
- * A note for the community admins. The server posts it to the feedback
- * channel they picked in App settings, so it reads as a normal Root message.
+ * An anonymous note for the developer. The server sends only the text, with no
+ * name or community attached.
  */
 export function FeedbackSheet({
   gateway,
@@ -40,7 +40,7 @@ export function FeedbackSheet({
       {sent ? (
         <>
           <div role="status" className="small">
-            Thanks! Your note was sent to the people who run Study Squad here.
+            Thanks! Your note is on its way to the Study Squad developer.
           </div>
           <button type="button" className="btn btn-primary" onClick={onClose} data-autofocus>
             Done
@@ -56,8 +56,8 @@ export function FeedbackSheet({
         >
           <label className="field">
             <span className="small muted">
-              Ideas, bugs, anything. Your name is shown with it in the community&apos;s feedback
-              channel.
+              Ideas, bugs, anything. It goes straight to the Study Squad developer, anonymously: no
+              name or community is attached.
             </span>
             <textarea
               className="input feedback-input"

@@ -315,6 +315,16 @@ export class MemoryStore implements Store {
     },
     countSince: async (userId: string, sinceMs: number) =>
       this.data.feedback.filter((f) => f.userId === userId && f.createdAt >= sinceMs).length,
+    listUndelivered: async (limit: number) =>
+      this.data.feedback
+        .filter((f) => f.deliveredAt === null)
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .slice(0, limit)
+        .map(copy),
+    markDelivered: async (id: string, at: number) => {
+      const note = this.data.feedback.find((f) => f.id === id);
+      if (note) Object.assign(note, { deliveredAt: at, text: "" });
+    },
   };
 
   kv = {

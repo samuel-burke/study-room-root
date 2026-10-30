@@ -160,14 +160,6 @@
             }
           },
           {
-            "key": "feedbackChannel",
-            "title": "Feedback channel",
-            "description": "Members' notes from the Send feedback box are posted here with their name. A private channel for admins works best. Leave empty to hide the box.",
-            "channel": {
-              "multiSelect": false
-            }
-          },
-          {
             "key": "recapEnabled",
             "title": "Daily recap",
             "description": "Post community hours, goals finished and top streaks once a day.",

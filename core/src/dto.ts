@@ -62,7 +62,7 @@ export interface RoomFeaturesDto {
   goalsPublicByDefault: boolean;
   dailyXpCap: number;
   postChannelName: string;
-  /** Admins picked a feedback channel, so members can send feedback. */
+  /** The server can deliver feedback to the developer, so the box is shown. */
   feedbackEnabled: boolean;
 }
 

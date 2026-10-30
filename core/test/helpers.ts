@@ -4,6 +4,7 @@ import {
   StudyRoomEngine,
   type Announcer,
   type AppConfig,
+  type EngineDeps,
   type MyStatusDto,
   type Notifier,
   type PersonalResultDto,
@@ -95,9 +96,6 @@ export class RecordingAnnouncer implements Announcer {
   async dailyRecap(channelId: string, recap: RecapDto) {
     this.posts.push({ kind: "recap", channelId, detail: recap });
   }
-  async feedback(channelId: string, userId: string, text: string) {
-    this.posts.push({ kind: "feedback", channelId, detail: { userId, text } });
-  }
 }
 
 export const silentLogger = { info() {}, warn() {}, error() {} };
@@ -106,7 +104,11 @@ export function configWith(overrides: Partial<AppConfig> = {}): AppConfig {
   return { ...DEFAULT_CONFIG, postChannelId: "channel-1", ...overrides };
 }
 
-export function createHarness(config: AppConfig = configWith(), start = T0) {
+export function createHarness(
+  config: AppConfig = configWith(),
+  start = T0,
+  extra: Partial<EngineDeps> = {},
+) {
   const clock = new FakeClock(start);
   const scheduler = new ManualScheduler();
   const notifier = new RecordingNotifier();
@@ -122,6 +124,7 @@ export function createHarness(config: AppConfig = configWith(), start = T0) {
     logger: silentLogger,
     config,
     newId: () => `id-${nextId++}`,
+    ...extra,
   });
 
   /** Moves time forward, firing scheduled wake-ups along the way like a real timer would. */

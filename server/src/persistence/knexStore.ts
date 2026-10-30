@@ -539,6 +539,7 @@ export class KnexStore implements Store {
         user_id: f.userId,
         text: f.text,
         created_at: f.createdAt,
+        delivered_at: f.deliveredAt,
       });
     },
     countSince: async (userId: string, sinceMs: number) => {
@@ -548,6 +549,25 @@ export class KnexStore implements Store {
         .count({ n: "*" })
         .first();
       return Number(row?.n ?? 0);
+    },
+    listUndelivered: async (limit: number): Promise<FeedbackRecord[]> =>
+      (
+        await this.db("feedback")
+          .whereNull("delivered_at")
+          .orderBy([
+            { column: "created_at", order: "asc" },
+            { column: "id", order: "asc" },
+          ])
+          .limit(limit)
+      ).map((r: Row) => ({
+        id: String(r.id),
+        userId: String(r.user_id),
+        text: String(r.text),
+        createdAt: num(r.created_at),
+        deliveredAt: numOrNull(r.delivered_at),
+      })),
+    markDelivered: async (id: string, at: number) => {
+      await this.db("feedback").where({ id }).update({ delivered_at: at, text: "" });
     },
   };
 

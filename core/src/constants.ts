@@ -30,7 +30,7 @@ export const LIMITS = {
   /** Leaderboard badges need this many members ranked, so focusing alone on Monday isn't a win. */
   leaderboardBadgeMinRanked: 3,
   feedbackMaxLength: 1000,
-  /** Feedback notes a member can send per hour, so the feedback channel can't be flooded. */
+  /** Feedback notes a member can send per hour, so nobody can flood the developer's inbox. */
   feedbackPerHour: 3,
 } as const;
 

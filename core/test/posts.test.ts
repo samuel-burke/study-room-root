@@ -1,19 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  bossDefeatedPost,
-  busyRoomPost,
-  dailyRecapPost,
-  feedbackPost,
-  streakMilestonePost,
-} from "../src";
+import { bossDefeatedPost, busyRoomPost, dailyRecapPost, streakMilestonePost } from "../src";
 
 describe("channel posts", () => {
-  it("posts feedback without markup or pings", () => {
-    expect(feedbackPost("Ana", "Hi @everyone <b>look</b>\nline two")).toBe(
-      "Study Squad feedback from Ana:\nHi @\u200beveryone blook/b\nline two",
-    );
-  });
-
   it("announces a busy room", () => {
     expect(busyRoomPost(6, 1.5)).toContain("6 people are focusing right now. Combo is at 1.5x.");
   });

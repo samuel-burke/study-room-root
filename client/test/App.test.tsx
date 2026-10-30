@@ -115,7 +115,7 @@ describe("Study Squad app", () => {
     expect(opener).toHaveFocus();
   });
 
-  it("sends feedback from room settings to the feedback channel", async () => {
+  it("sends anonymous feedback to the developer from room settings", async () => {
     const { user, gateway } = await renderApp();
     await user.click(screen.getByRole("button", { name: "Room settings" }));
     await user.click(screen.getByRole("button", { name: "Send feedback" }));
@@ -125,9 +125,7 @@ describe("Study Squad app", () => {
     await user.type(within(dialog).getByRole("textbox"), "More boss names{Enter}please");
     await user.click(send);
     expect(await within(dialog).findByRole("status")).toHaveTextContent("Thanks!");
-    await waitFor(() =>
-      expect(gateway.posts.at(-1)).toBe("Study Squad feedback from You:\nMore boss names\nplease"),
-    );
+    await waitFor(() => expect(gateway.posts.at(-1)).toBe("Feedback: More boss names\nplease"));
     await user.click(within(dialog).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

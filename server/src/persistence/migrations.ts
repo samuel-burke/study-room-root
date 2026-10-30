@@ -203,6 +203,7 @@ const migrations: Migration[] = [
         t.string("user_id").notNullable();
         t.text("text").notNullable();
         t.bigInteger("created_at").notNullable();
+        t.bigInteger("delivered_at").nullable().index();
         t.index(["user_id", "created_at"]);
       });
     },

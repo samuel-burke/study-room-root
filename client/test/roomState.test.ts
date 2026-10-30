@@ -19,7 +19,6 @@ async function snapshot(): Promise<SnapshotDto> {
       async streakMilestone() {},
       async bossDefeated() {},
       async dailyRecap() {},
-      async feedback() {},
     },
     logger: console,
     config: DEFAULT_CONFIG,

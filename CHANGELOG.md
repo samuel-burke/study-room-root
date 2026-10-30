@@ -6,11 +6,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- A **Send feedback** box, under Room settings. Members write a note (up to 1,000 characters) and Study Squad posts it, with their name, to the channel admins pick in the new **Feedback channel** setting. The box is hidden until a channel is picked. Notes are also saved in the app's storage so none get lost if a post fails, and each member can send 3 an hour.
+- A **Send feedback** box, under Room settings. Members write a note (up to 1,000 characters) and it goes straight to the Study Squad developer, anonymously: only the text and when it was sent, with no name, user or community attached. It becomes an issue in the developer's private GitHub repo (or an email). The box is hidden until the developer sets up a destination at build time (see `.env.example`). A note that fails to send waits in the community's app storage and is retried; once sent, its text is deleted. Each member can send 3 an hour.
 
 ### Changed
 
-- The privacy policy now covers feedback notes: what's saved, who sees them, and that Delete my data erases them.
+- The privacy policy now covers feedback notes.
 
 ## [0.2.1] - 2026-10-29
 

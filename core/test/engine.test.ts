@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { bossNameFor, DomainError, ErrorCode, LIMITS, PRESETS, type RecapDto } from "../src";
+import {
+  bossNameFor,
+  DomainError,
+  ErrorCode,
+  LIMITS,
+  PRESETS,
+  type FeedbackRecord,
+  type RecapDto,
+} from "../src";
 import { configWith, createHarness, MINUTE, T0 } from "./helpers";
 
 const FOCUS = 25 * MINUTE;
@@ -837,35 +845,70 @@ describe("weekly leaderboard", () => {
 });
 
 describe("feedback", () => {
-  const withFeedback = () => configWith({ feedbackChannelId: "feedback-1" });
+  function withInbox(fail = false) {
+    const delivered: FeedbackRecord[] = [];
+    const inbox = {
+      fail,
+      deliver: vi.fn(async (note: FeedbackRecord) => {
+        if (inbox.fail) throw new Error("offline");
+        delivered.push(note);
+      }),
+    };
+    return { ...createHarness(configWith(), T0, { feedbackInbox: inbox }), inbox, delivered };
+  }
 
-  it("saves the note and posts it to the feedback channel", async () => {
-    const { engine, announcer } = createHarness(withFeedback());
+  it("sends the note to the developer with no name or community", async () => {
+    const { engine, delivered } = withInbox();
     await engine.sendFeedback("ana", "  More boss names please\n\nThanks ");
     await engine.idle();
-    expect(announcer.posts).toContainEqual({
-      kind: "feedback",
-      channelId: "feedback-1",
-      detail: { userId: "ana", text: "More boss names please\n\nThanks" },
-    });
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]!.text).toBe("More boss names please\n\nThanks");
     expect((await engine.getSnapshot("ana")).room.features.feedbackEnabled).toBe(true);
   });
 
-  it("is off until admins pick a feedback channel", async () => {
-    const { engine, announcer } = createHarness();
+  it("forgets the text once it's delivered", async () => {
+    const { engine, store } = withInbox();
+    await engine.sendFeedback("ana", "hi");
+    await engine.idle();
+    expect(await store.feedback.listUndelivered(10)).toEqual([]);
+    expect(await store.feedback.countSince("ana", 0)).toBe(1);
+  });
+
+  it("keeps notes that failed to send and retries them later", async () => {
+    const { engine, inbox, delivered, store } = withInbox(true);
+    await engine.sendFeedback("ana", "first");
+    await engine.idle();
+    expect(delivered).toEqual([]);
+    expect((await store.feedback.listUndelivered(10)).map((n) => n.text)).toEqual(["first"]);
+    inbox.fail = false;
+    await engine.sendFeedback("kai", "second");
+    await engine.idle();
+    expect(delivered.map((n) => n.text)).toEqual(["first", "second"]);
+  });
+
+  it("retries waiting notes when the server starts", async () => {
+    const { engine, inbox, delivered } = withInbox(true);
+    await engine.sendFeedback("ana", "first");
+    await engine.idle();
+    inbox.fail = false;
+    await engine.start();
+    await engine.idle();
+    expect(delivered.map((n) => n.text)).toEqual(["first"]);
+  });
+
+  it("is off when the server has nowhere to send it", async () => {
+    const { engine } = createHarness();
     expect((await engine.getSnapshot("ana")).room.features.feedbackEnabled).toBe(false);
     await expectError(engine.sendFeedback("ana", "hello"), ErrorCode.Conflict);
-    await engine.idle();
-    expect(announcer.posts).toEqual([]);
   });
 
   it("rejects empty notes", async () => {
-    const { engine } = createHarness(withFeedback());
+    const { engine } = withInbox();
     await expectError(engine.sendFeedback("ana", "   "), ErrorCode.Validation);
   });
 
   it("allows a few notes per member per hour", async () => {
-    const { engine, clock } = createHarness(withFeedback());
+    const { engine, clock } = withInbox();
     for (let i = 0; i < LIMITS.feedbackPerHour; i++) await engine.sendFeedback("ana", `note ${i}`);
     await expectError(engine.sendFeedback("ana", "one more"), ErrorCode.RateLimited);
     await engine.sendFeedback("kai", "someone else is fine");
@@ -874,10 +917,11 @@ describe("feedback", () => {
   });
 
   it("erases a member's notes with the rest of their data", async () => {
-    const { engine, store } = createHarness(withFeedback());
+    const { engine, store } = withInbox(true);
     await engine.sendFeedback("ana", "hi");
-    expect(await store.feedback.countSince("ana", 0)).toBe(1);
+    await engine.idle();
     await engine.deleteMyData("ana");
     expect(await store.feedback.countSince("ana", 0)).toBe(0);
+    expect(await store.feedback.listUndelivered(10)).toEqual([]);
   });
 });
