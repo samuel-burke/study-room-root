@@ -37,6 +37,8 @@ export interface MemberCardDto {
   badges: string[];
   /** Card style id (see CARD_STYLES). */
   cardStyle: string;
+  /** Place on this week's leaderboard. 0 when unranked or hidden from it. */
+  weeklyRank: number;
 }
 
 export interface BossDto {

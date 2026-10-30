@@ -71,6 +71,8 @@ message MemberCard {
   repeated string badges = 8;
   // A card style id, such as "gold".
   string card_style = 9;
+  // Place on this week's leaderboard. 0 when unranked or hidden from it.
+  int32 weekly_rank = 10;
 }
 
 message Boss {

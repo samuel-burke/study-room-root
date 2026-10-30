@@ -1285,6 +1285,13 @@ export class StudyRoomEngine {
     const goals = await tx.goals.firstOpen(ids);
     const today = dayKey(now, this.config.timeZone);
     const looks = await this.cardLooks(tx, ids, members);
+    // Hidden members are already left out of the standings, so they get no rank.
+    const ranks = new Map(
+      rankByMinutes(await tx.leaderboard.standings(weekKey(today), today)).map((e) => [
+        e.userId,
+        e.rank,
+      ]),
+    );
 
     const card = (
       userId: string,
@@ -1303,6 +1310,7 @@ export class StudyRoomEngine {
         streak: member ? currentStreak(member.streak, today, this.config.streakFreezesEnabled) : 0,
         badges: looks.get(userId)?.showcase ?? [],
         cardStyle: looks.get(userId)?.style ?? "classic",
+        weeklyRank: ranks.get(userId) ?? 0,
       };
     };
 

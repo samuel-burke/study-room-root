@@ -58,6 +58,7 @@ const room: RoomStateDto = {
       streak: 31,
       badges: ["night-owl", "first-boss", "longest-day"],
       cardStyle: "gold",
+      weeklyRank: 3,
     },
     {
       userId: "u2",
@@ -69,6 +70,7 @@ const room: RoomStateDto = {
       streak: 0,
       badges: [],
       cardStyle: "classic",
+      weeklyRank: 0,
     },
     {
       userId: "u3",
@@ -80,6 +82,7 @@ const room: RoomStateDto = {
       streak: 54,
       badges: [],
       cardStyle: "classic",
+      weeklyRank: 0,
     },
     {
       userId: "u4",
@@ -91,6 +94,7 @@ const room: RoomStateDto = {
       streak: 2,
       badges: [],
       cardStyle: "classic",
+      weeklyRank: 0,
     },
   ],
   presentCount: 9,

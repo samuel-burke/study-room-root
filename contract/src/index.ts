@@ -135,6 +135,7 @@ const memberToProto = (m: MemberCardDto): MemberCard => ({
   streak: m.streak,
   badges: m.badges,
   cardStyle: m.cardStyle,
+  weeklyRank: m.weeklyRank,
 });
 
 export function roomToProto(room: RoomStateDto): RoomState {
@@ -325,6 +326,7 @@ const memberFromProto = (m: MemberCard): MemberCardDto => ({
   streak: m.streak,
   badges: m.badges ?? [],
   cardStyle: m.cardStyle || "classic",
+  weeklyRank: m.weeklyRank ?? 0,
 });
 
 export function roomFromProto(room: RoomState | undefined): RoomStateDto {

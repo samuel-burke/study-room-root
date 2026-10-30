@@ -77,7 +77,8 @@ Admins can rename or resize the live boss; damage is never healed, and lowering 
 - The week is the boss's week: Monday to Sunday in the community time zone. A new week starts empty.
 - Minutes are rounded down to whole minutes before ranking, and equal minutes share a rank (1, 2, 2, 4), so two people shown with the same time never get different places.
 - The board lists the top 10. You always see your own rank and minutes, even below the top 10.
-- Members can hide themselves. Hidden members are left out of the board and out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
+- Every card on the room's "Focusing now" board shows that member's rank (#1, #2…), including ranks below the top 10, so the room can see who's leading without opening the progress screen. Members with no minutes this week, or who hid themselves, show no rank. The rank is computed with the room state, so it updates whenever the board does.
+- Members can hide themselves. Hidden members are left out of the board, get no rank on their room card, and are left out of every ranking in posts (the recap's top focusers and top streaks). Their minutes still count for the boss and community totals. The opt-out lives in its own table so it's erased with the rest of a member's data.
 - The daily recap lists the week's top 3 when the admin setting **Leaderboard in recap** is on (default).
 - The Podium and Pole Position badges use the rank at the end of each focus block. A place only counts once at least 3 members are ranked that week, so the first person to focus on a Monday doesn't win by default.
 

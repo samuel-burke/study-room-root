@@ -725,6 +725,27 @@ describe("deleting my data", () => {
 });
 
 describe("weekly leaderboard", () => {
+  it("puts each member's weekly rank on their board card, but not for hidden members", async () => {
+    const { engine, store } = createHarness();
+    await store.stats.add("ana", "2026-10-26", { focusMinutes: 30 });
+    await store.stats.add("kai", "2026-10-27", { focusMinutes: 90 });
+    await store.stats.add("lena", "2026-10-27", { focusMinutes: 60 });
+    await store.stats.add("ana", "2026-10-25", { focusMinutes: 500 });
+    await engine.setLeaderboardHidden("lena", true);
+    await engine.joinRoomTimer("ana");
+    await engine.startSolo("kai", 25);
+    await engine.joinRoomTimer("lena");
+    await engine.joinRoomTimer("newcomer");
+    const ranks = Object.fromEntries(
+      (await engine.getSnapshot("ana")).room.members.map((m) => [m.userId, m.weeklyRank]),
+    );
+    expect(ranks).toEqual({ kai: 1, ana: 2, lena: 0, newcomer: 0 });
+
+    await engine.setLeaderboardHidden("lena", false);
+    const lena = (await engine.getSnapshot("ana")).room.members.find((m) => m.userId === "lena");
+    expect(lena?.weeklyRank).toBe(2);
+  });
+
   it("ranks this week's focus minutes, sharing ranks on ties", async () => {
     const { engine, store, advance } = createHarness();
     await store.stats.add("ana", "2026-10-26", { focusMinutes: 40.9 });
