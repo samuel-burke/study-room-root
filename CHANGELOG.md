@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- A **Send feedback** box under Room settings, marked "Coming soon". It can't be filled in or sent yet.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.
