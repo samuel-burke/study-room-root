@@ -15,7 +15,6 @@ import {
 import type {
   AddGoalRequest,
   DeleteGoalRequest,
-  FeedbackSent,
   GetMemberProfileRequest,
   JoinRoomTimerRequest,
   Leaderboard,
@@ -27,7 +26,6 @@ import type {
   SetBadgeShowcaseRequest,
   SetCardStyleRequest,
   SetGoalsPrivateRequest,
-  SendFeedbackRequest,
   SetLeaderboardHiddenRequest,
   StartSoloRequest,
 } from "@studyroom/gen-shared";
@@ -100,13 +98,6 @@ export class StudyRoomHandlers {
     return this.handle("setLeaderboardHidden", userId, "write", async () =>
       leaderboardToProto(await this.engine.setLeaderboardHidden(userId, request.hidden)),
     );
-  }
-
-  sendFeedback(userId: string, request: SendFeedbackRequest): Promise<FeedbackSent> {
-    return this.handle("sendFeedback", userId, "write", async () => {
-      await this.engine.sendFeedback(userId, request.text);
-      return {};
-    });
   }
 
   joinRoomTimer(userId: string, request: JoinRoomTimerRequest): Promise<RoomSnapshot> {

@@ -15,7 +15,7 @@ import type {
   RoomTimerDto,
   SnapshotDto,
 } from "../dto";
-import { conflictError, DomainError, ErrorCode, notFoundError, validationError } from "../errors";
+import { conflictError, notFoundError, validationError } from "../errors";
 import {
   applyDamage,
   bossHpLeft,
@@ -62,7 +62,6 @@ import {
   type CyclePhase,
 } from "../timer/roomCycle";
 import {
-  validateFeedbackText,
   validateGoalText,
   validateId,
   validateSoloMinutes,
@@ -73,7 +72,6 @@ import type {
   CardRecord,
   Clock,
   EarnedBadgeRecord,
-  FeedbackInbox,
   GoalRecord,
   Logger,
   MemberRecord,
@@ -91,8 +89,6 @@ export interface EngineDeps {
   scheduler: WakeScheduler;
   notifier: Notifier;
   announcer: Announcer;
-  /** Where feedback goes. Without one, the feedback box is hidden. */
-  feedbackInbox?: FeedbackInbox;
   logger: Logger;
   config: AppConfig;
   newId: () => string;
@@ -112,8 +108,6 @@ const BUSY_KEY = "busyPost";
 const LAST_RECAP_KEY = "lastRecapDay";
 /** How long to wait before retrying a wake-up whose tick failed. */
 const TICK_RETRY_MS = 30_000;
-/** Notes sent per delivery pass, so a long backlog can't hold the server up. */
-const FEEDBACK_BATCH = 20;
 
 /**
  * Side effects collected while a transaction runs, released only after it
@@ -174,8 +168,6 @@ export class StudyRoomEngine {
   private readonly inVoice = new Set<string>();
   private config: AppConfig;
   private stopped = false;
-  private feedbackPass: Promise<void> | null = null;
-  private feedbackAgain = false;
 
   constructor(private readonly deps: EngineDeps) {
     this.config = deps.config;
@@ -184,10 +176,9 @@ export class StudyRoomEngine {
   // ---------------------------------------------------------------- lifecycle
 
   /** Settles anything that came due while the server was down, then schedules wake-ups. */
-  async start(): Promise<void> {
+  start(): Promise<void> {
     this.stopped = false;
-    await this.run(async () => undefined);
-    this.deliverFeedback();
+    return this.run(async () => undefined);
   }
 
   stop(): void {
@@ -358,73 +349,6 @@ export class StudyRoomEngine {
       await tx.leaderboard.setHidden(userId, hidden);
       return this.buildLeaderboard(tx, userId, now);
     });
-  }
-
-  // ---------------------------------------------------------------- feedback
-
-  /**
-   * Saves a member's note, then sends it to the developer once the save has
-   * committed. A note that fails to send stays saved and is retried on the
-   * next note and on restart.
-   */
-  async sendFeedback(userId: string, input: unknown): Promise<void> {
-    if (!this.deps.feedbackInbox) throw conflictError("Feedback isn't set up for Study Squad yet.");
-    const text = validateFeedbackText(input);
-    await this.run(async (tx, now) => {
-      const recent = await tx.feedback.countSince(userId, now - 60 * MINUTE_MS);
-      if (recent >= LIMITS.feedbackPerHour) {
-        throw new DomainError(
-          ErrorCode.RateLimited,
-          "Thanks, that's plenty for now. Try again in an hour.",
-        );
-      }
-      await tx.feedback.insert({
-        id: this.deps.newId(),
-        userId,
-        text,
-        createdAt: now,
-        deliveredAt: null,
-      });
-    });
-    this.deps.logger.info("feedback received", { userId });
-    this.deliverFeedback();
-  }
-
-  /** Sends saved notes that haven't gone out yet. Runs one pass at a time. */
-  private deliverFeedback(): void {
-    const inbox = this.deps.feedbackInbox;
-    if (!inbox) return;
-    if (this.feedbackPass) {
-      this.feedbackAgain = true;
-      return;
-    }
-    const pass = (async () => {
-      do {
-        this.feedbackAgain = false;
-        const notes = await this.run((tx) => tx.feedback.listUndelivered(FEEDBACK_BATCH));
-        for (const note of notes) {
-          try {
-            await inbox.deliver(note);
-          } catch (error) {
-            this.deps.logger.warn("feedback delivery failed", {
-              id: note.id,
-              error: String(error),
-            });
-            return;
-          }
-          await this.run((tx, now) => tx.feedback.markDelivered(note.id, now));
-        }
-      } while (this.feedbackAgain && !this.stopped);
-    })()
-      .catch((error: unknown) =>
-        this.deps.logger.error("feedback delivery failed", { error: String(error) }),
-      )
-      .finally(() => {
-        this.feedbackPass = null;
-        this.pendingPosts.delete(pass);
-      });
-    this.feedbackPass = pass;
-    this.pendingPosts.add(pass);
   }
 
   // ---------------------------------------------------------------- room timer
@@ -1410,7 +1334,6 @@ export class StudyRoomEngine {
         goalsPublicByDefault: this.config.goalsPublicByDefault,
         dailyXpCap: this.config.xp.dailyCap,
         postChannelName: this.config.postChannelId ? this.config.postChannelName : "",
-        feedbackEnabled: this.deps.feedbackInbox !== undefined,
       },
       voice: this.config.voiceChannelId
         ? {

@@ -14,7 +14,6 @@ import {
 } from "@rootsdk/server-app";
 import { StudyRoomEngine, type AppConfig } from "@studyroom/core";
 import { ChannelAnnouncer } from "./adapters/channelAnnouncer";
-import { loadFeedbackDestination, RemoteFeedbackInbox } from "./adapters/feedbackInbox";
 import { createLogger } from "./adapters/logger";
 import { PushNotifier } from "./adapters/pushNotifier";
 import { TimeoutScheduler } from "./adapters/timeoutScheduler";
@@ -52,11 +51,6 @@ async function onStarting(state: RootAppStartState): Promise<void> {
   const db = openDatabase(filename);
   await migrateToLatest(db);
 
-  const feedback = loadFeedbackDestination(process.env, __dirname);
-  logger.info(
-    feedback ? `feedback goes to ${feedback.kind}` : "feedback not configured, box hidden",
-  );
-
   const engine = new StudyRoomEngine({
     store: new KnexStore(db),
     clock: { now: Date.now },
@@ -74,7 +68,6 @@ async function onStarting(state: RootAppStartState): Promise<void> {
       nickname: async (userId) =>
         (await rootServer.community.communityMembers.get({ userId: userId as UserGuid })).nickname,
     }),
-    feedbackInbox: feedback ? new RemoteFeedbackInbox(feedback) : undefined,
     logger,
     config: await loadRootConfig(state.globalSettings ?? rootServer.globalSettings),
     newId: randomUUID,

@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node ../scripts/feedback-config.mjs",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "server": "rootsdk start devhost --project-folder=../"
   },

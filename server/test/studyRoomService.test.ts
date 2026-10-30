@@ -38,7 +38,6 @@ function bound(overrides: Partial<Record<keyof Handlers, () => Promise<unknown>>
     getLeaderboard: ok("getLeaderboard"),
     setLeaderboardHidden: ok("setLeaderboardHidden"),
     keepGoing: ok("keepGoing"),
-    sendFeedback: ok("sendFeedback"),
     ...overrides,
   };
   const service = new StudyRoomService();
@@ -82,7 +81,6 @@ describe("StudyRoomService", () => {
         { hidden: true },
       ],
       ["keepGoing", () => service.keepGoing({}, client)],
-      ["sendFeedback", () => service.sendFeedback({ text: "hi" }, client), { text: "hi" }],
     ];
     for (const [name, call, request] of calls) {
       await expect(call()).resolves.toEqual({ from: name });

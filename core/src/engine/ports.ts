@@ -111,20 +111,6 @@ export interface CardRecord {
   showcase: string[] | null;
 }
 
-/**
- * A note from the feedback box. The text is kept only until it is delivered,
- * so a failed send can be retried. The user id never leaves the community: it
- * is only for the hourly limit and Delete my data.
- */
-export interface FeedbackRecord {
-  id: string;
-  userId: string;
-  text: string;
-  createdAt: number;
-  /** null until the developer's inbox accepted it. */
-  deliveredAt: number | null;
-}
-
 export interface CommunityDayStats {
   focusMinutes: number;
   goalsDone: number;
@@ -210,22 +196,13 @@ export interface Store {
     list(userIds: readonly string[]): Promise<CardRecord[]>;
     save(card: CardRecord): Promise<void>;
   };
-  feedback: {
-    insert(record: FeedbackRecord): Promise<void>;
-    /** Notes the member sent at or after `sinceMs`. */
-    countSince(userId: string, sinceMs: number): Promise<number>;
-    /** Notes not yet delivered, oldest first. */
-    listUndelivered(limit: number): Promise<FeedbackRecord[]>;
-    /** Marks a note sent and blanks its text, so the app keeps only when it was sent. */
-    markDelivered(id: string, at: number): Promise<void>;
-  };
   kv: {
     get<T>(key: string): Promise<T | undefined>;
     set<T>(key: string, value: T): Promise<void>;
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, quest rewards, room and solo timers, leaderboard opt-out, badges, card style, feedback notes, and their id in boss
+   * stats, quest rewards, room and solo timers, leaderboard opt-out, badges, card style, and their id in boss
    * contributor lists.
    * Community totals for past recaps are not recomputed.
    */
@@ -267,14 +244,6 @@ export interface Announcer {
     lootXp: number,
   ): Promise<void>;
   dailyRecap(channelId: string, recap: RecapDto): Promise<void>;
-}
-
-/**
- * Sends a note to the app's developer, outside the community. Implementations
- * send only the text and time, never who or where. Throws if it wasn't accepted.
- */
-export interface FeedbackInbox {
-  deliver(note: FeedbackRecord): Promise<void>;
 }
 
 export interface Logger {
