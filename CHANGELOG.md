@@ -4,9 +4,22 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Each card on the "Focusing now" board shows the member's place on this week's leaderboard (#1, #2…). Members with no minutes yet, or who hid themselves from the leaderboard, show no rank.
+- The leaderboard can rank by focus minutes or by XP (focus, goals and quest rewards), and covers this week, this month, this year or all time. Pick with the **Week | Month | Year | All time** and **Minutes | XP** switches above the standings. The rank on each card stays weekly.
+
 ### Changed
 
+- The weekly boss takes damage live: every minute someone focuses, their XP hits the boss right away instead of when the session ends. The room's combo bonus still lands when the round ends.
+- All XP now counts as boss damage: finishing goals (up to the daily cap) and weekly quest rewards hit the boss too, not just focus.
+- Focus minutes and XP are credited every minute while you focus, not only when the session ends. Your XP bar, level, quests, the leaderboard and the rank on each card all move live, and the progress screen refreshes itself while it's open. The combo bonus still lands when the round ends, and totals are exactly what they were before.
 - Your own avatar now shows your Root profile picture on the board, in the break moment and on your profile, instead of a "YOU" bubble, and the Focusing now board shows your Root name instead of "You". Members without a picture still see "YOU".
+
+### Fixed
+
+- In Root, nothing pushed to just you ever arrived: the break screen after a timer, badge unlocks from a finished timer, and status updates on your other devices. The server now finds your connection reliably.
+- Badges earned when a timer finishes also ride on the break result, so their unlock plays even if another push is late.
 
 ## [0.2.1] - 2026-10-29
 
@@ -14,7 +27,7 @@ Study together out loud: voice channel support, plus more reliable badge unlocks
 
 ### Added
 
-- Voice channel support: admins pick a voice channel in the new **Voice channel** setting. The room then shows a Join voice button with how many people are in there, and headphones next to anyone in the channel. The talking itself happens in Root's own voice channel.
+- Voice channel support: admins type a voice channel's name in the new **Voice channel name** setting. The room then shows a Join voice button with how many people are in there, and headphones next to anyone in the channel. The talking itself happens in Root's own voice channel.
 
 ### Fixed
 
