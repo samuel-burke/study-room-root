@@ -6,6 +6,7 @@ import { Avatar } from "../src/components/Avatar";
 import { strengthText } from "../src/components/BossCard";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { GoalsSheet } from "../src/components/GoalsSheet";
+import { MemberBoard } from "../src/components/MemberBoard";
 import { Sheet } from "../src/components/Sheet";
 
 describe("Sheet", () => {
@@ -132,5 +133,39 @@ describe("Avatar", () => {
     );
     expect(container.querySelector("img")).toBeNull();
     expect(container).toHaveTextContent("YOU");
+  });
+});
+
+describe("MemberBoard", () => {
+  const me = {
+    userId: "me",
+    status: "roomFocus" as const,
+    endsAt: 60_000,
+    goalText: "",
+    goalPrivate: false,
+    level: 3,
+    streak: 2,
+    badges: [],
+    cardStyle: "default",
+  };
+
+  it.each([false, true])("shows your Root name instead of You (compact: %s)", (compact) => {
+    render(
+      <MemberBoard
+        members={[me]}
+        profiles={new Map([["me", { userId: "me", name: "Sam" }]])}
+        youId="me"
+        now={0}
+        compact={compact}
+        onOpenMember={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("listitem", { name: /^Sam, Room timer/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View your profile" })).toBeInTheDocument();
+  });
+
+  it("says You until your profile loads", () => {
+    render(<MemberBoard members={[me]} profiles={new Map()} youId="me" now={0} />);
+    expect(screen.getByRole("listitem", { name: /^You, Room timer/ })).toBeInTheDocument();
   });
 });

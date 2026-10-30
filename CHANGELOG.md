@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
-- Your own avatar now shows your Root profile picture on the board, in the break moment and on your profile, instead of a "YOU" bubble. Members without a picture still see "YOU".
+- Your own avatar now shows your Root profile picture on the board, in the break moment and on your profile, instead of a "YOU" bubble, and the Focusing now board shows your Root name instead of "You". Members without a picture still see "YOU".
 
 ## [0.2.1] - 2026-10-29
 
