@@ -18,6 +18,8 @@ export const GAME = {
 export const LIMITS = {
   goalTextMaxLength: 140,
   maxOpenGoals: 8,
+  /** Finished goals leave the list at this local hour (4am), so late-night studiers keep theirs. */
+  finishedGoalsClearHour: 4,
   maxGoalsPerStart: 3,
   soloMinMinutes: 5,
   soloMaxMinutes: 180,

@@ -4,6 +4,7 @@ import {
   dayKey,
   daysBetween,
   isValidTimeZone,
+  lastOccurrence,
   nextOccurrence,
   nextWeekStart,
   weekdayIndex,
@@ -62,6 +63,19 @@ describe("nextOccurrence", () => {
   it("rolls to tomorrow when the time has passed or is exactly now", () => {
     const ninePm = Date.UTC(2026, 9, 29, 1);
     expect(nextOccurrence(ninePm, 21, 0, NY)).toBe(Date.UTC(2026, 9, 30, 1));
+  });
+});
+
+describe("lastOccurrence", () => {
+  it("returns earlier today when the time has passed or is exactly now", () => {
+    const tenAm = Date.UTC(2026, 9, 28, 14);
+    expect(lastOccurrence(tenAm, 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
+    expect(lastOccurrence(Date.UTC(2026, 9, 28, 8), 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
+  });
+
+  it("rolls back to yesterday when the time hasn't come yet", () => {
+    const oneAm = Date.UTC(2026, 9, 29, 5);
+    expect(lastOccurrence(oneAm, 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
   });
 });
 

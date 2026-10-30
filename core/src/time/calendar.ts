@@ -152,6 +152,20 @@ export function startOfDay(key: DayKey, timeZone: string): number {
   return zonedTimeToUtc(key, 0, 0, timeZone);
 }
 
+/** Most recent instant at or before `now` at which the zone's clock reads hours:minutes. */
+export function lastOccurrence(
+  now: number,
+  hours: number,
+  minutes: number,
+  timeZone: string,
+): number {
+  const today = dayKey(now, timeZone);
+  const candidate = zonedTimeToUtc(today, hours, minutes, timeZone);
+  return candidate <= now
+    ? candidate
+    : zonedTimeToUtc(addDays(today, -1), hours, minutes, timeZone);
+}
+
 /** Next instant strictly after `now` at which the zone's clock reads hours:minutes. */
 export function nextOccurrence(
   now: number,

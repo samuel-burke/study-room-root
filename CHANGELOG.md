@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Finished goals now stay on your list until 4am in the community's time zone instead of midnight, so a late-night session doesn't lose its checked-off goals partway through.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.

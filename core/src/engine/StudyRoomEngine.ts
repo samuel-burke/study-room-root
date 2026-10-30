@@ -48,6 +48,7 @@ import {
   addDays,
   dayKey,
   daysBetween,
+  lastOccurrence,
   localTime,
   nextWeekStart,
   startOfDay,
@@ -1448,7 +1449,10 @@ export class StudyRoomEngine {
       endsAt = solo.phase === "focus" ? solo.endsAt : solo.breakEndsAt;
     }
 
-    const goals = await tx.goals.listForUser(userId, startOfDay(today, tz));
+    const goals = await tx.goals.listForUser(
+      userId,
+      lastOccurrence(now, LIMITS.finishedGoalsClearHour, 0, tz),
+    );
     return {
       userId,
       status,

@@ -273,14 +273,27 @@ describe("goals", () => {
     expect((await engine.setGoalDone("ana", id, true)).xpTotal).toBe(25);
   });
 
-  it("keeps finished goals visible for the rest of the day", async () => {
+  it("keeps finished goals visible until 4am, so late-night sessions keep theirs", async () => {
     const { engine, advance } = createHarness();
     const id = (await engine.addGoal("ana", "Essay intro draft")).goals[0]!.id;
     await engine.setGoalDone("ana", id, true);
     expect((await engine.getSnapshot("ana")).me.goals).toEqual([
       { id, text: "Essay intro draft", done: true },
     ]);
-    await advance(24 * 60 * MINUTE);
+    await advance((17 * 60 + 59) * MINUTE); // 3:59am the next night
+    expect((await engine.getSnapshot("ana")).me.goals).toHaveLength(1);
+    await advance(MINUTE); // 4:00am
+    expect((await engine.getSnapshot("ana")).me.goals).toEqual([]);
+  });
+
+  it("keeps a goal finished after midnight until the coming 4am", async () => {
+    const { engine, advance } = createHarness();
+    const id = (await engine.addGoal("ana", "Problem set 3")).goals[0]!.id;
+    await advance(15 * 60 * MINUTE); // 1am Thursday
+    await engine.setGoalDone("ana", id, true);
+    await advance(2 * 60 * MINUTE); // 3am
+    expect((await engine.getSnapshot("ana")).me.goals).toHaveLength(1);
+    await advance(60 * MINUTE); // 4am
     expect((await engine.getSnapshot("ana")).me.goals).toEqual([]);
   });
 
