@@ -4,12 +4,16 @@ import {
   dayKey,
   daysBetween,
   isValidTimeZone,
+  monthKey,
+  nextMonthStart,
   nextOccurrence,
   nextWeekStart,
+  nextYearStart,
   startOfDay,
   weekdayIndex,
   weekdayName,
   weekKey,
+  yearKey,
   zonedTimeToUtc,
 } from "../src";
 
@@ -95,6 +99,20 @@ describe("nextWeekStart", () => {
   it("keeps late Sunday night in the old week", () => {
     const mondayOneAm = Date.UTC(2026, 10, 2, 6); // 1 AM EST
     expect(nextWeekStart(mondayOneAm, NY)).toBe(Date.UTC(2026, 10, 2, 9));
+  });
+});
+
+describe("month and year", () => {
+  it("finds the first day and the next start in the community's zone", () => {
+    expect(monthKey("2026-10-28")).toBe("2026-10-01");
+    expect(yearKey("2026-10-28")).toBe("2026-01-01");
+    // 2026-11-01 03:00 UTC is still October 31 in New York.
+    const halloweenNight = Date.UTC(2026, 10, 1, 3);
+    // November 1 04:00 EST = 09:00 UTC (DST ends at 2 AM that night).
+    expect(nextMonthStart(halloweenNight, NY)).toBe(Date.UTC(2026, 10, 1, 9));
+    // December rolls over into the new year, at 04:00 EST = 09:00 UTC.
+    expect(nextMonthStart(Date.UTC(2026, 11, 15, 12), NY)).toBe(Date.UTC(2027, 0, 1, 9));
+    expect(nextYearStart(halloweenNight, NY)).toBe(Date.UTC(2027, 0, 1, 9));
   });
 });
 
