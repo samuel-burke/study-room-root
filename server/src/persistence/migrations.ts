@@ -193,6 +193,25 @@ const migrations: Migration[] = [
       });
     },
   },
+  {
+    // The boss now takes focus damage live, every minute. These remember how
+    // much of the current focus block has already hit it.
+    name: "007_live_boss_damage",
+    async up(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.integer("boss_xp_dealt").notNullable().defaultTo(0);
+        });
+      }
+    },
+    async down(db) {
+      for (const table of ["room_participants", "solo_sessions"]) {
+        await db.schema.alterTable(table, (t) => {
+          t.dropColumn("boss_xp_dealt");
+        });
+      }
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {

@@ -38,6 +38,8 @@ export interface SoloRecord {
   minutes: number;
   phase: "focus" | "break";
   breakEndsAt: number;
+  /** Base focus XP already dealt to the boss live, minute by minute, during this focus. */
+  bossXpDealt: number;
 }
 
 export interface RoomCycleRecord {
@@ -53,6 +55,8 @@ export interface ParticipantRecord {
   joinedAt: number;
   /** Tapped "Keep going?" this cycle, so the cycle end carries them into the next one. */
   keepGoing: boolean;
+  /** Base focus XP already dealt to the boss live, minute by minute, in the current focus round. */
+  bossXpDealt: number;
 }
 
 export interface SessionLogRecord {

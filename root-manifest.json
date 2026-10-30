@@ -401,7 +401,7 @@
           {
             "key": "bossEnabled",
             "title": "Weekly boss",
-            "description": "A community goal with an HP bar. Every XP earned focusing deals damage, and everyone who pitched in gets bonus XP when it falls. A new boss spawns every Monday.",
+            "description": "A community goal with an HP bar. Every XP members earn deals damage, live each minute they focus, and everyone who pitched in gets bonus XP when it falls. A new boss spawns every Monday.",
             "checkbox": {
               "defaultValue": true
             }

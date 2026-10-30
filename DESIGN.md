@@ -67,7 +67,11 @@ Data is kept for as long as the app is installed, so streaks and history survive
 
 A boss spawns lazily each Monday (community time zone) with the admin's name (or the week's built-in name) and HP in XP. Each boss has a strength from 0.5x to 2x that fits its name, so "The Final Final Exam" is tougher than "Professor Pop Quiz". The built-in list averages exactly 1x, with weaker bosses below and stronger ones above. Its HP (the XP it takes to defeat) is the admin's base HP times its strength, and so is its loot. Names an admin types get strength from keywords: finals, thesis and boards are 2x; midterms, exams, deadlines and projects 1.5x; quizzes and homework 0.75x; anything else 1x.
 
-Damage is the focus XP a session earns, combo included, counted **before** the daily cap. The cap limits what a member earns, not how much they help the room, so the people studying most still hit the boss. Goal XP doesn't count, because checking off goals is too easy to farm. Damage is dealt even with XP turned off; there's just no loot then.
+All XP counts as damage except boss loot:
+
+- **Focus** hits the boss live. While anyone is focusing the engine wakes every minute, and each whole minute of a running block deals its base XP (2 per minute). The combo bonus lands when the round ends, because the combo depends on who finishes. Each room participant and solo timer remembers what it has already dealt (`bossXpDealt`), so the end of a round, leaving early or stopping a solo only deals the rest, and the total always equals the block's focus XP. Focus damage is counted **before** the daily cap: the cap limits what a member earns, not how much they help the room. It's dealt even with XP turned off; there's just no loot then.
+- **Goals** deal the XP they actually pay, **after** the daily cap. Goals are cheap to add and check off, so without the cap one person could farm the boss down alone.
+- **Quest rewards** deal their XP. They're outside the cap already and come at most three times a week.
 
 Admins can rename or resize the live boss; damage is never healed, and lowering HP below the damage dealt defeats it on the spot (with the usual post and loot).
 
