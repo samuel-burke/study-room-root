@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- In Root, nothing pushed to just you ever arrived: the break screen after a timer, badge unlocks from a finished timer, and status updates on your other devices. The server now finds your connection reliably.
+- Badges earned when a timer finishes also ride on the break result, so their unlock plays even if another push is late.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.

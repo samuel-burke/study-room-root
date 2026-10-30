@@ -822,7 +822,7 @@ export class StudyRoomEngine {
         roomDamageXp,
         goalPrompt: await this.goalPrompt(tx, userId),
         breakEndsAt,
-        me: await this.buildMyStatus(tx, userId, phase.endsAt),
+        me: withNewBadges(await this.buildMyStatus(tx, userId, phase.endsAt), effects),
       };
       effects.notifications.push((n) => n.personalResult(userId, result));
     }
@@ -862,7 +862,7 @@ export class StudyRoomEngine {
           roomDamageXp: damageXp,
           goalPrompt: await this.goalPrompt(tx, solo.userId),
           breakEndsAt: solo.breakEndsAt,
-          me: await this.buildMyStatus(tx, solo.userId, now),
+          me: withNewBadges(await this.buildMyStatus(tx, solo.userId, now), effects),
         };
         effects.notifications.push((n) => n.personalResult(solo.userId, result));
         this.touch(effects, solo.userId);

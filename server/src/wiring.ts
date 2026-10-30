@@ -62,6 +62,20 @@ export function presenceHandlers(engine: PresenceEngine, logger: Logger) {
   };
 }
 
+/**
+ * Finds a member's attached Root client, for personal pushes. Root's own
+ * `clients.getClient(userId)` keys its lookup on the configured community id
+ * in a different format from the one clients are stored under, so it never
+ * finds anyone and every personal push (break results, status, badges) was
+ * silently dropped. Searching the attached clients by user id always works.
+ */
+export function findAttachedClient<C extends { userId: string }>(
+  clients: () => readonly C[],
+  userId: string,
+): C | undefined {
+  return clients().find((client) => client.userId === userId);
+}
+
 /** Stops the engine and always closes the database, even if draining fails. */
 export function createShutdown(
   engine: Pick<StudyRoomEngine, "stop" | "idle">,

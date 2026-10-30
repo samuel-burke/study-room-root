@@ -296,6 +296,34 @@ describe("Study Squad app", () => {
     expect(unlocked).toEqual(expect.arrayContaining(["Checked Off", "Speedrun"]));
   });
 
+  it("plays a finished timer's unlocks from the break result alone", async () => {
+    const gateway = await DemoGateway.create({
+      bots: false,
+      elapsedMinutes: 0,
+      focusMinutes: 0.02,
+      breakMinutes: 1,
+    });
+    // Only the break result gets through: no badge or status push.
+    const subscribe = gateway.subscribe.bind(gateway);
+    vi.spyOn(gateway, "subscribe").mockImplementation((handlers) =>
+      subscribe({ ...handlers, badgesEarned: () => {}, myStatus: () => {} }),
+    );
+    const user = userEvent.setup();
+    render(<App gateway={gateway} />);
+    await user.click(await screen.findByRole("button", { name: "Join room timer" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Start focusing" }));
+    await screen.findByRole("dialog", { name: "Nice work" }, { timeout: 4_000 });
+    const unlocked: string[] = [];
+    await screen.findByRole("button", { name: "Nice!" });
+    while (screen.queryByRole("button", { name: "Nice!" })) {
+      const moment = screen.getByRole("button", { name: "Nice!" }).closest("[role=dialog]");
+      unlocked.push(moment?.querySelector("h2")?.textContent ?? "");
+      await user.click(screen.getByRole("button", { name: "Nice!" }));
+    }
+    expect(unlocked).toEqual(expect.arrayContaining(["First Steps", "Squad Up"]));
+  });
+
   it("deletes my data after a confirmation and starts fresh", async () => {
     const { user } = await renderApp();
     await user.click(screen.getByRole("button", { name: "Join room timer" }));
