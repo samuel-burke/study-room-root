@@ -62,6 +62,8 @@ export interface RoomFeaturesDto {
   goalsPublicByDefault: boolean;
   dailyXpCap: number;
   postChannelName: string;
+  /** Admins picked a feedback channel, so members can send feedback. */
+  feedbackEnabled: boolean;
 }
 
 /** The community voice channel admins picked for studying together. */

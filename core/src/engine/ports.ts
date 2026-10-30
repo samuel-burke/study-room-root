@@ -111,6 +111,14 @@ export interface CardRecord {
   showcase: string[] | null;
 }
 
+/** A note sent from the feedback box. Kept so nothing is lost if the post fails. */
+export interface FeedbackRecord {
+  id: string;
+  userId: string;
+  text: string;
+  createdAt: number;
+}
+
 export interface CommunityDayStats {
   focusMinutes: number;
   goalsDone: number;
@@ -196,13 +204,18 @@ export interface Store {
     list(userIds: readonly string[]): Promise<CardRecord[]>;
     save(card: CardRecord): Promise<void>;
   };
+  feedback: {
+    insert(record: FeedbackRecord): Promise<void>;
+    /** Notes the member sent at or after `sinceMs`. */
+    countSince(userId: string, sinceMs: number): Promise<number>;
+  };
   kv: {
     get<T>(key: string): Promise<T | undefined>;
     set<T>(key: string, value: T): Promise<void>;
   };
   /**
    * Removes every record about a member: profile, goals, sessions, daily
-   * stats, quest rewards, room and solo timers, leaderboard opt-out, badges, card style, and their id in boss
+   * stats, quest rewards, room and solo timers, leaderboard opt-out, badges, card style, feedback notes, and their id in boss
    * contributor lists.
    * Community totals for past recaps are not recomputed.
    */
@@ -244,6 +257,7 @@ export interface Announcer {
     lootXp: number,
   ): Promise<void>;
   dailyRecap(channelId: string, recap: RecapDto): Promise<void>;
+  feedback(channelId: string, userId: string, text: string): Promise<void>;
 }
 
 export interface Logger {

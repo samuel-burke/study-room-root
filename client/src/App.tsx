@@ -5,6 +5,7 @@ import { KeepGoing } from "./components/KeepGoing";
 import { MemberProfileSheet } from "./components/MemberProfileSheet";
 import { BreakMoment } from "./components/BreakMoment";
 import { Celebration } from "./components/Celebration";
+import { FeedbackSheet } from "./components/FeedbackSheet";
 import { GoalsSheet } from "./components/GoalsSheet";
 import { ProgressScreen } from "./components/ProgressScreen";
 import { RoomScreen } from "./components/RoomScreen";
@@ -22,6 +23,7 @@ type Overlay =
   | { kind: "start"; mode: "room" | "solo" }
   | { kind: "goals" }
   | { kind: "settings" }
+  | { kind: "feedback" }
   | { kind: "member"; userId: string }
   | null;
 
@@ -161,7 +163,14 @@ export function App({ gateway }: { gateway: StudyRoomGateway }) {
         />
       )}
       {overlay?.kind === "settings" && (
-        <SettingsSheet room={room} onClose={() => setOverlay(null)} />
+        <SettingsSheet
+          room={room}
+          onClose={() => setOverlay(null)}
+          onSendFeedback={() => setOverlay({ kind: "feedback" })}
+        />
+      )}
+      {overlay?.kind === "feedback" && (
+        <FeedbackSheet gateway={gateway} onClose={() => setOverlay(null)} />
       )}
 
       {state.celebration && (

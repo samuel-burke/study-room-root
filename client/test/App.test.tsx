@@ -115,6 +115,37 @@ describe("Study Squad app", () => {
     expect(opener).toHaveFocus();
   });
 
+  it("sends feedback from room settings to the feedback channel", async () => {
+    const { user, gateway } = await renderApp();
+    await user.click(screen.getByRole("button", { name: "Room settings" }));
+    await user.click(screen.getByRole("button", { name: "Send feedback" }));
+    const dialog = screen.getByRole("dialog", { name: "Send feedback" });
+    const send = within(dialog).getByRole("button", { name: "Send" });
+    expect(send).toBeDisabled();
+    await user.type(within(dialog).getByRole("textbox"), "More boss names{Enter}please");
+    await user.click(send);
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Thanks!");
+    await waitFor(() =>
+      expect(gateway.posts.at(-1)).toBe("Study Squad feedback from You:\nMore boss names\nplease"),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows why feedback couldn't be sent and keeps the note", async () => {
+    const { user, gateway } = await renderApp();
+    vi.spyOn(gateway, "sendFeedback").mockRejectedValueOnce(
+      Object.assign(new Error("Try again in an hour."), { code: 1004 }),
+    );
+    await user.click(screen.getByRole("button", { name: "Room settings" }));
+    await user.click(screen.getByRole("button", { name: "Send feedback" }));
+    const dialog = screen.getByRole("dialog", { name: "Send feedback" });
+    await user.type(within(dialog).getByRole("textbox"), "hello");
+    await user.click(within(dialog).getByRole("button", { name: "Send" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Try again in an hour.");
+    expect(within(dialog).getByRole("textbox")).toHaveValue("hello");
+  });
+
   it("mutes and unmutes sound effects from the header", async () => {
     const { user } = await renderApp();
     const button = screen.getByRole("button", { name: "Sound effects" });

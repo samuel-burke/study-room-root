@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- A **Send feedback** box, under Room settings. Members write a note (up to 1,000 characters) and Study Squad posts it, with their name, to the channel admins pick in the new **Feedback channel** setting. The box is hidden until a channel is picked. Notes are also saved in the app's storage so none get lost if a post fails, and each member can send 3 an hour.
+
+### Changed
+
+- The privacy policy now covers feedback notes: what's saved, who sees them, and that Delete my data erases them.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.

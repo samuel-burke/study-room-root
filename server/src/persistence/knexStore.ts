@@ -6,6 +6,7 @@ import type {
   DailyStatRecord,
   DayKey,
   EarnedBadgeRecord,
+  FeedbackRecord,
   GoalRecord,
   MemberRecord,
   ParticipantRecord,
@@ -142,6 +143,7 @@ export class KnexStore implements Store {
         "quest_rewards",
         "member_badges",
         "member_cards",
+        "feedback",
       ]) {
         await db(table).where({ user_id: userId }).delete();
       }
@@ -527,6 +529,25 @@ export class KnexStore implements Store {
         })
         .onConflict("user_id")
         .merge();
+    },
+  };
+
+  feedback = {
+    insert: async (f: FeedbackRecord) => {
+      await this.db("feedback").insert({
+        id: f.id,
+        user_id: f.userId,
+        text: f.text,
+        created_at: f.createdAt,
+      });
+    },
+    countSince: async (userId: string, sinceMs: number) => {
+      const row = await this.db("feedback")
+        .where({ user_id: userId })
+        .andWhere("created_at", ">=", sinceMs)
+        .count({ n: "*" })
+        .first();
+      return Number(row?.n ?? 0);
     },
   };
 

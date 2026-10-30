@@ -1,6 +1,6 @@
 # Study Squad privacy policy
 
-_Effective October 28, 2026_
+_Effective October 30, 2026_
 
 Study Squad is a group study timer for [Root](https://www.rootapp.com) communities, made by Samuel Burke ("we", "us"). This page explains, in plain language, what Study Squad keeps, why, who sees it, and how you can delete it whenever you like.
 
@@ -24,6 +24,7 @@ Everything Study Squad keeps is about your studying, and each piece has a job:
 | Your streak and the streak freezes you've used this week        | To show and protect your streak                                           |
 | That you helped fight the weekly boss                           | To reward everyone who helped when the boss is defeated                   |
 | Badges you've earned and when, your card style and pinned badge | To show your badges and the look of your card                             |
+| Feedback notes you send, and when                               | So your note isn't lost if posting it fails, and to limit notes per hour  |
 
 A few things Study Squad **uses but doesn't save**:
 
@@ -42,6 +43,7 @@ Each community's Study Squad data lives in that community's own app storage, hos
   - your profile, which opens when someone taps you on the board or the leaderboard (your name, picture, level, XP, streak, card style and the badges you've earned). It never shows your goals or focus history;
   - the weekly leaderboard, which shows the names, pictures and focus minutes of the week's top 10. You can hide yourself from it any time under **Your progress**.
 - **Channel posts:** if an admin turns on updates, Study Squad posts friendly highlights to a channel. These can include community totals (hours focused, goals finished, how many people showed up), the names and streak lengths of the top three streaks, the names and focus time of the week's top three (never anyone who hid from the leaderboard), streak milestones like "Ana R. just hit a 30 day streak", and how many people are focusing.
+- **Feedback:** if you use **Send feedback**, your note and your name are posted to the feedback channel the community's admins picked, so whoever can see that channel can read it.
 - **Community admins** choose Study Squad's settings, like timer length and which channel gets updates. They don't get any extra view of your data.
 - **Us:** we don't browse community data. Root may share app logs with us so we can fix bugs. These record things like your user ID and what went wrong, and they're only used to keep the app working.
 
@@ -62,11 +64,11 @@ You're always in control, and you don't need to ask anyone. To delete everything
 1. Open Study Squad and tap **Your progress**.
 2. Under **Your data**, tap **Delete my data**, then **Delete everything**.
 
-This removes your goals, session history, daily stats, XP, level, streak, badges, card style, quest rewards and privacy choices in that community straight away. It also stops any timer you have running and takes you off the weekly boss's helper list. Deleting is permanent, so your progress can't be brought back afterwards.
+This removes your goals, session history, daily stats, XP, level, streak, badges, card style, quest rewards, saved feedback notes and privacy choices in that community straight away. It also stops any timer you have running and takes you off the weekly boss's helper list. Deleting is permanent, so your progress can't be brought back afterwards.
 
 A couple of things live outside Study Squad, so deleting doesn't touch them:
 
-- **Channel posts that already went out**, such as a recap that mentioned you. These are regular Root messages, so a community admin can remove them, or you can through Root.
+- **Channel posts that already went out**, such as a recap that mentioned you or feedback you sent. These are regular Root messages, so a community admin can remove them, or you can through Root.
 - **App logs**, which Root keeps for a limited time under its own rules.
 
 If you use Study Squad in more than one community, delete your data in each one. If you can't reach the app, for example after leaving a community, just contact us (below) and we'll take care of it.

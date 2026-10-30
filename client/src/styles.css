@@ -860,6 +860,14 @@ h3 {
   min-width: 0;
 }
 
+textarea.input {
+  padding: 10px 12px;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
 .input:focus {
   border-color: var(--amber);
   outline: none;

@@ -15,6 +15,7 @@ describe("parseSettings", () => {
       [room.group]: {
         [room.preset]: ["50-10"],
         [room.postChannel]: ["channel-9"],
+        [room.feedbackChannel]: ["channel-fb"],
         [room.recapTime]: { hours: 20, minutes: 30, seconds: 0 },
         [room.timeZone]: ["Europe/Berlin"],
         [room.busyPosts]: false,
@@ -27,6 +28,7 @@ describe("parseSettings", () => {
     });
     expect(config.preset).toEqual(PRESETS["50-10"]);
     expect(config.postChannelId).toBe("channel-9");
+    expect(config.feedbackChannelId).toBe("channel-fb");
     expect(config.recap).toEqual({ enabled: true, hours: 20, minutes: 30 });
     expect(config.timeZone).toBe("Europe/Berlin");
     expect(config.busyPosts.enabled).toBe(false);

@@ -48,3 +48,12 @@ export function dailyRecapPost(recap: RecapDto, names: ReadonlyMap<string, strin
   }
   return lines.join("\n");
 }
+
+/**
+ * A member's feedback note. Angle brackets are dropped and "@" is followed by
+ * a zero-width space, so the text can't carry markup or ping anyone.
+ */
+export function feedbackPost(name: string, text: string): string {
+  const safe = text.replace(/[<>]/g, "").replace(/@/g, "@\u200b");
+  return `Study Squad feedback from ${name}:\n${safe}`;
+}

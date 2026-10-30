@@ -106,6 +106,17 @@ describe("ChannelAnnouncer", () => {
     expect(posts[1]!.content).toContain("6 people are focusing");
     expect(posts[2]!.content).toContain("defeated Midterms");
   });
+
+  it("posts feedback with the sender's cleaned name", async () => {
+    const { posts, channel } = port();
+    await new ChannelAnnouncer(channel).feedback("fb", "ana", "Love it\nMore sounds?");
+    expect(posts).toEqual([
+      {
+        channelId: "fb",
+        content: "Study Squad feedback from everyone Ana R.:\nLove it\nMore sounds?",
+      },
+    ]);
+  });
 });
 
 describe("TimeoutScheduler", () => {

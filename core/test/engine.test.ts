@@ -835,3 +835,49 @@ describe("weekly leaderboard", () => {
     expect((await engine.getLeaderboard("ana")).me.hidden).toBe(false);
   });
 });
+
+describe("feedback", () => {
+  const withFeedback = () => configWith({ feedbackChannelId: "feedback-1" });
+
+  it("saves the note and posts it to the feedback channel", async () => {
+    const { engine, announcer } = createHarness(withFeedback());
+    await engine.sendFeedback("ana", "  More boss names please\n\nThanks ");
+    await engine.idle();
+    expect(announcer.posts).toContainEqual({
+      kind: "feedback",
+      channelId: "feedback-1",
+      detail: { userId: "ana", text: "More boss names please\n\nThanks" },
+    });
+    expect((await engine.getSnapshot("ana")).room.features.feedbackEnabled).toBe(true);
+  });
+
+  it("is off until admins pick a feedback channel", async () => {
+    const { engine, announcer } = createHarness();
+    expect((await engine.getSnapshot("ana")).room.features.feedbackEnabled).toBe(false);
+    await expectError(engine.sendFeedback("ana", "hello"), ErrorCode.Conflict);
+    await engine.idle();
+    expect(announcer.posts).toEqual([]);
+  });
+
+  it("rejects empty notes", async () => {
+    const { engine } = createHarness(withFeedback());
+    await expectError(engine.sendFeedback("ana", "   "), ErrorCode.Validation);
+  });
+
+  it("allows a few notes per member per hour", async () => {
+    const { engine, clock } = createHarness(withFeedback());
+    for (let i = 0; i < LIMITS.feedbackPerHour; i++) await engine.sendFeedback("ana", `note ${i}`);
+    await expectError(engine.sendFeedback("ana", "one more"), ErrorCode.RateLimited);
+    await engine.sendFeedback("kai", "someone else is fine");
+    clock.advance(61 * MINUTE);
+    await engine.sendFeedback("ana", "an hour later");
+  });
+
+  it("erases a member's notes with the rest of their data", async () => {
+    const { engine, store } = createHarness(withFeedback());
+    await engine.sendFeedback("ana", "hi");
+    expect(await store.feedback.countSince("ana", 0)).toBe(1);
+    await engine.deleteMyData("ana");
+    expect(await store.feedback.countSince("ana", 0)).toBe(0);
+  });
+});

@@ -15,7 +15,7 @@ import type {
   RoomTimerDto,
   SnapshotDto,
 } from "../dto";
-import { conflictError, notFoundError, validationError } from "../errors";
+import { conflictError, DomainError, ErrorCode, notFoundError, validationError } from "../errors";
 import {
   applyDamage,
   bossHpLeft,
@@ -62,6 +62,7 @@ import {
   type CyclePhase,
 } from "../timer/roomCycle";
 import {
+  validateFeedbackText,
   validateGoalText,
   validateId,
   validateSoloMinutes,
@@ -348,6 +349,31 @@ export class StudyRoomEngine {
     return this.run(async (tx, now) => {
       await tx.leaderboard.setHidden(userId, hidden);
       return this.buildLeaderboard(tx, userId, now);
+    });
+  }
+
+  // ---------------------------------------------------------------- feedback
+
+  /**
+   * Saves a member's note and posts it to the admins' feedback channel. The
+   * post happens after the save commits, so a failed post still leaves the note
+   * in the database.
+   */
+  async sendFeedback(userId: string, input: unknown): Promise<void> {
+    const text = validateFeedbackText(input);
+    return this.run(async (tx, now, effects) => {
+      const channelId = this.config.feedbackChannelId;
+      if (!channelId) throw conflictError("Feedback is turned off in this community.");
+      const recent = await tx.feedback.countSince(userId, now - 60 * MINUTE_MS);
+      if (recent >= LIMITS.feedbackPerHour) {
+        throw new DomainError(
+          ErrorCode.RateLimited,
+          "Thanks, that's plenty for now. Try again in an hour.",
+        );
+      }
+      await tx.feedback.insert({ id: this.deps.newId(), userId, text, createdAt: now });
+      effects.posts.push((a) => a.feedback(channelId, userId, text));
+      this.deps.logger.info("feedback received", { userId });
     });
   }
 
@@ -1334,6 +1360,7 @@ export class StudyRoomEngine {
         goalsPublicByDefault: this.config.goalsPublicByDefault,
         dailyXpCap: this.config.xp.dailyCap,
         postChannelName: this.config.postChannelId ? this.config.postChannelName : "",
+        feedbackEnabled: this.config.feedbackChannelId !== null,
       },
       voice: this.config.voiceChannelId
         ? {

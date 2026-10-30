@@ -69,6 +69,8 @@ export interface StudyRoomGateway {
   deleteMyData(): Promise<MyStatusDto>;
   /** Answers "Keep going?" so the member rolls into the next cycle. */
   keepGoing(): Promise<MyStatusDto>;
+  /** Posts a note to the community's feedback channel. */
+  sendFeedback(text: string): Promise<void>;
   /** Another member's public game stats, for their profile card. */
   getMemberProfile(userId: string): Promise<MemberProfileDto>;
   getProfiles(userIds: string[]): Promise<Profile[]>;

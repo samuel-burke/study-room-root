@@ -104,6 +104,20 @@ describe("StudyRoomHandlers", () => {
     expect((await handlers.getMemberProfile("ana", { userId: "priya" })).userId).toBe("priya");
   });
 
+  it("sends feedback as the caller, or says why it can't", async () => {
+    const { handlers, engine, announcer } = setup();
+    const off = await failure(handlers.sendFeedback("priya", { text: "hi" }));
+    expect(off.code).toBe(CoreErrorCode.Conflict);
+    await engine.setConfig({ ...engine.getConfig(), feedbackChannelId: "fb" });
+    await expect(handlers.sendFeedback("priya", { text: "hi" })).resolves.toEqual({});
+    await engine.idle();
+    expect(announcer.posts.at(-1)).toEqual({
+      kind: "feedback",
+      channelId: "fb",
+      detail: { userId: "priya", text: "hi" },
+    });
+  });
+
   it("deletes only the caller's data", async () => {
     const { handlers } = setup();
     await handlers.addGoal("ana", { text: "Mine" });

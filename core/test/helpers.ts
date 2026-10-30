@@ -95,6 +95,9 @@ export class RecordingAnnouncer implements Announcer {
   async dailyRecap(channelId: string, recap: RecapDto) {
     this.posts.push({ kind: "recap", channelId, detail: recap });
   }
+  async feedback(channelId: string, userId: string, text: string) {
+    this.posts.push({ kind: "feedback", channelId, detail: { userId, text } });
+  }
 }
 
 export const silentLogger = { info() {}, warn() {}, error() {} };

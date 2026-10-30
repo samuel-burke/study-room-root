@@ -19,6 +19,7 @@ describe("migrations", () => {
       expect(await tables()).toEqual([
         "bosses",
         "daily_stats",
+        "feedback",
         "goals",
         "kv",
         "leaderboard_opt_outs",
@@ -50,7 +51,7 @@ describe("migrations", () => {
       });
       await migrateToLatest(db);
       expect(await db("bosses").first()).toMatchObject({ max_hp_xp: 12_000, damage_xp: 3001 });
-      await db.migrate.down(migratorConfig);
+      await db.migrate.down({ ...migratorConfig, name: "006_boss_xp" });
       expect(await db("bosses").first()).toMatchObject({
         max_hp_minutes: 6000,
         damage_minutes: 1500.5,

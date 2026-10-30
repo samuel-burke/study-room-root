@@ -2,6 +2,7 @@ import {
   bossDefeatedPost,
   busyRoomPost,
   dailyRecapPost,
+  feedbackPost,
   safeDisplayName,
   streakMilestonePost,
   type Announcer,
@@ -57,6 +58,10 @@ export class ChannelAnnouncer implements Announcer {
       ? { ...recap, boss: { ...recap.boss, name: safeDisplayName(recap.boss.name) } }
       : recap;
     await this.channel.postMessage(channelId, dailyRecapPost(safeRecap, names));
+  }
+
+  async feedback(channelId: string, userId: string, text: string): Promise<void> {
+    await this.channel.postMessage(channelId, feedbackPost(await this.displayName(userId), text));
   }
 
   private async displayName(userId: string): Promise<string> {

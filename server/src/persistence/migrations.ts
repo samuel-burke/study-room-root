@@ -193,6 +193,23 @@ const migrations: Migration[] = [
       });
     },
   },
+  {
+    // Numbered after the 007/008 migrations in flight on other branches, so
+    // the names never clash whichever lands first.
+    name: "009_feedback",
+    async up(db) {
+      await db.schema.createTable("feedback", (t) => {
+        t.string("id").primary();
+        t.string("user_id").notNullable();
+        t.text("text").notNullable();
+        t.bigInteger("created_at").notNullable();
+        t.index(["user_id", "created_at"]);
+      });
+    },
+    async down(db) {
+      await db.schema.dropTableIfExists("feedback");
+    },
+  },
 ];
 
 class CodeMigrationSource implements Knex.MigrationSource<Migration> {

@@ -41,6 +41,7 @@ const service = vi.hoisted(() => {
       setGoalsPrivate: vi.fn(),
       deleteMyData: vi.fn(),
       keepGoing: vi.fn(),
+      sendFeedback: vi.fn(),
       getProgress: vi.fn(),
       getLeaderboard: vi.fn(),
       setLeaderboardHidden: vi.fn(),
@@ -151,6 +152,12 @@ describe("RootGateway", () => {
     await expect(gateway.setLeaderboardHidden(true)).resolves.toEqual(hidden);
     expect(service.client.getLeaderboard).toHaveBeenCalledWith({});
     expect(service.client.setLeaderboardHidden).toHaveBeenCalledWith({ hidden: true });
+  });
+
+  it("sends feedback", async () => {
+    vi.mocked(service.client.sendFeedback).mockResolvedValue({});
+    await expect(new RootGateway().sendFeedback("hi")).resolves.toBeUndefined();
+    expect(service.client.sendFeedback).toHaveBeenCalledWith({ text: "hi" });
   });
 
   it("looks up another member's profile", async () => {

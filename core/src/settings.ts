@@ -20,6 +20,7 @@ export const SETTINGS = {
     customBreak: "customBreakMinutes",
     postChannel: "postChannel",
     voiceChannel: "voiceChannel",
+    feedbackChannel: "feedbackChannel",
     recapEnabled: "recapEnabled",
     recapTime: "recapTime",
     recapLeaderboard: "recapLeaderboard",
@@ -54,6 +55,8 @@ export interface AppConfig {
   /** Its display name and link, resolved by the server. Empty if unknown. */
   voiceChannelName: string;
   voiceChannelUrl: string;
+  /** Channel member feedback is posted to. null = the feedback box is hidden. */
+  feedbackChannelId: string | null;
   recap: { enabled: boolean; hours: number; minutes: number };
   /** List the week's top focusers in the daily recap. */
   recapLeaderboardEnabled: boolean;
@@ -79,6 +82,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   voiceChannelId: null,
   voiceChannelName: "",
   voiceChannelUrl: "",
+  feedbackChannelId: null,
   recap: { enabled: true, hours: 21, minutes: 0 },
   recapLeaderboardEnabled: true,
   goalsPublicByDefault: true,
@@ -143,6 +147,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
   const tz = firstString(room[r.timeZone]);
   const channel = firstString(room[r.postChannel]);
   const voice = firstString(room[r.voiceChannel]);
+  const feedback = firstString(room[r.feedbackChannel]);
 
   return {
     ...presetFrom(
@@ -156,6 +161,7 @@ export function parseSettings(raw: RawSettings): AppConfig {
     voiceChannelId: voice && voice.length > 0 ? voice : null,
     voiceChannelName: "",
     voiceChannelUrl: "",
+    feedbackChannelId: feedback && feedback.length > 0 ? feedback : null,
     recap: {
       enabled: bool(room[r.recapEnabled], d.recap.enabled),
       ...timeOfDay(room[r.recapTime], d.recap),

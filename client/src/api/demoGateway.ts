@@ -238,6 +238,7 @@ function demoConfig(options: DemoOptions): AppConfig {
     voiceChannelId: "demo-voice",
     voiceChannelName: "Study voice",
     voiceChannelUrl: "https://rootapp.com",
+    feedbackChannelId: "demo-feedback",
   };
 }
 
@@ -286,6 +287,8 @@ export class DemoGateway implements StudyRoomGateway {
           this.post(`${this.nameOf(userId)} just hit a ${streak} day streak.`),
         bossDefeated: async (_c, name) => this.post(`The room defeated ${name}!`),
         dailyRecap: async (_c, recap: RecapDto) => this.post(`${recap.weekday} recap`),
+        feedback: async (_c, userId, text) =>
+          this.post(`Study Squad feedback from ${this.nameOf(userId)}:\n${text}`),
       },
       logger: console,
       config: this.config,
@@ -503,6 +506,10 @@ export class DemoGateway implements StudyRoomGateway {
 
   deleteMyData() {
     return this.call(() => this.engine.deleteMyData(DEMO_USER_ID));
+  }
+
+  sendFeedback(text: string) {
+    return this.call(() => this.engine.sendFeedback(DEMO_USER_ID, text));
   }
 
   keepGoing() {
