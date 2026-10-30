@@ -8,7 +8,7 @@ import {
   type Notifier,
   type PersonalResultDto,
   type PhaseCompletedDto,
-  type PhaseKind,
+  type SquadEvent,
   type RecapDto,
   type RoomStateDto,
   type WakeScheduler,
@@ -96,8 +96,8 @@ export class RecordingAnnouncer implements Announcer {
   async dailyRecap(channelId: string, recap: RecapDto) {
     this.posts.push({ kind: "recap", channelId, detail: recap });
   }
-  async phaseCallout(channelId: string, kind: PhaseKind, userIds: string[], line: number) {
-    this.posts.push({ kind: "callout", channelId, detail: { kind, userIds, line } });
+  async squadMessage(channelId: string, event: SquadEvent, text: string, userIds: string[]) {
+    this.posts.push({ kind: "squad", channelId, detail: { event, text, userIds } });
   }
 }
 
@@ -107,7 +107,23 @@ export function configWith(overrides: Partial<AppConfig> = {}): AppConfig {
   return { ...DEFAULT_CONFIG, postChannelId: "channel-1", ...overrides };
 }
 
-export function createHarness(config: AppConfig = configWith(), start = T0) {
+/** A seeded random in [0, 1), so tests are repeatable. */
+export function seededRandom(seed = 1): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function createHarness(
+  config: AppConfig = configWith(),
+  start = T0,
+  random: () => number = seededRandom(),
+) {
   const clock = new FakeClock(start);
   const scheduler = new ManualScheduler();
   const notifier = new RecordingNotifier();
@@ -123,6 +139,7 @@ export function createHarness(config: AppConfig = configWith(), start = T0) {
     logger: silentLogger,
     config,
     newId: () => `id-${nextId++}`,
+    random,
   });
 
   /** Moves time forward, firing scheduled wake-ups along the way like a real timer would. */

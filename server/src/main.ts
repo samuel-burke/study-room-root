@@ -71,6 +71,7 @@ async function onStarting(state: RootAppStartState): Promise<void> {
     logger,
     config: await loadRootConfig(state.globalSettings ?? rootServer.globalSettings),
     newId: randomUUID,
+    random: Math.random,
   });
   studyRoomService.bind(new StudyRoomHandlers(engine, logger));
   rootServer.lifecycle.addService(studyRoomService);

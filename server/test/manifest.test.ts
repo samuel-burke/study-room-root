@@ -64,7 +64,7 @@ describe("root-manifest.json", () => {
   });
 
   it("asks only for the permissions it uses", () => {
-    // Mentions let study and break callouts ping the people in the room.
+    // Mentions let the squad bot ping the people in the room.
     expect(manifest.permissions.channel).toEqual({
       channelView: true,
       channelCreateMessage: true,

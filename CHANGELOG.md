@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- Study and break callouts: when the room timer switches, Study Squad posts a joke in the updates channel that mentions everyone on the room timer ("Break time! Stand up, stretch, and remember you have legs."). The lines rotate, and admins can turn it off with the new **Study and break callouts** setting. Study Squad now asks Root for permission to mention members.
+- Squad bot: Study Squad now chats in the updates channel like part of the study group. It posts when the room timer starts, at each break, when study resumes, when the four rounds are done, and when someone joins, and it mentions the people studying. It has six personalities (Hype Squad, Drill Sergeant, Chill Friend, Meme Lord, Gamer Mode and Chaos Mode), never repeats itself back to back, and now and then drops a rare surprise line. Admins can turn it off with **Squad bot** and choose its voices with **Squad bot personalities**. Study Squad now asks Root for permission to mention members.
 
 ## [0.2.1] - 2026-10-29
 

@@ -2,12 +2,12 @@ import {
   bossDefeatedPost,
   busyRoomPost,
   dailyRecapPost,
-  PHASE_CALLOUT_MAX_MENTIONS,
-  phaseCalloutPost,
   safeDisplayName,
+  SQUAD_MAX_MENTIONS,
+  squadPost,
   streakMilestonePost,
   type Announcer,
-  type PhaseKind,
+  type SquadEvent,
   type RecapDto,
 } from "@studyroom/core";
 
@@ -64,21 +64,18 @@ export class ChannelAnnouncer implements Announcer {
     await this.channel.postMessage(channelId, dailyRecapPost(safeRecap, names));
   }
 
-  async phaseCallout(
+  async squadMessage(
     channelId: string,
-    kind: PhaseKind,
+    event: SquadEvent,
+    text: string,
     userIds: string[],
-    line: number,
   ): Promise<void> {
     // Only the people the post shows get looked up; the rest are counted.
     const mentions: string[] = [];
-    for (const userId of userIds.slice(0, PHASE_CALLOUT_MAX_MENTIONS)) {
+    for (const userId of userIds.slice(0, SQUAD_MAX_MENTIONS)) {
       mentions.push(await this.mention(userId));
     }
-    await this.channel.postMessage(
-      channelId,
-      phaseCalloutPost(kind, mentions, userIds.length, line),
-    );
+    await this.channel.postMessage(channelId, squadPost(event, text, mentions, userIds.length));
   }
 
   /** Root's mention markup, which pings the member: [@Name](root://user/id). */

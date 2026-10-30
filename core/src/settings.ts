@@ -1,3 +1,4 @@
+import { ALL_PERSONALITIES, type Personality } from "./squad/squadLines";
 import { isValidTimeZone } from "./time/calendar";
 import {
   customPreset,
@@ -27,7 +28,8 @@ export const SETTINGS = {
     goalsPublic: "goalsPublicByDefault",
     busyPosts: "busyPosts",
     busyThreshold: "busyThreshold",
-    phaseCallouts: "phaseCallouts",
+    squadBot: "squadBot",
+    squadPersonalities: "squadPersonalities",
   },
   game: {
     group: "game",
@@ -60,8 +62,11 @@ export interface AppConfig {
   recapLeaderboardEnabled: boolean;
   goalsPublicByDefault: boolean;
   busyPosts: { enabled: boolean; threshold: number };
-  /** Post a joke to the room when its clock switches between study and break. */
-  phaseCalloutsEnabled: boolean;
+  /**
+   * The squad bot: posts in the channel when the room timer starts, switches
+   * and finishes, and when someone joins, in the voices admins picked.
+   */
+  squadBot: { enabled: boolean; personalities: Personality[] };
   xp: { enabled: boolean; dailyCap: number };
   comboEnabled: boolean;
   /**
@@ -86,7 +91,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   recapLeaderboardEnabled: true,
   goalsPublicByDefault: true,
   busyPosts: { enabled: true, threshold: 5 },
-  phaseCalloutsEnabled: true,
+  squadBot: { enabled: true, personalities: [...ALL_PERSONALITIES] },
   xp: { enabled: true, dailyCap: 300 },
   comboEnabled: true,
   boss: { enabled: true, name: "", baseHpXp: 10_000 },
@@ -117,6 +122,13 @@ function int(value: unknown, fallback: number, min: number, max: number): number
 function text(value: unknown, fallback: string, maxLength: number): string {
   const trimmed = typeof value === "string" ? value.trim().slice(0, maxLength) : "";
   return trimmed.length > 0 ? trimmed : fallback;
+}
+
+/** A multi-select of personalities. Unknown keys are dropped; none picked means all. */
+function personalities(value: unknown): Personality[] {
+  const picked = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const known = ALL_PERSONALITIES.filter((p) => picked.includes(p));
+  return known.length > 0 ? known : [...ALL_PERSONALITIES];
 }
 
 function timeOfDay(value: unknown, fallback: { hours: number; minutes: number }) {
@@ -170,7 +182,10 @@ export function parseSettings(raw: RawSettings): AppConfig {
       enabled: bool(room[r.busyPosts], d.busyPosts.enabled),
       threshold: int(room[r.busyThreshold], d.busyPosts.threshold, 2, 100),
     },
-    phaseCalloutsEnabled: bool(room[r.phaseCallouts], d.phaseCalloutsEnabled),
+    squadBot: {
+      enabled: bool(room[r.squadBot], d.squadBot.enabled),
+      personalities: personalities(room[r.squadPersonalities]),
+    },
     xp: {
       enabled: bool(game[g.xpEnabled], d.xp.enabled),
       dailyCap: int(game[g.dailyXpCap], d.xp.dailyCap, 50, 2000),

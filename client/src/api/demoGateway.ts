@@ -7,7 +7,7 @@ import {
   dayKey,
   DEFAULT_CONFIG,
   newBoss,
-  phaseCalloutPost,
+  squadPost,
   weekKey,
   MemoryStore,
   StudyRoomEngine,
@@ -287,19 +287,20 @@ export class DemoGateway implements StudyRoomGateway {
           this.post(`${this.nameOf(userId)} just hit a ${streak} day streak.`),
         bossDefeated: async (_c, name) => this.post(`The room defeated ${name}!`),
         dailyRecap: async (_c, recap: RecapDto) => this.post(`${recap.weekday} recap`),
-        phaseCallout: async (_c, kind, userIds, line) =>
+        squadMessage: async (_c, event, text, userIds) =>
           this.post(
-            phaseCalloutPost(
-              kind,
+            squadPost(
+              event,
+              text,
               userIds.map((id) => this.nameOf(id)),
               userIds.length,
-              line,
             ),
           ),
       },
       logger: console,
       config: this.config,
       newId: () => `demo-${this.nextId++}`,
+      random: Math.random,
     });
   }
 

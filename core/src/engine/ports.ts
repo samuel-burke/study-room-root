@@ -2,7 +2,7 @@ import type { BossState } from "../game/boss";
 import type { StreakState } from "../game/streak";
 import type { DayKey } from "../time/calendar";
 import type { TimerPreset } from "../timer/presets";
-import type { PhaseKind } from "../timer/roomCycle";
+import type { SquadEvent } from "../squad/squadLines";
 import type {
   MyStatusDto,
   PersonalResultDto,
@@ -245,11 +245,13 @@ export interface Announcer {
     lootXp: number,
   ): Promise<void>;
   dailyRecap(channelId: string, recap: RecapDto): Promise<void>;
-  /**
-   * The room clock switched to `kind`. Mentions the members in `userIds`;
-   * `line` picks which joke to tell, so consecutive posts vary.
-   */
-  phaseCallout(channelId: string, kind: PhaseKind, userIds: string[], line: number): Promise<void>;
+  /** A squad bot post: `text` from the line pools, addressed to (mentioning) `userIds`. */
+  squadMessage(
+    channelId: string,
+    event: SquadEvent,
+    text: string,
+    userIds: string[],
+  ): Promise<void>;
 }
 
 export interface Logger {

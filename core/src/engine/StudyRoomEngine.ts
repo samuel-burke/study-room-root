@@ -60,8 +60,9 @@ import {
   overlapMs,
   phaseAt,
   type CyclePhase,
-  type PhaseKind,
 } from "../timer/roomCycle";
+import type { SquadEvent } from "../squad/squadLines";
+import { pickSquadLine, type LastSquadLines } from "../squad/squadVoice";
 import {
   validateGoalText,
   validateId,
@@ -93,6 +94,8 @@ export interface EngineDeps {
   logger: Logger;
   config: AppConfig;
   newId: () => string;
+  /** Returns [0, 1) like Math.random. Picks the squad bot's lines. */
+  random: () => number;
 }
 
 export interface StartOptions {
@@ -107,13 +110,19 @@ interface BusyPostState {
 
 const BUSY_KEY = "busyPost";
 const LAST_RECAP_KEY = "lastRecapDay";
-/** How many callouts of each kind have been posted, so the jokes rotate. */
-const CALLOUT_LINES_KEY = "phaseCalloutLines";
+/** The squad bot's last line per event, so it never says the same thing twice in a row. */
+const SQUAD_LAST_KEY = "squadLastLines";
+/** When the room last started from empty, for "studying together for 2 hours". */
+const SQUAD_SESSION_KEY = "squadSessionStartedAt";
+/** When each member's join was last announced. */
+const SQUAD_JOINS_KEY = "squadJoinPosts";
+/** A member's join is announced at most once in this long, so popping in and out stays quiet. */
+const SQUAD_JOIN_COOLDOWN_MS = 2 * 60 * MINUTE_MS;
 /**
- * A switch older than this is old news, say after the server was down, so
- * nobody gets pinged for a break that is nearly over.
+ * A timer switch older than this is old news, say after the server was down,
+ * so nobody gets pinged for a break that is nearly over.
  */
-const CALLOUT_STALE_MS = 2 * MINUTE_MS;
+const SQUAD_STALE_MS = 2 * MINUTE_MS;
 /** How long to wait before retrying a wake-up whose tick failed. */
 const TICK_RETRY_MS = 30_000;
 
@@ -373,7 +382,8 @@ export class StudyRoomEngine {
       await this.applyStartOptions(tx, userId, goals, options.goalsPrivate, now);
       const participants = await tx.room.listParticipants();
       if (!participants.some((p) => p.userId === userId)) {
-        if (!(await tx.room.getCycle())) {
+        const cycle = await tx.room.getCycle();
+        if (!cycle) {
           await tx.room.saveCycle({
             cycleStartedAt: now,
             preset: this.config.preset,
@@ -381,6 +391,7 @@ export class StudyRoomEngine {
           });
         }
         await tx.room.addParticipant({ userId, joinedAt: now, keepGoing: false });
+        await this.announceJoin(tx, effects, userId, !cycle, now);
       }
       this.touch(effects, userId);
       await this.checkBusyRoom(tx, now, effects);
@@ -712,34 +723,91 @@ export class StudyRoomEngine {
     if (settled < phases.length) {
       if (settled !== cycle.settledCount) {
         await tx.room.saveCycle({ ...cycle, settledCount: settled });
-        await this.phaseCallout(tx, phases[settled]!, now, effects);
+        await this.announcePhase(tx, phases[settled]!, now, effects);
       }
       return;
     }
     if (await this.finishCycle(tx, phases, effects)) {
       const next = await tx.room.getCycle();
-      if (next)
-        await this.phaseCallout(tx, buildCycle(next.cycleStartedAt, next.preset)[0]!, now, effects);
+      if (next) {
+        await this.announcePhase(
+          tx,
+          buildCycle(next.cycleStartedAt, next.preset)[0]!,
+          now,
+          effects,
+        );
+      }
       await this.settleRoomCycle(tx, now, effects);
     }
   }
 
-  /** Tells the room's channel the clock just switched, mentioning everyone in the room. */
-  private async phaseCallout(
+  /** The squad bot tells everyone in the room that the clock just switched to `phase`. */
+  private async announcePhase(
     tx: Store,
     phase: CyclePhase,
     now: number,
     effects: Effects,
   ): Promise<void> {
-    const channelId = this.config.postChannelId;
-    if (!this.config.phaseCalloutsEnabled || !channelId) return;
-    if (now - phase.startsAt >= CALLOUT_STALE_MS || now >= phase.endsAt) return;
+    if (now - phase.startsAt >= SQUAD_STALE_MS || now >= phase.endsAt) return;
+    const event: SquadEvent =
+      phase.kind === "break"
+        ? "breakStarted"
+        : phase.kind === "longBreak"
+          ? "sessionCompleted"
+          : "studyResumed";
     const userIds = (await tx.room.listParticipants()).map((p) => p.userId);
-    if (userIds.length === 0) return;
-    const counts = (await tx.kv.get<Partial<Record<PhaseKind, number>>>(CALLOUT_LINES_KEY)) ?? {};
-    const line = counts[phase.kind] ?? 0;
-    await tx.kv.set(CALLOUT_LINES_KEY, { ...counts, [phase.kind]: line + 1 });
-    effects.posts.push((a) => a.phaseCallout(channelId, phase.kind, userIds, line));
+    await this.squadMessage(tx, effects, event, userIds, phase.round, now);
+  }
+
+  /**
+   * Picks and queues a squad bot post. It goes out once from here, after the
+   * transaction commits, however many devices the members have connected.
+   */
+  private async squadMessage(
+    tx: Store,
+    effects: Effects,
+    event: SquadEvent,
+    userIds: string[],
+    round: number,
+    now: number,
+  ): Promise<void> {
+    const channelId = this.config.postChannelId;
+    if (!this.config.squadBot.enabled || !channelId || userIds.length === 0) return;
+    const last = (await tx.kv.get<LastSquadLines>(SQUAD_LAST_KEY)) ?? {};
+    const startedAt = (await tx.kv.get<number>(SQUAD_SESSION_KEY)) ?? now;
+    const line = pickSquadLine(event, this.config.squadBot.personalities, last, this.deps.random, {
+      round,
+      togetherMinutes: Math.max(0, now - startedAt) / MINUTE_MS,
+    });
+    await tx.kv.set(SQUAD_LAST_KEY, {
+      ...last,
+      ...(line.rare ? { rare: line.id } : { [event]: line.id }),
+    });
+    effects.posts.push((a) => a.squadMessage(channelId, event, line.text, userIds));
+  }
+
+  /**
+   * Announces a member joining the room. Starting an empty room is always
+   * announced; joining a running one at most once per cool-down per member.
+   */
+  private async announceJoin(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    startedRoom: boolean,
+    now: number,
+  ): Promise<void> {
+    const joins = (await tx.kv.get<Record<string, number>>(SQUAD_JOINS_KEY)) ?? {};
+    const recentlyAnnounced = now - (joins[userId] ?? -Infinity) < SQUAD_JOIN_COOLDOWN_MS;
+    if (recentlyAnnounced && !startedRoom) return;
+    // Forget old entries so the record stays small.
+    const recent = Object.fromEntries(
+      Object.entries(joins).filter(([, at]) => now - at < SQUAD_JOIN_COOLDOWN_MS),
+    );
+    await tx.kv.set(SQUAD_JOINS_KEY, { ...recent, [userId]: now });
+    if (startedRoom) await tx.kv.set(SQUAD_SESSION_KEY, now);
+    const event = startedRoom ? "sessionStarted" : "memberJoined";
+    await this.squadMessage(tx, effects, event, [userId], 1, now);
   }
 
   /**

@@ -82,22 +82,24 @@ describe("ChannelAnnouncer", () => {
     expect(posts.at(-1)?.content).toContain("Someone just hit a 50 day streak");
   });
 
-  it("mentions the room with Root's markup when the clock switches", async () => {
+  it("mentions the room with Root's markup in squad bot posts", async () => {
     const { posts, channel } = port();
-    await new ChannelAnnouncer(channel).phaseCallout("c1", "break", ["ana", "kai", "bad id]"], 0);
-    const content = posts[0]!.content;
-    expect(content).toMatch(/^☕ /);
-    expect(content).toContain("[@everyone Ana R.](root://user/ana) [@Someone](root://user/kai)");
-    // An id that isn't a plain GUID is never turned into a link.
-    expect(content).toContain(") Someone Break time!");
+    await new ChannelAnnouncer(channel).squadMessage("c1", "breakStarted", "Take five. 🧠", [
+      "ana",
+      "kai",
+      "bad id]",
+    ]);
+    expect(posts[0]!.content).toBe(
+      "[@everyone Ana R.](root://user/ana) [@Someone](root://user/kai) Someone Take five. 🧠",
+    );
   });
 
-  it("looks up only the members a callout shows", async () => {
+  it("looks up only the members a squad post shows", async () => {
     const { posts, channel } = port();
     const ids = Array.from({ length: 13 }, (_, i) => `m${i}`);
-    await new ChannelAnnouncer(channel).phaseCallout("c1", "focus", ids, 0);
+    await new ChannelAnnouncer(channel).squadMessage("c1", "studyResumed", "Back to it.", ids);
     expect(channel.nickname).toHaveBeenCalledTimes(10);
-    expect(posts[0]!.content).toContain("and 3 others");
+    expect(posts[0]!.content).toContain("and 3 others Back to it.");
   });
 
   it("posts recaps, busy rooms and boss defeats", async () => {
