@@ -345,7 +345,7 @@
           {
             "key": "squadBot",
             "title": "Squad bot",
-            "description": "Post a fun message in the updates channel when the room timer starts, switches between study and break, or finishes, and when someone joins. Mentions the people in the room.",
+            "description": "Post a fun message in the updates channel when the room timer starts, switches between study and break, or finishes, when someone joins, and when someone unlocks a badge. Mentions the people in the room.",
             "checkbox": {
               "defaultValue": true
             }

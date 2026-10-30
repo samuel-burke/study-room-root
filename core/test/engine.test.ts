@@ -462,8 +462,12 @@ describe("channel posts", () => {
       text: string;
       userIds: string[];
     }
+    // Timer and join posts; badge posts are covered in badgesEngine.test.ts.
     const squad = (posts: { kind: string; detail: unknown }[]) =>
-      posts.filter((p) => p.kind === "squad").map((p) => p.detail as SquadPost);
+      posts
+        .filter((p) => p.kind === "squad")
+        .map((p) => p.detail as SquadPost)
+        .filter((p) => p.event !== "badgeUnlocked");
     const events = (posts: { kind: string; detail: unknown }[]) =>
       squad(posts).map((p) => `${p.event} ${p.userIds.join(",")}`);
 
@@ -589,7 +593,7 @@ describe("channel posts", () => {
       }
     });
 
-    it("never posts for solo timers", async () => {
+    it("never posts timer events for solo timers", async () => {
       const { engine, announcer, advance } = createHarness();
       await engine.startSolo("ana", 25);
       await advance(30 * MINUTE);

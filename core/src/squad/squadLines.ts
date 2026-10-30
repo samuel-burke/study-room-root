@@ -1,12 +1,17 @@
 /**
  * Everything the squad bot says, kept apart from the logic that picks it.
  * To add a personality, add it to PERSONALITIES and give it lines for every
- * event; a test checks none are missing. `{round}` and `{hours}` are filled in
+ * event; a test checks none are missing. `{round}`, `{hours}` and `{badge}` are filled in
  * when the line is posted.
  */
 
 export type SquadEvent =
-  "sessionStarted" | "breakStarted" | "studyResumed" | "sessionCompleted" | "memberJoined";
+  | "sessionStarted"
+  | "breakStarted"
+  | "studyResumed"
+  | "sessionCompleted"
+  | "memberJoined"
+  | "badgeUnlocked";
 
 export const PERSONALITIES = [
   { id: "hype", name: "Hype Squad" },
@@ -169,7 +174,38 @@ export const SQUAD_LINES: Readonly<
       "Look who wandered in. Act natural. 🦆",
     ],
   },
+  badgeUnlocked: {
+    hype: [
+      "just unlocked {badge}! Absolute legend. 🏅",
+      "earned {badge}. The squad is SO back. 🙌",
+      "got {badge}. Somebody get this person a trophy case. 🏆",
+    ],
+    drill: [
+      "has been awarded {badge}. Outstanding work. Now back to it. 🫡",
+      "earned {badge}. Decorated in the field. 🎖️",
+    ],
+    chill: [
+      "unlocked {badge}. Nicely done, take a moment to enjoy that. 🌟",
+      "picked up {badge}. Quietly crushing it. 🌱",
+    ],
+    meme: [
+      "unlocked {badge}. Put it on the résumé. 📄",
+      "just got {badge} and will not stop talking about it. 🗣️",
+    ],
+    gamer: [
+      "Achievement unlocked: {badge}. 🏅",
+      "got a rare drop: {badge}. ✨",
+      "leveled up their collection with {badge}. 🎮",
+    ],
+    chaos: [
+      "unlocked {badge}. The prophecy is being fulfilled. 🔮",
+      "now owns {badge}. Nobody knows how. Nobody asks. 🦆",
+    ],
+  },
 };
+
+/** How a secret badge is named in the channel, so the surprise isn't spoiled for everyone else. */
+export const SECRET_BADGE_NAME = "a secret badge";
 
 export interface RareLine {
   text: string;

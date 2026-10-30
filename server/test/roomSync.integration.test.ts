@@ -217,8 +217,18 @@ describe("room timer sync across clients (engine + SQLite + push adapter)", () =
     await restarted.idle();
     restarted.stop();
     expect(
-      announcer.posts.map((p) => (p.detail as { event: string; userIds: string[] }).event),
-    ).toEqual(["sessionStarted", "memberJoined", "breakStarted", "studyResumed"]);
+      announcer.posts.map((p) => {
+        const { event, userIds } = p.detail as { event: string; userIds: string[] };
+        return `${event} ${userIds.join(",")}`;
+      }),
+    ).toEqual([
+      "sessionStarted ana",
+      "memberJoined marcus",
+      "breakStarted ana,marcus",
+      "badgeUnlocked ana",
+      "badgeUnlocked marcus",
+      "studyResumed ana,marcus",
+    ]);
   });
 
   it("survives a server restart mid-round: state comes back from SQLite", async () => {

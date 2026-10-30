@@ -66,6 +66,14 @@ describe("pickSquadLine", () => {
     expect([...seen].sort()).toEqual([...ALL_PERSONALITIES].sort());
   });
 
+  it("fills in the badge", () => {
+    const line = pickSquadLine("badgeUnlocked", ["gamer"], {}, () => 0, {
+      ...context,
+      badge: "Night Owl",
+    });
+    expect(line.text).toBe("Achievement unlocked: Night Owl. 🏅");
+  });
+
   it("fills in the round", () => {
     const line = pickSquadLine("studyResumed", ["hype"], {}, notRare(0), context);
     expect(line.text).toBe("Round 2. Let's get it. 🔥");

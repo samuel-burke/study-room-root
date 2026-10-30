@@ -27,6 +27,7 @@ import {
   type BossState,
 } from "../game/boss";
 import {
+  badgeById,
   newlyEarnedBadges,
   type BadgeFacts,
   type QuestFacts,
@@ -61,7 +62,7 @@ import {
   phaseAt,
   type CyclePhase,
 } from "../timer/roomCycle";
-import type { SquadEvent } from "../squad/squadLines";
+import { SECRET_BADGE_NAME, type SquadEvent } from "../squad/squadLines";
 import { pickSquadLine, type LastSquadLines } from "../squad/squadVoice";
 import {
   validateGoalText,
@@ -636,6 +637,7 @@ export class StudyRoomEngine {
         }
         for (const [userId, badgeIds] of effects.badges) {
           effects.notifications.push((n) => n.badgesEarned(userId, badgeIds));
+          await this.announceBadges(tx, effects, userId, badgeIds, now);
         }
         attachNewBadges(result, effects);
         return { result, nextWake: await this.nextWakeAt(tx, now) };
@@ -770,6 +772,7 @@ export class StudyRoomEngine {
     userIds: string[],
     round: number,
     now: number,
+    badge?: string,
   ): Promise<void> {
     const channelId = this.config.postChannelId;
     if (!this.config.squadBot.enabled || !channelId || userIds.length === 0) return;
@@ -778,12 +781,34 @@ export class StudyRoomEngine {
     const line = pickSquadLine(event, this.config.squadBot.personalities, last, this.deps.random, {
       round,
       togetherMinutes: Math.max(0, now - startedAt) / MINUTE_MS,
+      badge,
     });
     await tx.kv.set(SQUAD_LAST_KEY, {
       ...last,
       ...(line.rare ? { rare: line.id } : { [event]: line.id }),
     });
     effects.posts.push((a) => a.squadMessage(channelId, event, line.text, userIds));
+  }
+
+  /** The squad bot congratulates a member on badges they just earned, in one post. */
+  private async announceBadges(
+    tx: Store,
+    effects: Effects,
+    userId: string,
+    badgeIds: readonly string[],
+    now: number,
+  ): Promise<void> {
+    const names = [
+      ...new Set(
+        badgeIds.map((id) => {
+          const badge = badgeById(id);
+          return !badge || badge.secret ? SECRET_BADGE_NAME : badge.name;
+        }),
+      ),
+    ];
+    const badge =
+      names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+    await this.squadMessage(tx, effects, "badgeUnlocked", [userId], 0, now, badge);
   }
 
   /**

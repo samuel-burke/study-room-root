@@ -6,7 +6,7 @@ import {
   type SquadEvent,
 } from "./squadLines";
 
-/** About one timer post in 25 is a rare line instead. Joins never are. */
+/** About one timer post in 25 is a rare line instead. Joins and badges never are. */
 export const RARE_CHANCE = 1 / 25;
 
 export interface SquadLineContext {
@@ -14,6 +14,8 @@ export interface SquadLineContext {
   round: number;
   /** How long the room has been running without emptying, for rare lines. */
   togetherMinutes: number;
+  /** The badge names for `{badge}`, already joined ("Night Owl and Week Warrior"). */
+  badge?: string;
 }
 
 /** The last line posted for each event, and the last rare line, so nothing repeats back to back. */
@@ -28,7 +30,8 @@ export interface PickedLine {
 function fill(text: string, context: SquadLineContext): string {
   return text
     .replace("{round}", String(context.round))
-    .replace("{hours}", String(Math.floor(context.togetherMinutes / 60)));
+    .replace("{hours}", String(Math.floor(context.togetherMinutes / 60)))
+    .replace("{badge}", context.badge ?? "a badge");
 }
 
 function pickFrom<T extends { id: string }>(
@@ -52,7 +55,7 @@ export function pickSquadLine(
   random: () => number,
   context: SquadLineContext,
 ): PickedLine & { rare: boolean } {
-  if (event !== "memberJoined" && random() < RARE_CHANCE) {
+  if (event !== "memberJoined" && event !== "badgeUnlocked" && random() < RARE_CHANCE) {
     const rare = pickFrom(
       RARE_LINES.map((line, i) => ({ ...line, id: `rare.${i}` })).filter(
         (line) => context.togetherMinutes >= (line.minTogetherMinutes ?? 0),
