@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
-- Finished goals now stay on your list until 4am in the community's time zone instead of midnight, so a late-night session doesn't lose its checked-off goals partway through.
+- A new day now starts at 4am in the community's time zone instead of midnight, so a late-night session counts toward the day it began. This moves streaks, the daily XP cap, daily stats and when finished goals leave your list. Weeks start at 4am on Monday, so weekly quests, the weekly boss and the leaderboard reset then too. The daily recap still posts at its set clock time.
 
 ## [0.2.1] - 2026-10-29
 

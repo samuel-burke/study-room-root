@@ -356,6 +356,21 @@ describe("XP rules", () => {
     expect(me.xpTotal).toBe(0);
     expect(me.streak).toBe(1);
   });
+
+  it("counts a session after midnight toward the day before, until 4am", async () => {
+    const { engine, advance } = createHarness();
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE); // Wednesday 10:25am
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(1);
+    await advance(15 * 60 * MINUTE + 10 * MINUTE); // 1:35am Thursday
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE); // 2am, still Wednesday's day
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(1);
+    await advance(2 * 60 * MINUTE); // 4am Thursday
+    await engine.startSolo("ana", 25);
+    await advance(25 * MINUTE);
+    expect((await engine.getSnapshot("ana")).me.streak).toBe(2);
+  });
 });
 
 describe("weekly boss", () => {
@@ -751,8 +766,8 @@ describe("weekly leaderboard", () => {
 
     const board = await engine.getLeaderboard("ana");
     expect(board.weekStart).toBe("2026-10-26");
-    // Monday 2026-11-02 00:00 in New York (UTC-5 after DST ends).
-    expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 5, 0, 0));
+    // Monday 2026-11-02 04:00 in New York (UTC-5 after DST ends).
+    expect(board.endsAt).toBe(Date.UTC(2026, 10, 2, 9, 0, 0));
     expect(board.entries).toEqual([
       { userId: "ana", focusMinutes: 70, rank: 1 },
       { userId: "kai", focusMinutes: 70, rank: 1 },
@@ -800,9 +815,9 @@ describe("weekly leaderboard", () => {
     await expectError(engine.setLeaderboardHidden("ana", "yes"), ErrorCode.Validation);
   });
 
-  it("starts over on Monday in the community time zone", async () => {
-    // Sunday 2026-11-01 23:30 in New York.
-    const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 4, 30));
+  it("starts over at 4am Monday in the community time zone", async () => {
+    // Monday 2026-11-02 03:30 in New York still belongs to the old week.
+    const { engine, store, clock } = createHarness(configWith(), Date.UTC(2026, 10, 2, 8, 30));
     await store.stats.add("ana", "2026-11-01", { focusMinutes: 60 });
     expect((await engine.getLeaderboard("ana")).entries).toHaveLength(1);
     clock.advance(31 * MINUTE);

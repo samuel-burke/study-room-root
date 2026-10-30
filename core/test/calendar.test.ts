@@ -4,9 +4,9 @@ import {
   dayKey,
   daysBetween,
   isValidTimeZone,
-  lastOccurrence,
   nextOccurrence,
   nextWeekStart,
+  startOfDay,
   weekdayIndex,
   weekdayName,
   weekKey,
@@ -17,10 +17,24 @@ const NY = "America/New_York";
 
 describe("dayKey", () => {
   it("uses the community's local date, not UTC", () => {
-    // 2026-10-29 02:00 UTC is still the 28th in New York.
+    // 2026-10-29 10:00 UTC is 6 AM on the 29th in New York and 7 PM in Tokyo.
+    expect(dayKey(Date.UTC(2026, 9, 29, 10), NY)).toBe("2026-10-29");
+    expect(dayKey(Date.UTC(2026, 9, 29, 10), "UTC")).toBe("2026-10-29");
+    // 2026-10-29 02:00 UTC is still the evening of the 28th in New York.
     expect(dayKey(Date.UTC(2026, 9, 29, 2), NY)).toBe("2026-10-28");
-    expect(dayKey(Date.UTC(2026, 9, 29, 2), "UTC")).toBe("2026-10-29");
     expect(dayKey(Date.UTC(2026, 9, 29, 2), "Asia/Tokyo")).toBe("2026-10-29");
+  });
+
+  it("starts the day at 4 AM, so after midnight still counts as the night before", () => {
+    // 3:59 AM and 4:00 AM EDT on the 29th.
+    expect(dayKey(Date.UTC(2026, 9, 29, 7, 59), NY)).toBe("2026-10-28");
+    expect(dayKey(Date.UTC(2026, 9, 29, 8, 0), NY)).toBe("2026-10-29");
+    // Same on the night the clocks spring forward: 3:30 AM EDT on 2026-03-08.
+    expect(dayKey(Date.UTC(2026, 2, 8, 7, 30), NY)).toBe("2026-03-07");
+  });
+
+  it("starts each day at 4 AM local time", () => {
+    expect(startOfDay("2026-10-29", NY)).toBe(Date.UTC(2026, 9, 29, 8));
   });
 });
 
@@ -64,26 +78,23 @@ describe("nextOccurrence", () => {
     const ninePm = Date.UTC(2026, 9, 29, 1);
     expect(nextOccurrence(ninePm, 21, 0, NY)).toBe(Date.UTC(2026, 9, 30, 1));
   });
-});
 
-describe("lastOccurrence", () => {
-  it("returns earlier today when the time has passed or is exactly now", () => {
-    const tenAm = Date.UTC(2026, 9, 28, 14);
-    expect(lastOccurrence(tenAm, 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
-    expect(lastOccurrence(Date.UTC(2026, 9, 28, 8), 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
-  });
-
-  it("rolls back to yesterday when the time hasn't come yet", () => {
+  it("goes by the wall clock, not the 4 AM day", () => {
     const oneAm = Date.UTC(2026, 9, 29, 5);
-    expect(lastOccurrence(oneAm, 4, 0, NY)).toBe(Date.UTC(2026, 9, 28, 8));
+    expect(nextOccurrence(oneAm, 3, 0, NY)).toBe(Date.UTC(2026, 9, 29, 7));
   });
 });
 
 describe("nextWeekStart", () => {
-  it("is next Monday at local midnight", () => {
+  it("is next Monday at 4 AM local time", () => {
     const wednesday = Date.UTC(2026, 9, 28, 14);
-    // Monday 2026-11-02 00:00 EST = 05:00 UTC (DST ended on the 1st).
-    expect(nextWeekStart(wednesday, NY)).toBe(Date.UTC(2026, 10, 2, 5));
+    // Monday 2026-11-02 04:00 EST = 09:00 UTC (DST ended on the 1st).
+    expect(nextWeekStart(wednesday, NY)).toBe(Date.UTC(2026, 10, 2, 9));
+  });
+
+  it("keeps late Sunday night in the old week", () => {
+    const mondayOneAm = Date.UTC(2026, 10, 2, 6); // 1 AM EST
+    expect(nextWeekStart(mondayOneAm, NY)).toBe(Date.UTC(2026, 10, 2, 9));
   });
 });
 

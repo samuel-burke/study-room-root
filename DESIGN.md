@@ -50,6 +50,10 @@ The room timer never interrupts a focus round and never takes back anything earn
 - people who joined during the final long break haven't focused yet, so they roll into a fresh cycle instead of being dropped;
 - the daily XP cap bounds what any idle timer can earn.
 
+## Days start at 4am
+
+A new day starts at 4am in the community's time zone, not midnight (`DAY_START_HOUR` in `core/src/time/calendar.ts`). A session at 1am still counts toward the day before, so late-night studiers keep their streak day, daily XP cap, finished goals and stats together. Weeks start at 4am on Monday, which also moves weekly quests, the weekly boss and the leaderboard. Clock-time features keep the real clock: the daily recap's post time, and badges such as Burning the Midnight Oil.
+
 ## Streaks without guilt
 
 - A day counts after one finished session (a finished room round or a completed solo timer), in the community's time zone.
