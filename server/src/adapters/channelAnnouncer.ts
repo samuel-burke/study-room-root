@@ -2,9 +2,12 @@ import {
   bossDefeatedPost,
   busyRoomPost,
   dailyRecapPost,
+  PHASE_CALLOUT_MAX_MENTIONS,
+  phaseCalloutPost,
   safeDisplayName,
   streakMilestonePost,
   type Announcer,
+  type PhaseKind,
   type RecapDto,
 } from "@studyroom/core";
 
@@ -15,6 +18,8 @@ export interface ChannelPort {
 }
 
 const NAME_TTL_MS = 10 * 60 * 1000;
+/** Root user ids are GUIDs. Anything else is written as a plain name, never a link. */
+const MENTIONABLE_ID = /^[A-Za-z0-9-]{1,64}$/;
 
 /** Formats and posts channel messages. Display names are sanitised before use. */
 export class ChannelAnnouncer implements Announcer {
@@ -57,6 +62,29 @@ export class ChannelAnnouncer implements Announcer {
       ? { ...recap, boss: { ...recap.boss, name: safeDisplayName(recap.boss.name) } }
       : recap;
     await this.channel.postMessage(channelId, dailyRecapPost(safeRecap, names));
+  }
+
+  async phaseCallout(
+    channelId: string,
+    kind: PhaseKind,
+    userIds: string[],
+    line: number,
+  ): Promise<void> {
+    // Only the people the post shows get looked up; the rest are counted.
+    const mentions: string[] = [];
+    for (const userId of userIds.slice(0, PHASE_CALLOUT_MAX_MENTIONS)) {
+      mentions.push(await this.mention(userId));
+    }
+    await this.channel.postMessage(
+      channelId,
+      phaseCalloutPost(kind, mentions, userIds.length, line),
+    );
+  }
+
+  /** Root's mention markup, which pings the member: [@Name](root://user/id). */
+  private async mention(userId: string): Promise<string> {
+    const name = await this.displayName(userId);
+    return MENTIONABLE_ID.test(userId) ? `[@${name}](root://user/${userId})` : name;
   }
 
   private async displayName(userId: string): Promise<string> {

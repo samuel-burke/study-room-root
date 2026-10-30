@@ -114,8 +114,9 @@ Earning a badge opens a full-screen moment (`BadgeUnlocked.tsx`) that grows with
 - **Busy room**: once when the number of people focusing reaches the threshold, then not again until it drops below and three hours have passed.
 - **Daily recap**: at the admin's time, as a one-time Root job rescheduled after each run so it stays correct across daylight saving changes. Quiet days are skipped so the channel never reads "0 hours". A missed job is still posted if it's under two hours late.
 - **Milestones and boss defeats**: as they happen.
+- **Study and break callouts**: each time the room timer switches (break, back to study, the long break, and a new cycle for whoever kept going), a joke mentioning everyone on the room timer, using Root's `[@Name](root://user/id)` markup. Lines rotate per kind so the room doesn't hear the same joke twice in a row. Only the first ten people are mentioned and the rest are counted, so a big room doesn't flood the channel. A switch more than two minutes old (say, after the server was down) is skipped rather than pinging people about a break that's nearly over. Solo timers never post: they're private. Admins turn it off with **Study and break callouts**.
 
-Display names come from Root nicknames and are stripped of markup and mention characters before they're posted.
+Display names come from Root nicknames and are stripped of markup and mention characters before they're posted. The only mentions Study Squad writes are the callouts' own, built from Root user ids.
 
 ## Voice uses Root's voice channels
 

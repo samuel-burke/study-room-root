@@ -60,6 +60,7 @@ import {
   overlapMs,
   phaseAt,
   type CyclePhase,
+  type PhaseKind,
 } from "../timer/roomCycle";
 import {
   validateGoalText,
@@ -106,6 +107,13 @@ interface BusyPostState {
 
 const BUSY_KEY = "busyPost";
 const LAST_RECAP_KEY = "lastRecapDay";
+/** How many callouts of each kind have been posted, so the jokes rotate. */
+const CALLOUT_LINES_KEY = "phaseCalloutLines";
+/**
+ * A switch older than this is old news, say after the server was down, so
+ * nobody gets pinged for a break that is nearly over.
+ */
+const CALLOUT_STALE_MS = 2 * MINUTE_MS;
 /** How long to wait before retrying a wake-up whose tick failed. */
 const TICK_RETRY_MS = 30_000;
 
@@ -702,11 +710,36 @@ export class StudyRoomEngine {
       effects.roomChanged = true;
     }
     if (settled < phases.length) {
-      if (settled !== cycle.settledCount)
+      if (settled !== cycle.settledCount) {
         await tx.room.saveCycle({ ...cycle, settledCount: settled });
+        await this.phaseCallout(tx, phases[settled]!, now, effects);
+      }
       return;
     }
-    if (await this.finishCycle(tx, phases, effects)) await this.settleRoomCycle(tx, now, effects);
+    if (await this.finishCycle(tx, phases, effects)) {
+      const next = await tx.room.getCycle();
+      if (next)
+        await this.phaseCallout(tx, buildCycle(next.cycleStartedAt, next.preset)[0]!, now, effects);
+      await this.settleRoomCycle(tx, now, effects);
+    }
+  }
+
+  /** Tells the room's channel the clock just switched, mentioning everyone in the room. */
+  private async phaseCallout(
+    tx: Store,
+    phase: CyclePhase,
+    now: number,
+    effects: Effects,
+  ): Promise<void> {
+    const channelId = this.config.postChannelId;
+    if (!this.config.phaseCalloutsEnabled || !channelId) return;
+    if (now - phase.startsAt >= CALLOUT_STALE_MS || now >= phase.endsAt) return;
+    const userIds = (await tx.room.listParticipants()).map((p) => p.userId);
+    if (userIds.length === 0) return;
+    const counts = (await tx.kv.get<Partial<Record<PhaseKind, number>>>(CALLOUT_LINES_KEY)) ?? {};
+    const line = counts[phase.kind] ?? 0;
+    await tx.kv.set(CALLOUT_LINES_KEY, { ...counts, [phase.kind]: line + 1 });
+    effects.posts.push((a) => a.phaseCallout(channelId, phase.kind, userIds, line));
   }
 
   /**

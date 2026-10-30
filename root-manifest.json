@@ -21,7 +21,8 @@
   "permissions": {
     "channel": {
       "channelView": true,
-      "channelCreateMessage": true
+      "channelCreateMessage": true,
+      "channelCreateMessageMention": true
     }
   },
   "settings": {
@@ -146,7 +147,7 @@
           {
             "key": "postChannel",
             "title": "Post updates in",
-            "description": "Daily recaps, busy-room and milestone posts go here. Leave empty to turn posts off.",
+            "description": "Daily recaps, busy-room, milestone and study/break posts go here. Leave empty to turn posts off.",
             "channel": {
               "multiSelect": false
             }
@@ -339,6 +340,14 @@
                   "value": "20 people"
                 }
               ]
+            }
+          },
+          {
+            "key": "phaseCallouts",
+            "title": "Study and break callouts",
+            "description": "When the room timer switches between study and break, post a joke to the updates channel that mentions everyone in the room.",
+            "checkbox": {
+              "defaultValue": true
             }
           }
         ]

@@ -2,6 +2,7 @@ import type { BossState } from "../game/boss";
 import type { StreakState } from "../game/streak";
 import type { DayKey } from "../time/calendar";
 import type { TimerPreset } from "../timer/presets";
+import type { PhaseKind } from "../timer/roomCycle";
 import type {
   MyStatusDto,
   PersonalResultDto,
@@ -244,6 +245,11 @@ export interface Announcer {
     lootXp: number,
   ): Promise<void>;
   dailyRecap(channelId: string, recap: RecapDto): Promise<void>;
+  /**
+   * The room clock switched to `kind`. Mentions the members in `userIds`;
+   * `line` picks which joke to tell, so consecutive posts vary.
+   */
+  phaseCallout(channelId: string, kind: PhaseKind, userIds: string[], line: number): Promise<void>;
 }
 
 export interface Logger {

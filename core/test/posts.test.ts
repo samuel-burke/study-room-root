@@ -1,7 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { bossDefeatedPost, busyRoomPost, dailyRecapPost, streakMilestonePost } from "../src";
+import {
+  bossDefeatedPost,
+  busyRoomPost,
+  dailyRecapPost,
+  PHASE_CALLOUT_LINES,
+  phaseCalloutPost,
+  streakMilestonePost,
+} from "../src";
 
 describe("channel posts", () => {
+  it("calls study and break time with the room's mentions", () => {
+    expect(phaseCalloutPost("break", ["@Ana", "@Kai"], 2, 0)).toBe(
+      `☕ @Ana @Kai ${PHASE_CALLOUT_LINES.break[0]}`,
+    );
+    expect(phaseCalloutPost("focus", ["@Ana"], 1, 1)).toBe(
+      `📚 @Ana ${PHASE_CALLOUT_LINES.focus[1]}`,
+    );
+  });
+
+  it("rotates through every line and wraps around", () => {
+    const lines = PHASE_CALLOUT_LINES.focus;
+    const seen = new Set(lines.map((_, i) => phaseCalloutPost("focus", ["@Ana"], 1, i)));
+    expect(seen.size).toBe(lines.length);
+    expect(phaseCalloutPost("focus", ["@Ana"], 1, lines.length)).toBe(
+      phaseCalloutPost("focus", ["@Ana"], 1, 0),
+    );
+  });
+
+  it("reminds the room to keep going at the long break", () => {
+    expect(phaseCalloutPost("longBreak", ["@Ana"], 1, 0)).toContain(
+      "Tap Keep going in Study Squad",
+    );
+  });
+
+  it("sums up a big room instead of mentioning everyone", () => {
+    const mentions = Array.from({ length: 12 }, (_, i) => `@m${i}`);
+    const post = phaseCalloutPost("break", mentions, 12, 0);
+    expect(post).toContain("@m9 and 2 others");
+    expect(post).not.toContain("@m10");
+  });
+
   it("announces a busy room", () => {
     expect(busyRoomPost(6, 1.5)).toContain("6 people are focusing right now. Combo is at 1.5x.");
   });

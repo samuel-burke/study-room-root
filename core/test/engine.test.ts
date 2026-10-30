@@ -448,6 +448,86 @@ describe("channel posts", () => {
     expect(announcer.posts).toEqual([]);
   });
 
+  describe("study and break callouts", () => {
+    const callouts = (posts: { kind: string; detail: unknown }[]) =>
+      posts.filter((p) => p.kind === "callout").map((p) => p.detail);
+
+    it("mentions everyone in the room each time the clock switches, rotating the lines", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await engine.joinRoomTimer("kai");
+      expect(callouts(announcer.posts)).toEqual([]);
+      await advance(FOCUS);
+      await advance(BREAK);
+      await advance(FOCUS);
+      expect(announcer.posts.filter((p) => p.kind === "callout")[0]?.channelId).toBe("channel-1");
+      expect(callouts(announcer.posts)).toEqual([
+        { kind: "break", userIds: ["ana", "kai"], line: 0 },
+        { kind: "focus", userIds: ["ana", "kai"], line: 0 },
+        { kind: "break", userIds: ["ana", "kai"], line: 1 },
+      ]);
+    });
+
+    it("calls the long break, then only those who kept going into the next cycle", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await engine.joinRoomTimer("kai");
+      await advance(115 * MINUTE);
+      expect(callouts(announcer.posts).at(-1)).toEqual({
+        kind: "longBreak",
+        userIds: ["ana", "kai"],
+        line: 0,
+      });
+      await engine.keepGoing("ana");
+      await advance(15 * MINUTE);
+      expect(callouts(announcer.posts).at(-1)).toEqual({
+        kind: "focus",
+        userIds: ["ana"],
+        line: 3,
+      });
+    });
+
+    it("says nothing when the cycle ends with nobody carrying on", async () => {
+      const { engine, announcer, advance } = createHarness();
+      await engine.joinRoomTimer("ana");
+      await advance(130 * MINUTE);
+      expect(callouts(announcer.posts).map((c) => (c as { kind: string }).kind)).toEqual([
+        "break",
+        "focus",
+        "break",
+        "focus",
+        "break",
+        "focus",
+        "longBreak",
+      ]);
+    });
+
+    it("skips a switch that is old news after downtime", async () => {
+      const { engine, announcer, clock } = createHarness();
+      await engine.joinRoomTimer("ana");
+      clock.current = T0 + FOCUS + 3 * MINUTE;
+      await engine.tick();
+      await engine.idle();
+      expect(callouts(announcer.posts)).toEqual([]);
+      clock.current = T0 + FOCUS + BREAK + MINUTE;
+      await engine.tick();
+      await engine.idle();
+      expect(callouts(announcer.posts)).toEqual([{ kind: "focus", userIds: ["ana"], line: 0 }]);
+    });
+
+    it("stays quiet when turned off or without a post channel", async () => {
+      for (const config of [
+        configWith({ phaseCalloutsEnabled: false }),
+        configWith({ postChannelId: null }),
+      ]) {
+        const { engine, announcer, advance } = createHarness(config);
+        await engine.joinRoomTimer("ana");
+        await advance(FOCUS + BREAK);
+        expect(callouts(announcer.posts)).toEqual([]);
+      }
+    });
+  });
+
   it("posts a streak milestone on day 7", async () => {
     const { engine, announcer, advance } = createHarness();
     for (let day = 0; day < 7; day++) {

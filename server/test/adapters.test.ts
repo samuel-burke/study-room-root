@@ -82,6 +82,24 @@ describe("ChannelAnnouncer", () => {
     expect(posts.at(-1)?.content).toContain("Someone just hit a 50 day streak");
   });
 
+  it("mentions the room with Root's markup when the clock switches", async () => {
+    const { posts, channel } = port();
+    await new ChannelAnnouncer(channel).phaseCallout("c1", "break", ["ana", "kai", "bad id]"], 0);
+    const content = posts[0]!.content;
+    expect(content).toMatch(/^☕ /);
+    expect(content).toContain("[@everyone Ana R.](root://user/ana) [@Someone](root://user/kai)");
+    // An id that isn't a plain GUID is never turned into a link.
+    expect(content).toContain(") Someone Break time!");
+  });
+
+  it("looks up only the members a callout shows", async () => {
+    const { posts, channel } = port();
+    const ids = Array.from({ length: 13 }, (_, i) => `m${i}`);
+    await new ChannelAnnouncer(channel).phaseCallout("c1", "focus", ids, 0);
+    expect(channel.nickname).toHaveBeenCalledTimes(10);
+    expect(posts[0]!.content).toContain("and 3 others");
+  });
+
   it("posts recaps, busy rooms and boss defeats", async () => {
     const { posts, channel } = port();
     const announcer = new ChannelAnnouncer(channel);

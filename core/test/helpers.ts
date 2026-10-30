@@ -8,6 +8,7 @@ import {
   type Notifier,
   type PersonalResultDto,
   type PhaseCompletedDto,
+  type PhaseKind,
   type RecapDto,
   type RoomStateDto,
   type WakeScheduler,
@@ -94,6 +95,9 @@ export class RecordingAnnouncer implements Announcer {
   }
   async dailyRecap(channelId: string, recap: RecapDto) {
     this.posts.push({ kind: "recap", channelId, detail: recap });
+  }
+  async phaseCallout(channelId: string, kind: PhaseKind, userIds: string[], line: number) {
+    this.posts.push({ kind: "callout", channelId, detail: { kind, userIds, line } });
   }
 }
 

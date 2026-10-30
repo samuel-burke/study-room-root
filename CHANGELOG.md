@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Study and break callouts: when the room timer switches, Study Squad posts a joke in the updates channel that mentions everyone on the room timer ("Break time! Stand up, stretch, and remember you have legs."). The lines rotate, and admins can turn it off with the new **Study and break callouts** setting. Study Squad now asks Root for permission to mention members.
+
 ## [0.2.1] - 2026-10-29
 
 Study together out loud: voice channel support, plus more reliable badge unlocks.
