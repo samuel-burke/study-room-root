@@ -37,11 +37,9 @@ if (process.argv.includes("--check")) {
 
 for (const dir of genPackages) {
   const pkgPath = path.join(dir, "package.json");
-  if (fs.existsSync(pkgPath)) {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-    pkg.version = version;
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-  }
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  pkg.version = version;
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   if (lock.packages[dir]) lock.packages[dir].version = version;
 }
 if (stale.length > 0) fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + "\n");
