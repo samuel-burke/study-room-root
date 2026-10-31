@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-31
+
+### Fixed
+
+- 0.3.1 still crashed on start in Root with the same `LeaderboardMetric` error, although its package was correct. The generated `@studyroom/gen-*` packages always carried the same version in `package-lock.json`, so Root could keep serving an old copy. Their version now comes from a hash of the `.proto` files, `npm run generate` keeps `package-lock.json` in step, and `npm run verify` fails if it is out of date.
+
 ## [0.3.1] - 2026-10-31
 
 ### Fixed
