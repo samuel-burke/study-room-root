@@ -4,6 +4,18 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-31
+
+### Fixed
+
+- 0.3.1 still crashed on start in Root with the same `LeaderboardMetric` error, although its package was correct. The generated `@studyroom/gen-*` packages always carried the same version in `package-lock.json`, so Root could keep serving an old copy. Their version now comes from a hash of the `.proto` files, `npm run generate` keeps `package-lock.json` in step, and `npm run verify` fails if it is out of date.
+
+## [0.3.1] - 2026-10-31
+
+### Fixed
+
+- The server crashed on start in Root ("Cannot read properties of undefined (reading 'MINUTES')") when a package was built on top of old generated networking code. `npm run generate` now clears `networking/gen` first, so every build uses fresh code.
+
 ## [0.3.0] - 2026-10-30
 
 A chattier, more alive room: the Squad bot, live stats and boss damage, a bigger leaderboard, your own avatar and countdown chirps.
