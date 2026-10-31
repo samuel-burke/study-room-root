@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-31
+
+### Fixed
+
+- The server crashed on start in Root ("Cannot read properties of undefined (reading 'MINUTES')") when a package was built on top of old generated networking code. `npm run generate` now clears `networking/gen` first, so every build uses fresh code.
+
 ## [0.3.0] - 2026-10-30
 
 A chattier, more alive room: the Squad bot, live stats and boss damage, a bigger leaderboard, your own avatar and countdown chirps.
